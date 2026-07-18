@@ -1,0 +1,16 @@
+schema_version: 1
+repository:
+  id: command-center
+  name: Command Center
+  aliases:
+    - command-center-v3
+    - codex-command-center
+documents:
+  roots:
+    - docs
+  patterns:
+    - "**/*.md"
+  exclude: []
+dialects:
+  - frontmatter
+  - fenced-ai-card

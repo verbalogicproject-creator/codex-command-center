@@ -1,0 +1,14 @@
+{
+  "schema_version": "command-center-hook-events-v1",
+  "kinds": {
+    "session_start": "Requests a declared repository briefing and available handoff metadata.",
+    "user_prompt_submit": "Requests a prompt-specific bounded task pack.",
+    "post_tool_use": "Records sanitized, non-durable hook telemetry.",
+    "stop": "Records sanitized turn telemetry and can optionally create a pending proposal for browser review."
+  },
+  "unknown_kind_policy": "HTTP 422",
+  "durability": {
+    "hook_events": "telemetry only",
+    "stop_proposal": "opt-in; pending until browser confirmation"
+  }
+}

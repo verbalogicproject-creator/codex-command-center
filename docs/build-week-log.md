@@ -1,5 +1,24 @@
 # Build Week log
 
+```yaml
+ai_card:
+  id: command-center.build-week-log
+  repository: Command Center
+  title: Build Week Provenance Log
+  kind: provenance_report
+  audience: [evaluator, engineer, ai_agent]
+  status: verified
+  owner_area: submission
+  main_files: [README.md, docs, services/memory, apps/web, plugins/codex-command-center]
+  public_interfaces: [Build Week provenance]
+  provides: [implementation chronology, tested provenance claims]
+  depends_on: [command-center.architecture, command-center.eval-report]
+  safe_edit_points: [append-only dated entries with evidence]
+  risk_areas: [overclaiming unverified deployment or model behavior]
+  graph_rag_entities: [Build Week, Command Center]
+  last_verified: 2026-07-18
+```
+
 ## 2026-07-18
 
 - Established clean-room baseline. The planned v2 and `project_memory` sources
@@ -11,6 +30,20 @@
 - Added GPT-5.6 direct-tool Aria loop and deterministic no-key fallback.
 - Added human-gated proposal confirmation and append-only audit.
 - Built the five-surface responsive Next.js UI and React Flow/Dagre graph.
+- Integrated semantic evidence cards, active-context SVG pulse edges, and an
+  accessible continuous surface dock using the proven Canvas OS visual patterns
+  without importing its editor/runtime dependencies.
+- Validated the Command Center Memory plugin end to end: six MCP tools, four
+  declared hooks, normalized checkout-to-declared repository matching,
+  deduplicated dependency walks, and a paired browser-workspace proposal that
+  remained pending for human review.
+- Added trusted repository-local Codex registration and aligned hook output with
+  Codex's model-visible context protocol. Session and prompt hooks now inject
+  bounded packets directly; Stop proposals are explicit opt-in because Codex
+  emits Stop after every turn.
+- Corrected project MCP startup to resolve the server and state directory from
+  the Git root. Verified a real Codex 0.144.5 non-interactive thread bootstrap
+  and added a nested-working-directory regression test.
 - Passed Python, frontend typecheck, component test and Android Webpack build gates.
 
 Codex session ID: unavailable in the execution environment.
@@ -24,3 +57,47 @@ Milestone commits:
 
 External submission work still requires repository credentials, a Google Cloud
 project/secrets, a narrated video, and the `/feedback` session ID.
+
+## Codex Command Center handoff milestone
+
+- Added the persistent capability library with five verified provider-neutral
+  built-ins, versioning, trust filtering, provenance hashes, repository scope,
+  recommendation, and activation counts.
+- Added validated/resized screenshot analysis with raw-image non-retention and
+  explicit inference labels, plus an optional Sol Responses path and degraded
+  local fallback.
+- Added draft, immutable publication, new-version editing, revocation,
+  repository-verified load, bounded packet construction, and activation audit.
+- Added authenticated stateless `/mcp`, one-time token exchange, hash-only token
+  persistence, revocation, and direct/stdio tool parity.
+- Renamed and upgraded the end-user plugin to **Codex Command Center**, adding
+  handoff tools, remote/local transport choices, pairing and health helpers, and
+  migration guidance.
+- Added Capability Library and Handoff Builder surfaces, exact packet receipts,
+  voice publication, graph capability/handoff nodes, and the generated Codex
+  `/plan` command.
+- Added end-to-end capability, screenshot, handoff, auth, MCP, plugin, and web
+  contract tests and completed the public manuals and demo script.
+
+## Full architecture-awareness milestone
+
+- Consolidated the working Atlas and NLKE Declarum patterns into one strict,
+  provider-neutral declaration and retrieval contract.
+- Added manifest-bounded dual-dialect parsing, Markdown-AST H2 chunking, lint,
+  scaffold, drift health, transactional snapshots, immutable versions, typed
+  explicit relationships, issues, and bounded ArchitectureBrief compilation.
+- Integrated the same brief into Aria SSE, immutable handoffs, HTTP and stdio
+  MCP, Codex Command Center v0.3 hooks, browser receipts, and the graph.
+- Proved registered aliases without unfiltered fallback, old-handoff snapshot
+  immutability after a new sync, historical evidence resolution, and audited
+  activation entering Codex.
+- Ran a real PostgreSQL 18 test under Ubuntu PRoot. Its first migration exposed
+  a DDL row-factory defect; after the fix, the behavioral suite passed before
+  and after a clean PostgreSQL restart, with no leftover workspace schemas.
+- Declared every manifest-selected Markdown manual as an architecture card,
+  producing 100% coverage before final Aria ingestion.
+
+The Cloud Run/MCP deployment patterns are credited to the author's
+MIT-licensed `Claude-ToolBox-Curriculum` sibling project. The local environment
+has no Docker engine or `gcloud` binary, so container and deployed handshakes
+remain laptop or Cloud Build gates.

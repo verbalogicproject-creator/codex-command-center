@@ -1,0 +1,15 @@
+Codex Command Center
+Copyright 2026 Eyal Nof / Verbalogic
+
+This product consolidates working context and knowledge engineering systems
+created by the same author.
+
+It includes declared-context components adapted from frontmatter_rag,
+Copyright 2026 Eyal Nof, under the MIT License, and Cloud Run/MCP deployment
+patterns adapted from the author's MIT-licensed
+Claude-ToolBox-Curriculum project.
+
+Complete upstream provenance and license locations are recorded in
+THIRD_PARTY_NOTICES.md and services/memory/VENDORED.json. Those retained MIT
+notices identify the original licensing of the sibling source works; they do
+not imply different authorship.

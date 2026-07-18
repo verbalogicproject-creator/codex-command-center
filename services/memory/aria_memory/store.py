@@ -5,7 +5,9 @@ import uuid
 from typing import Any
 
 from .db import Database
-from .models import AuditEvent, Proposal, Session, Turn, utc_now
+from .models import (
+    AuditEvent, HookEventRequest, HookEventResponse, Proposal, Session, Turn, utc_now,
+)
 
 
 def uid(prefix: str) -> str:
@@ -97,6 +99,66 @@ class AppStore:
         with self.db.connect() as conn:
             row = conn.execute("SELECT * FROM proposals WHERE id=?", (proposal_id,)).fetchone()
         return self.proposal_from_row(row) if row else None
+
+    def proposals(
+        self, session_id: str | None = None, status: str | None = None, limit: int = 100,
+    ) -> list[Proposal]:
+        sql = "SELECT * FROM proposals"
+        clauses: list[str] = []
+        args: list[Any] = []
+        if session_id is not None:
+            clauses.append("session_id=?")
+            args.append(session_id)
+        if status is not None:
+            clauses.append("status=?")
+            args.append(status)
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        args.append(limit)
+        with self.db.connect() as conn:
+            rows = conn.execute(sql, args).fetchall()
+        return [self.proposal_from_row(row) for row in rows]
+
+    def record_hook(self, event: HookEventRequest) -> HookEventResponse:
+        """Store bounded telemetry; raw prompts/tool output are never accepted."""
+        event_id, now = uid("hook"), utc_now()
+        allowed_detail = {
+            key: value for key, value in event.detail.items()
+            if key in {
+                "summary", "outcome", "changed_files", "duration_ms", "exit_code",
+                "draft_proposal",
+            }
+        }
+        with self.db.transaction() as conn:
+            conn.execute(
+                """INSERT INTO hook_events VALUES(?,?,?,?,?,?,?,?)""",
+                (event_id, event.kind, event.repository, event.session_id,
+                 event.tool_name, json.dumps(event.source_ids),
+                 json.dumps(allowed_detail), now),
+            )
+        proposal = None
+        if event.kind == "stop" and allowed_detail.get("draft_proposal") is True:
+            summary = str(allowed_detail.get("summary") or "Codex session completed.")
+            session_id = (
+                event.session_id
+                if event.session_id and self.session_exists(event.session_id) else None
+            )
+            proposal = self.create_proposal(
+                session_id,
+                "remember_episode",
+                {
+                    "project": event.repository,
+                    "kind": "coding-session",
+                    "title": "Codex session summary",
+                    "content": summary[:2_000],
+                    "reason": "Drafted by the Stop hook for browser review",
+                    "tags": ["codex", "session", "proposed"],
+                },
+                "Review this sanitized session summary before making it durable.",
+                event.source_ids[:20],
+            )
+        return HookEventResponse(id=event_id, kind=event.kind, proposal=proposal)
 
     @staticmethod
     def _audit(conn: Any, action: str, actor: str, proposal_id: str | None,

@@ -1,0 +1,53 @@
+{
+  "description": "Codex Command Center handoff and context hooks",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/scripts/hook.py\" session_start",
+            "timeout": 30,
+            "statusMessage": "Loading Command Center repository briefing"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/scripts/hook.py\" user_prompt_submit",
+            "timeout": 30,
+            "statusMessage": "Compiling bounded Command Center context"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/scripts/hook.py\" post_tool_use",
+            "timeout": 30,
+            "statusMessage": "Recording sanitized Command Center telemetry"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/scripts/hook.py\" stop",
+            "timeout": 30,
+            "statusMessage": "Closing the Command Center turn"
+          }
+        ]
+      }
+    ]
+  }
+}

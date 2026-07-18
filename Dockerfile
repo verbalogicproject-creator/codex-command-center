@@ -12,11 +12,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DATA_DIR=/tmp/command-center-v3 \
     PORT=8080
 WORKDIR /app
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md LICENSE NOTICE THIRD_PARTY_NOTICES.md ./
 COPY services/memory ./services/memory
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[postgres]"
 COPY fixtures ./fixtures
 COPY --from=web /build/apps/web/out ./apps/web/out
 EXPOSE 8080
 CMD ["sh", "-c", "uvicorn aria_memory.app:app --host 0.0.0.0 --port ${PORT} --timeout-keep-alive 120"]
-

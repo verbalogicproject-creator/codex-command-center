@@ -3,6 +3,7 @@ from pathlib import Path
 from aria_memory.db import Database
 from aria_memory.embeddings import (
     EmbeddingProvider, EmbeddingStore, HashEmbeddingProvider, canonical_surface,
+    cosine_scores,
 )
 from aria_memory.store import AppStore
 
@@ -44,6 +45,16 @@ def test_provider_failure_leaves_pending(settings, tmp_path: Path):
     assert result.failed == db.count("memories")
     assert result.status.pending == db.count("memories")
     assert result.status.degraded is True
+
+
+def test_dense_math_has_no_numpy_requirement(monkeypatch):
+    import aria_memory.embeddings as embeddings
+
+    monkeypatch.setattr(embeddings, "np", None)
+    provider = HashEmbeddingProvider(32)
+    vectors = provider.embed_documents(["private local memory", "cloud remote"])
+    scores = cosine_scores(vectors, provider.embed_query("local private"))
+    assert scores[0] > scores[1]
 
 
 def test_proposal_confirmation_is_idempotent(settings, tmp_path: Path):

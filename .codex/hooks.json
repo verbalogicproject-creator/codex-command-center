@@ -1,0 +1,53 @@
+{
+  "description": "Command Center bounded context and sanitized memory-proposal hooks.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "COMMAND_CENTER_URL=http://127.0.0.1:8000 python \"$(git rev-parse --show-toplevel)/plugins/codex-command-center/scripts/hook.py\" session_start",
+            "timeout": 30,
+            "statusMessage": "Loading Command Center repository briefing"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "COMMAND_CENTER_URL=http://127.0.0.1:8000 python \"$(git rev-parse --show-toplevel)/plugins/codex-command-center/scripts/hook.py\" user_prompt_submit",
+            "timeout": 30,
+            "statusMessage": "Compiling bounded Command Center context"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "COMMAND_CENTER_URL=http://127.0.0.1:8000 python \"$(git rev-parse --show-toplevel)/plugins/codex-command-center/scripts/hook.py\" post_tool_use",
+            "timeout": 30,
+            "statusMessage": "Recording sanitized Command Center telemetry"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "COMMAND_CENTER_URL=http://127.0.0.1:8000 python \"$(git rev-parse --show-toplevel)/plugins/codex-command-center/scripts/hook.py\" stop",
+            "timeout": 30,
+            "statusMessage": "Closing the Command Center turn"
+          }
+        ]
+      }
+    ]
+  }
+}

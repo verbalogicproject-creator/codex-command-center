@@ -1,0 +1,20 @@
+[
+  {
+    "id": "private-mobile-architecture",
+    "query": "private mobile inference architecture risks",
+    "expected_evidence_ids": ["fact_cross_02", "fact_hex_01", "doc_hexagon"],
+    "falsification": "Fails if the packet omits the shipped-vs-planned boundary or durable architecture conclusion."
+  },
+  {
+    "id": "approval-boundary",
+    "query": "human gated memory writes safe edit points",
+    "expected_evidence_ids": ["fact_cc_07", "doc_command_center"],
+    "falsification": "Fails if an agent cannot cite both the durable decision and declared repository card."
+  },
+  {
+    "id": "dense-outage",
+    "query": "dense retrieval outage inspectable fallback",
+    "expected_evidence_ids": ["ep_pm_08", "fact_cc_09", "doc_project_memory"],
+    "falsification": "Fails if degraded retrieval loses the fallback episode or inspectability evidence."
+  }
+]

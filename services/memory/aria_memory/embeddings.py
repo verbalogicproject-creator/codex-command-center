@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 from abc import ABC, abstractmethod
 from array import array
 from dataclasses import dataclass
 from typing import Iterable
 
-import numpy as np
+try:  # Optional acceleration; the product remains fully functional without it.
+    import numpy as np
+except ImportError:  # pragma: no cover - exercised by the no-NumPy subprocess test
+    np = None  # type: ignore[assignment]
 
 from .config import Settings
 from .db import Database
@@ -63,16 +67,13 @@ class HashEmbeddingProvider(EmbeddingProvider):
         self.model = f"hash-{dimensions}"
 
     def _embed(self, text: str) -> list[float]:
-        vector = np.zeros(self.dimensions, dtype=np.float32)
+        vector = [0.0] * self.dimensions
         for raw_token in TOKEN_RE.findall(text.lower()):
             token = SEMANTIC_ALIASES.get(raw_token, raw_token)
             digest = hashlib.sha256(token.encode()).digest()
             index = int.from_bytes(digest[:4], "little") % self.dimensions
-            vector[index] += 1 if digest[4] & 1 else -1
-        norm = float(np.linalg.norm(vector))
-        if norm:
-            vector /= norm
-        return vector.tolist()
+            vector[index] += 1.0 if digest[4] & 1 else -1.0
+        return normalize_vector(vector)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [self._embed(text) for text in texts]
@@ -122,17 +123,39 @@ def vector_blob(vector: Iterable[float]) -> bytes:
     return array("f", vector).tobytes()
 
 
+def vector_from_blob(blob: bytes) -> list[float]:
+    values = array("f")
+    values.frombytes(blob)
+    return list(values)
+
+
+def normalize_vector(vector: Iterable[float]) -> list[float]:
+    values = [float(value) for value in vector]
+    norm = math.sqrt(sum(value * value for value in values))
+    return [value / norm for value in values] if norm else values
+
+
+def cosine_scores(vectors: list[list[float]], query: list[float]) -> list[float]:
+    """Cosine over normalized vectors, with NumPy as a transparent accelerator."""
+    normalized = normalize_vector(query)
+    if np is not None and vectors:
+        matrix = np.asarray(vectors, dtype=np.float32)
+        return list(map(float, matrix @ np.asarray(normalized, dtype=np.float32)))
+    return [sum(left * right for left, right in zip(vector, normalized, strict=True))
+            for vector in vectors]
+
+
 @dataclass
 class DenseIndex:
     ids: list[str]
-    matrix: np.ndarray
+    vectors: list[list[float]]
 
 
 class EmbeddingStore:
     def __init__(self, db: Database, provider: EmbeddingProvider):
         self.db, self.provider = db, provider
         self.degraded = False
-        self.index = DenseIndex([], np.zeros((0, provider.dimensions), dtype=np.float32))
+        self.index = DenseIndex([], [])
         self.reload()
 
     def reload(self) -> None:
@@ -147,17 +170,13 @@ class EmbeddingStore:
                 (self.provider.name, self.provider.model, self.provider.dimensions),
             ).fetchall()
         for row in rows:
-            vector = np.frombuffer(row["vector"], dtype=np.float32)
-            if vector.size != self.provider.dimensions:
+            vector = vector_from_blob(row["vector"])
+            if len(vector) != self.provider.dimensions:
                 self.degraded = True
                 continue
-            norm = np.linalg.norm(vector)
-            vectors.append(vector / norm if norm else vector)
+            vectors.append(normalize_vector(vector))
             ids.append(row["memory_id"])
-        matrix = np.vstack(vectors).astype(np.float32) if vectors else np.zeros(
-            (0, self.provider.dimensions), dtype=np.float32
-        )
-        self.index = DenseIndex(ids, matrix)
+        self.index = DenseIndex(ids, vectors)
 
     def status(self) -> EmbeddingStatus:
         with self.db.connect() as conn:
@@ -229,13 +248,10 @@ class EmbeddingStore:
         if not self.index.ids:
             return {}, self.degraded
         try:
-            query = np.asarray(self.provider.embed_query(text), dtype=np.float32)
-            if query.size != self.provider.dimensions:
+            query = self.provider.embed_query(text)
+            if len(query) != self.provider.dimensions:
                 raise ValueError("wrong query dimensions")
-            norm = np.linalg.norm(query)
-            if norm:
-                query /= norm
-            scores = self.index.matrix @ query
+            scores = cosine_scores(self.index.vectors, query)
             return dict(zip(self.index.ids, map(float, scores), strict=True)), False
         except Exception:
             self.degraded = True

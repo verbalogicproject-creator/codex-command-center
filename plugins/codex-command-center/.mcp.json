@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "codex-command-center": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["${PLUGIN_ROOT}/scripts/mcp_server.py"]
+    }
+  }
+}

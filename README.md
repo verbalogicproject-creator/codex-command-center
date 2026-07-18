@@ -1,30 +1,54 @@
-# Command Center v3
+# Codex Command Center
 
-Visual, evidence-backed memory for AI-assisted development.
+> Plan with Aria. Continue in Codex. Bring your toolbox everywhere.
 
-Command Center gives Aria a durable local workspace, inspectable hybrid recall,
-an interactive knowledge graph, and a human approval boundary for every memory
-write. The public demo uses 46 synthetic records; no personal memory is shipped.
+Codex Command Center is one provider-neutral cloud toolbox for coding sessions.
+Aria accepts a repository, screenshot, and voice or text request. GPT‑5.6 Sol
+combines screenshot inferences with declared repository evidence, recommends an
+exact versioned capability, and builds an editable Open Plan. After explicit
+publication, Codex loads the bounded handoff through MCP and begins an informed
+interview before editing.
 
-## What is implemented
+Codex is the primary client and competition focus. The hosted MCP contract is
+portable to other compatible clients without changing the visible demo story.
 
-- FastAPI + SQLite memory service with isolated workspaces and signed HttpOnly auth.
-- Persistent float32 embedding cache keyed by canonical SHA-256 content hashes.
-- Lexical, structural and dense retrieval with per-signal scores and degraded fallback.
-- OpenAI `text-embedding-3-large` at 256 dimensions, batched in groups of 64.
-- GPT-5.6 Responses API loop with seven direct strict function tools, `store: false`,
-  bounded visible history, reasoning controls, and stable hashed safety identifiers.
-- Durable sessions, pending write proposals, idempotent human confirmation, and
-  append-only audit events.
-- Responsive static Next.js interface with five real surfaces and a client-laid
-  React Flow / Dagre evidence graph.
-- One-container Cloud Run packaging, demo quotas, and ephemeral cloud workspaces.
+## Implemented
 
-Without an OpenAI key the complete product remains usable: Aria returns a
-deterministic evidence-backed synthesis, and retrieval uses the cached local hash
-provider. Responses clearly report this as degraded mode.
+- Full architecture awareness: a safe repository manifest, dual-dialect
+  provider-neutral cards, Markdown-AST sections, transactional versioned
+  snapshots, typed relationships, coverage/drift health, and one bounded
+  `ArchitectureBrief` shared by Aria, handoffs, MCP, and Codex.
+- Persistent, versioned capability library with six kinds, repository scope,
+  tool references, trust filtering, provenance, content hashes, and activation
+  counts.
+- Five built-ins: frontend redesign interview, mobile accessibility review,
+  graph-canvas integration, evidence-bound coding plan, and safe deployment
+  preparation.
+- Screenshot validation, MIME sniffing, in-memory resize, SHA-256 receipts,
+  optional Responses API multimodal analysis, inference labels, and zero raw
+  image retention.
+- Draft, immutable published, versioned, and revoked handoffs with exact
+  capability pins, editable Open Plans, evidence receipts, risks, safe edit
+  points, omissions, degraded metadata, and per-client activation audit.
+- Stateless authenticated JSON-RPC MCP at `POST /mcp` plus a parity stdio
+  adapter and ten capability, handoff, context, evidence, timeline, and
+  pending-memory tools.
+- One-time browser pairing exchanged for revocable workspace tokens; only token
+  hashes are stored server-side.
+- **Codex Command Center v0.3** plugin with remote/local MCP config, hash-only
+  SessionStart drift checks, boot/task architecture briefs, four hooks,
+  sanitized telemetry, pending Stop proposals, pairing and architecture
+  helpers, repository isolation, and migration from `command-center-memory`.
+- Capability Library and Handoff Builder surfaces, graph capability/handoff
+  nodes, active-handoff edges, voice publication, exact packet preview, and
+  generated `/plan` command.
+- Existing inspectable memory, declared retrieval, evidence graph, Aria chat and
+  Realtime navigation, human-gated durable memory, and append-only audit.
 
-## Quick start
+No native skill installation, arbitrary code distribution, dynamic tool
+installation, deployment control, or voice/Codex memory confirmation is claimed.
+
+## Five-minute start
 
 Requires Python 3.12+ and Node 22+.
 
@@ -34,27 +58,31 @@ scripts/setup.sh
 scripts/dev.sh
 ```
 
-Open `http://localhost:3000` and use the access code from `DEMO_ACCESS_CODE`
-(`command-center` by default). Local SQLite workspaces live permanently under
-`data/workspaces/`.
+Open `http://localhost:3000`, sign in with `DEMO_ACCESS_CODE`, open **Handoff**,
+and follow the [five-minute quickstart](docs/quickstart.md).
 
-On Termux, `setup.sh` deliberately creates the virtualenv with access to
-Termux's native Python packages. This reuses `python-numpy` instead of attempting
-an unsupported PyPI source build for Android. If NumPy is not installed, run
-`pkg install python-numpy` once and rerun setup.
-
-To use live OpenAI retrieval and Aria:
+Pair the plugin:
 
 ```sh
-export OPENAI_API_KEY=...
-export EMBEDDING_PROVIDER=openai
-scripts/sync-index.sh
-scripts/dev.sh
+export COMMAND_CENTER_URL=http://127.0.0.1:8000
+python plugins/codex-command-center/scripts/pair.py THE-BROWSER-CODE
+python plugins/codex-command-center/scripts/health.py
+python plugins/codex-command-center/scripts/architecture.py lint .
+python plugins/codex-command-center/scripts/architecture.py sync .
 ```
 
-The implementation follows the current official [GPT-5.6 model guide](https://developers.openai.com/api/docs/guides/latest-model),
-[tool guide](https://developers.openai.com/api/docs/guides/tools), and
-[embeddings guide](https://developers.openai.com/api/docs/guides/embeddings).
+`sync` displays the bounded Markdown corpus and asks for confirmation. Session
+hooks send hashes only and never upload repository documents.
+
+Then run the generated command in Codex:
+
+```text
+/plan Load Command Center handoff <ID> and interview me before editing.
+```
+
+Without an OpenAI key, all local workflows remain usable and model-dependent
+results are explicitly marked degraded. Raw screenshots are still validated,
+hashed, and discarded.
 
 ## Verify
 
@@ -65,41 +93,58 @@ npm --prefix apps/web run typecheck
 npm --prefix apps/web run test
 npm --prefix apps/web run build
 scripts/security-scan.sh
+python ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
+  plugins/codex-command-center
 ```
 
-The production frontend is generated at `apps/web/out`. FastAPI automatically
-serves it when present while preserving `/api/v1` route priority.
+## Documentation
 
-## API
+- [Five-minute quickstart](docs/quickstart.md)
+- [Complete user manual](docs/user-guide.md)
+- [Aria voice and screenshot guide](docs/aria-voice.md)
+- [Capability authoring manual](docs/capability-authoring.md)
+- [Handoff lifecycle reference](docs/handoffs.md)
+- [Codex plugin installation, migration, and pairing](docs/codex-plugin.md)
+- [REST and MCP schemas](docs/api-mcp.md)
+- [Architecture and data flow](docs/architecture.md)
+- [Full architecture awareness](docs/architecture-awareness.md)
+- [Declared retrieval and context compiler](docs/declared-context.md)
+- [Evidence graph canvas](docs/graph-canvas.md)
+- [PostgreSQL verification under Ubuntu PRoot](docs/postgresql-proot.md)
+- [Security, privacy, and approvals](docs/security-privacy.md)
+- [Cloud Run deployment](docs/cloud-run.md)
+- [Deployment and submission checklist](docs/deployment-checklist.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Reproducible evaluation](docs/eval-report.md)
+- [Build Week provenance](docs/build-week-log.md)
+- [Three-minute demo script](docs/demo-script.md)
+- [Roadmap](docs/roadmap.md)
+- [Architecture-awareness implementation plan](docs/plans/full-architecture-awareness.md)
+- [Architecture-awareness research lineage](docs/research/full-architecture-awareness-context.md)
 
-The OpenAPI schema is available at `/docs` in local development. Key routes:
+The local API publishes OpenAPI at `/openapi.json` and interactive docs at
+`/docs`.
 
-- `POST /api/v1/auth/demo`
-- `GET /api/v1/status`
-- `POST /api/v1/recall`
-- `GET /api/v1/memories/{table}/{id}`
-- `GET /api/v1/graph`
-- `GET /api/v1/timeline`
-- `GET|POST /api/v1/sessions`
-- `POST /api/v1/chat/stream`
-- `POST /api/v1/proposals/{id}/confirm`
-- `POST /api/v1/proposals/{id}/reject`
-- `GET /api/v1/audit`
-- `POST /api/v1/index/sync`
+## Deployment
 
-See [architecture](docs/architecture.md), [evaluation](docs/eval-report.md), and
-the [Build Week log](docs/build-week-log.md).
+The root-level Dockerfile builds the static Next.js client and combined
+FastAPI/API/MCP runtime. `cloudbuild.yaml` publishes the image and deploys it to
+Cloud Run with `PORT`, Secret Manager bindings, a runtime service account, Cloud
+SQL attachment, scale-to-zero, structured Cloud Logging, and bounded instances.
+See the [deployment guide](docs/cloud-run.md) before using production data.
 
-## Deploy
+Cloud administration and live deployment remain separate, explicitly
+authorized operations.
 
-Create `OPENAI_API_KEY`, `DEMO_ACCESS_CODE`, and `COOKIE_SECRET` secrets in
-Google Secret Manager, then submit `cloudbuild.yaml`. The Cloud Run configuration
-uses one maximum instance and a 120-second timeout. Authenticated browser
-workspaces live under `/tmp`, survive refreshes while the instance lives, and
-reset after restart or deployment.
+## Provenance and license
 
-Public repository target: `verbalogicproject-creator/command-center-v3`.
+Codex Command Center is licensed under
+[Apache License 2.0](LICENSE), including its explicit contributor patent grant
+and redistribution terms. Attribution is recorded in [NOTICE](NOTICE).
+Deployment ideas are adapted from the MIT-licensed
+same-author sibling project `Claude-ToolBox-Curriculum`; declared retrieval
+components retain their original MIT terms and notices in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-## License
-
-MIT
+Public repository target:
+`https://github.com/verbalogicproject-creator/codex-command-center`.

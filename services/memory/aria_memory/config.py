@@ -17,8 +17,12 @@ def env_path(name: str, fallback: Path) -> Path:
 class Settings:
     app_env: str = field(default_factory=lambda: os.getenv("APP_ENV", "local"))
     data_dir: Path = field(default_factory=lambda: env_path("DATA_DIR", ROOT / "data"))
+    database_url: str | None = field(default_factory=lambda: os.getenv("DATABASE_URL"))
     seed_path: Path = field(default_factory=lambda: env_path(
         "DEMO_SEED", ROOT / "fixtures" / "demo" / "memories.json"
+    ))
+    document_seed_path: Path = field(default_factory=lambda: env_path(
+        "DEMO_DOCUMENTS", ROOT / "fixtures" / "demo" / "documents"
     ))
     demo_access_code: str = field(
         default_factory=lambda: os.getenv("DEMO_ACCESS_CODE", "command-center")
@@ -35,6 +39,12 @@ class Settings:
     aria_deep_model: str = field(
         default_factory=lambda: os.getenv("ARIA_DEEP_MODEL", "gpt-5.6-sol")
     )
+    realtime_model: str = field(
+        default_factory=lambda: os.getenv("ARIA_REALTIME_MODEL", "gpt-realtime-2.1")
+    )
+    realtime_voice: str = field(
+        default_factory=lambda: os.getenv("ARIA_REALTIME_VOICE", "marin")
+    )
     embedding_provider: str = field(
         default_factory=lambda: os.getenv("EMBEDDING_PROVIDER", "hash")
     )
@@ -49,6 +59,9 @@ class Settings:
     )
     max_direct_recalls: int = field(
         default_factory=lambda: int(os.getenv("MAX_DIRECT_RECALLS", "100"))
+    )
+    max_voice_sessions: int = field(
+        default_factory=lambda: int(os.getenv("MAX_VOICE_SESSIONS", "40"))
     )
 
     @property

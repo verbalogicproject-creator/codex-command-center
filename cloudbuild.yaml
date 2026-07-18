@@ -1,22 +1,30 @@
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/command-center-v3:$COMMIT_SHA", "."]
+    args: ["build", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/codex-command-center:$COMMIT_SHA", "."]
   - name: gcr.io/cloud-builders/docker
-    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/command-center-v3:$COMMIT_SHA"]
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/codex-command-center:$COMMIT_SHA"]
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
       - run
       - deploy
-      - command-center-v3
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/command-center-v3:$COMMIT_SHA
+      - codex-command-center
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/codex-command-center:$COMMIT_SHA
       - --region=${_REGION}
-      - --max-instances=1
+      - --service-account=${_RUNTIME_SERVICE_ACCOUNT}
+      - --add-cloudsql-instances=${_CLOUD_SQL_INSTANCE}
+      - --min-instances=0
+      - --max-instances=10
+      - --concurrency=40
       - --timeout=120
       - --allow-unauthenticated
-      - --set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest,DEMO_ACCESS_CODE=DEMO_ACCESS_CODE:latest,COOKIE_SECRET=COOKIE_SECRET:latest
+      - --set-env-vars=APP_ENV=cloud
+      - --set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest,DEMO_ACCESS_CODE=DEMO_ACCESS_CODE:latest,COOKIE_SECRET=COOKIE_SECRET:latest,DATABASE_URL=COMMAND_CENTER_DATABASE_URL:latest
 substitutions:
   _REGION: us-central1
   _REPOSITORY: command-center
+  _CLOUD_SQL_INSTANCE: ${PROJECT_ID}:us-central1:command-center
+  _RUNTIME_SERVICE_ACCOUNT: command-center-runtime@${PROJECT_ID}.iam.gserviceaccount.com
 options:
   logging: CLOUD_LOGGING_ONLY
+  dynamicSubstitutions: true

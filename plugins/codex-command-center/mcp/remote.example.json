@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "codex-command-center": {
+      "type": "http",
+      "url": "${COMMAND_CENTER_URL}/mcp",
+      "headers": {
+        "X-Command-Center-Token": "${COMMAND_CENTER_TOKEN}"
+      }
+    }
+  }
+}

@@ -5,9 +5,11 @@ import hashlib
 import json
 from typing import Any
 
+from .architecture import ArchitectureBrief, ArchitectureBriefRequest, ArchitectureCompiler
 from .config import Settings
+from .context import ContextCompiler
 from .db import Database
-from .models import ChatRequest, RecallRequest
+from .models import ChatRequest, ContextPack, ContextPackRequest, RecallRequest
 from .retrieval import Retriever
 from .store import AppStore
 
@@ -76,8 +78,11 @@ TOOLS = [
 
 class Aria:
     def __init__(self, settings: Settings, db: Database, store: AppStore,
-                 retriever: Retriever):
+                 retriever: Retriever, context: ContextCompiler,
+                 architecture: ArchitectureCompiler | None = None):
         self.settings, self.db, self.store, self.retriever = settings, db, store, retriever
+        self.context = context
+        self.architecture = architecture
 
     def execute_tool(self, name: str, args: dict[str, Any],
                      session_id: str) -> dict[str, Any]:
@@ -122,20 +127,78 @@ class Aria:
 
     async def run(self, request: ChatRequest) -> list[dict[str, Any]]:
         self.store.add_turn(request.session_id, "user", request.message)
+        packet = self.context.build(ContextPackRequest(
+            prompt=request.message, token_budget=2_000, memory_limit=8, document_limit=6,
+        ))
+        repository = str(
+            packet.repository_identity.get("repository") or "Command Center"
+        )
+        architecture_brief = (
+            self.architecture.build(ArchitectureBriefRequest(
+                repository=repository,
+                mode="task",
+                prompt=request.message,
+                token_budget=1_200,
+                document_limit=6,
+                section_limit=5,
+            ))
+            if self.architecture else None
+        )
         events: list[dict[str, Any]] = [{"type": "status", "data": {
             "phase": "retrieving", "model": (
                 self.settings.aria_deep_model if request.deep_synthesis
                 else self.settings.aria_model
-            )}}]
+            )}}, {"type": "context_pack", "data": packet.model_dump()}]
+        if architecture_brief:
+            events.append({
+                "type": "architecture_brief",
+                "data": architecture_brief.model_dump(mode="json"),
+            })
         if not self.settings.openai_api_key:
             events.extend(self._fallback(request))
         else:
             try:
-                events.extend(await asyncio.to_thread(self._openai_run, request))
+                events.extend(await asyncio.to_thread(
+                    self._openai_run, request, packet, architecture_brief,
+                ))
             except Exception as exc:
                 events.append({"type": "status", "data": {
                     "phase": "degraded", "reason": type(exc).__name__}})
                 events.extend(self._fallback(request))
+        if self._explicit_proposal_request(request.message) and not any(
+            event["type"] == "proposal" for event in events
+        ):
+            answer = next(
+                (event["data"]["text"] for event in reversed(events)
+                 if event["type"] == "answer"),
+                "",
+            )
+            guard = self.execute_tool("check_synthesis", {
+                "project": str(packet.repository_identity.get("repository") or "Command Center"),
+                "claim": request.message + " " + answer,
+            }, request.session_id)
+            if guard["allowed"] and "**Refusal:**" not in answer:
+                proposal = self.store.create_proposal(
+                    request.session_id,
+                    "record_fact",
+                    {
+                        "project": str(
+                            packet.repository_identity.get("repository") or "Command Center"
+                        ),
+                        "kind": "decision",
+                        "title": "Aria decision proposal",
+                        "content": answer[:2_000] or request.message[:2_000],
+                        "reason": "Explicitly requested by the user for human review",
+                        "tags": ["decision", "aria", "proposed"],
+                    },
+                    "Explicit decision requests always create a persisted pending proposal.",
+                    [source.id for source in packet.sources[:8]],
+                )
+                answer_index = next(
+                    (index for index, event in enumerate(events) if event["type"] == "answer"),
+                    len(events),
+                )
+                events.insert(answer_index, {"type": "proposal", "data": proposal.model_dump()})
         answer = next(
             (event["data"]["text"] for event in reversed(events) if event["type"] == "answer"),
             "I could not produce an answer.",
@@ -144,8 +207,20 @@ class Aria:
             hit["id"] for event in events if event["type"] == "evidence"
             for hit in event["data"].get("items", [])
         ]
+        evidence.extend(source.id for source in packet.sources)
+        evidence = list(dict.fromkeys(evidence))
         self.store.add_turn(request.session_id, "assistant", answer, evidence)
         return events
+
+    @staticmethod
+    def _explicit_proposal_request(message: str) -> bool:
+        lowered = message.lower()
+        action = any(word in lowered for word in (
+            "propose", "save", "record", "remember", "create a decision",
+        ))
+        return action and any(word in lowered for word in (
+            "decision", "recommendation", "architecture", "memory",
+        ))
 
     def _fallback(self, request: ChatRequest) -> list[dict[str, Any]]:
         recall = self.retriever.recall(RecallRequest(query=request.message, limit=8))
@@ -203,7 +278,12 @@ class Aria:
         }})
         return events
 
-    def _openai_run(self, request: ChatRequest) -> list[dict[str, Any]]:
+    def _openai_run(
+        self,
+        request: ChatRequest,
+        packet: ContextPack,
+        architecture_brief: ArchitectureBrief | None = None,
+    ) -> list[dict[str, Any]]:
         from openai import OpenAI
 
         client = OpenAI(api_key=self.settings.openai_api_key)
@@ -211,6 +291,21 @@ class Aria:
         input_items: list[Any] = [
             {"role": item["role"], "content": item["content"]} for item in history
         ]
+        input_items.insert(0, {
+            "role": "developer",
+            "content": (
+                "Use this bounded Command Center context packet as the initial evidence. "
+                "Do not claim more than it supports. Architecture evidence is versioned; "
+                "preserve its snapshot and source receipts:\n"
+                + json.dumps({
+                    "context_pack": packet.model_dump(mode="json"),
+                    "architecture_brief": (
+                        architecture_brief.model_dump(mode="json")
+                        if architecture_brief else None
+                    ),
+                }, separators=(",", ":"))
+            ),
+        })
         events: list[dict[str, Any]] = []
         model = self.settings.aria_deep_model if request.deep_synthesis else self.settings.aria_model
         safety_id = hashlib.sha256(f"cc3:{request.session_id}".encode()).hexdigest()

@@ -6,21 +6,12 @@ PYTHON=${PYTHON:-python}
 
 case "${PREFIX:-}" in
   *com.termux*)
-    # Termux ships working native packages (notably NumPy) in its Python
-    # site-packages. PyPI does not publish Android wheels, so an isolated venv
-    # would try—and fail—to compile NumPy against Android libc.
-    "$PYTHON" - <<'PY'
-try:
-    import numpy
-except ImportError:
-    raise SystemExit(
-        "Termux NumPy is missing. Run `pkg install python-numpy`, then rerun setup."
-    )
-PY
+    # Reuse native Termux packages when present. NumPy is an optional dense
+    # accelerator; pure-Python cosine remains the supported fallback.
     "$PYTHON" -m venv --clear --system-site-packages "$ROOT/.venv"
     "$ROOT/.venv/bin/python" -m pip install --no-deps -e "$ROOT[dev]"
     "$ROOT/.venv/bin/python" - <<'PY'
-modules = ("fastapi", "httpx", "numpy", "openai", "pydantic", "pytest", "uvicorn")
+modules = ("fastapi", "httpx", "openai", "pydantic", "pytest", "uvicorn", "yaml")
 missing = []
 for module in modules:
     try:

@@ -9,8 +9,7 @@ documented contracts and product behavior.
 
 - Desired `project_memory` revision: `e6c1661` (source unavailable)
 - Command Center v2: unversioned prototype (source unavailable)
-- Command Center v3: this MIT-licensed repository
+- Command Center v3: this Apache-2.0-licensed repository
 
 No private database, environment file, machine path, or generated corpus was
 imported.
-

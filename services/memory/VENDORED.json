@@ -1,0 +1,15 @@
+{
+  "source": "frontmatter_rag",
+  "source_url": "https://github.com/verbalogicproject-creator/NLKE-frontmatter_rag",
+  "commit": "a3b835b42126345e62edcd1308c8d84a299554d4",
+  "license": "MIT",
+  "components": [
+    "frontmatter_rag schema, parser, and AI-card preset",
+    "declared_core BM25 sanitization, intent routing, structural paths, and RRF"
+  ],
+  "adaptations": [
+    "repository-relative source URIs",
+    "Command Center AI-card fields",
+    "persistent document embeddings owned by the memory service"
+  ]
+}
