@@ -15,6 +15,12 @@
 
 Codex session ID: unavailable in the execution environment.
 
+Milestone commits:
+
+- `e0a798a` — clean-room baseline and source-provenance boundary
+- `e140418` — memory service, Aria, fixtures, interface, packaging and docs
+- `a61401c` — generated build-state cleanup
+- `d3eba06` — strict tools, conflict guard, persistent turns and runtime hardening
+
 External submission work still requires repository credentials, a Google Cloud
 project/secrets, a narrated video, and the `/feedback` session ID.
-
