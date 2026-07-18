@@ -18,6 +18,7 @@
 }
 
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
 html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
 body { font-family: var(--sans); }
 button, input, textarea { font: inherit; }
@@ -306,7 +307,9 @@ kbd {
   .results > button > b { display: none; }
   .chronology > section { grid-template-columns: 1fr; gap: 7px; }
   .chronology > section > div { margin-left: 5px; }
+  .login { min-height: 100svh; place-items: start center; padding: 28px 14px; }
   .login-card { padding: 27px 22px; }
+  .brand-mark.hero { margin-bottom: 22px; }
   .login h1 { font-size: 34px; }
 }
 

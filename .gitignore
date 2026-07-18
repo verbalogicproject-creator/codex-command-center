@@ -8,6 +8,7 @@ __pycache__/
 .venv/
 *.pyc
 *.tsbuildinfo
+*.egg-info/
 *.db*
 data/
 coverage/

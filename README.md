@@ -38,6 +38,11 @@ Open `http://localhost:3000` and use the access code from `DEMO_ACCESS_CODE`
 (`command-center` by default). Local SQLite workspaces live permanently under
 `data/workspaces/`.
 
+On Termux, `setup.sh` deliberately creates the virtualenv with access to
+Termux's native Python packages. This reuses `python-numpy` instead of attempting
+an unsupported PyPI source build for Android. If NumPy is not installed, run
+`pkg install python-numpy` once and rerun setup.
+
 To use live OpenAI retrieval and Aria:
 
 ```sh
@@ -98,4 +103,3 @@ Public repository target: `verbalogicproject-creator/command-center-v3`.
 ## License
 
 MIT
-
