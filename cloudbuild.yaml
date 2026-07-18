@@ -1,0 +1,22 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/command-center-v3:$COMMIT_SHA", "."]
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/command-center-v3:$COMMIT_SHA"]
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - command-center-v3
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/command-center-v3:$COMMIT_SHA
+      - --region=${_REGION}
+      - --max-instances=1
+      - --timeout=120
+      - --allow-unauthenticated
+      - --set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest,DEMO_ACCESS_CODE=DEMO_ACCESS_CODE:latest,COOKIE_SECRET=COOKIE_SECRET:latest
+substitutions:
+  _REGION: us-central1
+  _REPOSITORY: command-center
+options:
+  logging: CLOUD_LOGGING_ONLY
