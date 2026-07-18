@@ -7,6 +7,7 @@ from aria_memory.architecture import (
     ArchitectureCompiler,
     ArchitectureStore,
     parse_architecture_document,
+    scan_architecture_repository,
 )
 from aria_memory.db import Database
 
@@ -80,6 +81,43 @@ def test_brief_is_bounded_over_fully_serialized_packet(tmp_path):
     ))
     assert brief.token_estimate <= 700
     assert brief.omitted_candidate_count > 0
+
+
+def test_dependency_bounding_retains_repository_evidence(tmp_path):
+    inventory = scan_architecture_repository(ROOT)
+    identity = inventory.manifest.repository
+    parsed = [
+        parse_architecture_document(
+            item.content,
+            item.source_uri,
+            repository=identity.name,
+        )
+        for item in inventory.documents
+    ]
+    store = ArchitectureStore(Database(tmp_path / "repository-brief.db"))
+    store.activate(
+        repository=identity.name,
+        repository_id=identity.id,
+        aliases=identity.aliases,
+        documents=parsed,
+        source_revision="release-candidate",
+        manifest_hash=inventory.manifest_hash,
+    )
+
+    brief = ArchitectureCompiler(store).build(ArchitectureBriefRequest(
+        repository="codex-command-center",
+        mode="task",
+        prompt="Explain the shared Aria and Codex architecture-awareness path.",
+        token_budget=2_000,
+    ))
+
+    assert brief.token_estimate <= brief.token_budget
+    assert brief.documents
+    assert brief.sources
+    assert all(
+        path[0] in {document.id for document in brief.documents}
+        for path in brief.dependency_paths
+    )
 
 
 def test_unknown_repository_never_falls_back_to_other_context(tmp_path):

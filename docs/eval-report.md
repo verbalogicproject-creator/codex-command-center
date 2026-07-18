@@ -25,8 +25,8 @@ chronology, decision, architecture and constraint queries over 46 records.
 
 | Configuration | Recall@5 | MRR | p50 | p95 |
 |---|---:|---:|---:|---:|
-| Lexical score | 97.1% | 0.910 | 3.87 ms | 4.12 ms |
-| Cached hash hybrid | 100% | 0.913 | 3.87 ms | 4.12 ms |
+| Lexical score | 97.1% | 0.910 | 4.58 ms | 4.91 ms |
+| Cached hash hybrid | 100% | 0.913 | 4.58 ms | 4.91 ms |
 
 The deterministic hybrid gained 2.9 percentage points in Recall@5 on semantic
 aliases while preserving exact recall. Initial indexing wrote 46 vectors;
@@ -50,10 +50,10 @@ The same script runs three public context tasks:
 
 | Mode | Recall@5 | MRR | Median |
 |---|---:|---:|---:|
-| Lexical | 100% | 1.000 | 3.14 ms |
-| Declared + structural | 100% | 0.667 | 3.03 ms |
-| Cached hash dense | 66.7% | 0.444 | 3.33 ms |
-| Full hybrid | 100% | 0.500 | 3.27 ms |
+| Lexical | 100% | 1.000 | 3.44 ms |
+| Declared + structural | 100% | 0.667 | 3.32 ms |
+| Cached hash dense | 66.7% | 0.444 | 3.96 ms |
+| Full hybrid | 100% | 0.500 | 3.80 ms |
 
 This tiny set is a falsification smoke test, not evidence that lexical retrieval
 is generally superior. It shows why every signal remains visible: declared and

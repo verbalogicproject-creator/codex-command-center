@@ -334,6 +334,9 @@ class ArchitectureCompiler:
                 brief.documents = [
                     item for item in brief.documents if item.id != removed.id
                 ]
+                remaining_document_ids = {
+                    item.id for item in brief.documents
+                }
                 brief.sections = [
                     item for item in brief.sections
                     if item.document_version_id != removed.id
@@ -344,6 +347,13 @@ class ArchitectureCompiler:
                         item.entity_type == "architecture_section"
                         and item.source_uri == removed.source_uri
                     )
+                ]
+                # Dependency paths are derived from the selected document set.
+                # Keeping paths whose roots were removed can consume the whole
+                # packet budget and evict every actual evidence receipt.
+                brief.dependency_paths = [
+                    path for path in brief.dependency_paths
+                    if path and path[0] in remaining_document_ids
                 ]
             brief.omitted_candidate_count += 1
             self._recompute(brief)

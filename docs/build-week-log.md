@@ -96,6 +96,14 @@ project/secrets, a narrated video, and the `/feedback` session ID.
   and after a clean PostgreSQL restart, with no leftover workspace schemas.
 - Declared every manifest-selected Markdown manual as an architecture card,
   producing 100% coverage before final Aria ingestion.
+- Used the commit-pinned release ingestion as a functional gate, not just a
+  document-count check. It exposed dependency paths surviving after their
+  selected root documents were budget-evicted, which could leave a valid
+  2,000-token packet with no evidence receipts. The compiler now removes those
+  orphaned paths, retains the highest-ranked evidence, and has a full-corpus
+  regression test.
+- Verified the release corpus produces identical snapshot and source receipts
+  through Aria's compiler and Codex's `build_task_pack` path.
 
 The Cloud Run/MCP deployment patterns are credited to the author's
 MIT-licensed `Claude-ToolBox-Curriculum` sibling project. The local environment

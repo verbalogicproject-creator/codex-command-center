@@ -32,7 +32,8 @@ ai_card:
 - [ ] Confirm a proposal, reload, and inspect its audit entry.
 - [ ] Expand the injected context packet and open both a document and memory source.
 - [ ] Verify an attempted conflicting merge leaves a visible MUD refusal.
-- [ ] Run `PYTHONPATH=services/memory python scripts/eval.py` and retain the falsification trace.
+- [x] Run `PYTHONPATH=services/memory python scripts/eval.py` and retain the
+  falsification trace in `docs/eval-report.md`.
 - [x] Validate all ten Codex plugin MCP tools and four hooks; verify browser
   pairing creates a pending-only proposal.
 - [x] Validate trusted project-local MCP/hook registration, paired context
@@ -49,8 +50,8 @@ ai_card:
   and no durable mutation before the authenticated browser tap.
 - [x] Run secret/history scan against the final Git object database; the only
   environment-name match is the sanitized `.env.example` template.
-- [ ] Sync the final commit-pinned docs into Aria and compare Aria/Codex
-  snapshot receipts.
+- [x] Sync the final commit-pinned docs into Aria and compare Aria/Codex
+  snapshot and selected-source receipts at the 2,000-token task boundary.
 - [ ] Record a sub-three-minute narrated video.
 - [ ] Submit the Cloud Run URL, public repository URL, video, and `/feedback` ID.
 - [ ] Run authenticated remote MCP initialize, tools/list, handoff load, token
