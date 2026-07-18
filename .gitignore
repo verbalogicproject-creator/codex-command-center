@@ -7,9 +7,9 @@ __pycache__/
 .pytest_cache/
 .venv/
 *.pyc
+*.tsbuildinfo
 *.db*
 data/
 coverage/
 playwright-report/
 test-results/
-
