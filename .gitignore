@@ -1,0 +1,15 @@
+.env
+.env.local
+.next/
+node_modules/
+out/
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+*.db*
+data/
+coverage/
+playwright-report/
+test-results/
+
