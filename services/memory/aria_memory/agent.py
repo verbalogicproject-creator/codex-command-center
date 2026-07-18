@@ -15,7 +15,9 @@ SYSTEM_PROMPT = """You are Aria, an evidence-backed development memory agent.
 Use recall before making factual claims. Cite evidence IDs in square brackets.
 Clearly label recorded facts, inferences, and proposals. Surface conflicts and
 uncertainty. A proposal is never a saved memory: only a human can confirm it.
-Prefer a compact architecture render for cross-project synthesis."""
+Prefer a compact architecture render for cross-project synthesis. Before every
+write proposal call check_synthesis. If it reports a conflict, explain the
+conflict and do not create a proposal."""
 
 
 def tool(name: str, description: str, properties: dict[str, Any],
@@ -50,7 +52,22 @@ TOOLS = [
     tool("propose_memory_write", "Create a pending write for human confirmation.",
          {"operation": {"type": "string", "enum": [
              "remember_episode", "record_fact", "supersede_fact", "invalidate_fact"]},
-          "payload": {"type": "object", "additionalProperties": True},
+          "payload": {
+              "type": "object",
+              "properties": {
+                  "project": {"type": ["string", "null"]},
+                  "kind": {"type": ["string", "null"]},
+                  "title": {"type": ["string", "null"]},
+                  "content": {"type": ["string", "null"]},
+                  "reason": {"type": ["string", "null"]},
+                  "tags": {"type": ["array", "null"], "items": {"type": "string"}},
+                  "target_id": {"type": ["string", "null"]},
+              },
+              "required": [
+                  "project", "kind", "title", "content", "reason", "tags", "target_id"
+              ],
+              "additionalProperties": False,
+          },
           "rationale": {"type": "string"},
           "evidence_ids": {"type": "array", "items": {"type": "string"}}},
          ["operation", "payload", "rationale", "evidence_ids"]),
@@ -83,17 +100,21 @@ class Aria:
             records.sort(key=lambda x: x.happened_at, reverse=True)
             return {"items": [x.model_dump() for x in records[:args["limit"]]]}
         if name == "check_synthesis":
-            conflicts = [
-                x.model_dump() for x in self.db.list_memories(args["project"])
+            claim = args["claim"].lower()
+            records = self.db.list_memories()
+            conflicts = [x.model_dump() for x in records
                 if x.kind == "decision" and x.status == "active"
-                and args["claim"].lower() not in x.content.lower()
-            ]
+                and "merge" in claim
+                and ("not merge" in x.content.lower()
+                     or "will not merge" in x.content.lower()
+                     or "not as a merged" in x.content.lower())]
             return {"allowed": not conflicts, "conflicts": conflicts[:5]}
         if name == "render_element":
             return {"render": args}
         if name == "propose_memory_write":
+            payload = {key: value for key, value in args["payload"].items() if value is not None}
             proposal = self.store.create_proposal(
-                session_id, args["operation"], args["payload"],
+                session_id, args["operation"], payload,
                 args["rationale"], args["evidence_ids"],
             )
             return {"proposal": proposal.model_dump()}
@@ -135,6 +156,25 @@ class Aria:
         } for hit in hits]
         projects = list(dict.fromkeys(hit.memory.project for hit in hits))
         ids = [hit.memory.id for hit in hits]
+        if "merge" in request.message.lower():
+            guard = self.execute_tool("check_synthesis", {
+                "project": "Command Center", "claim": request.message,
+            }, request.session_id)
+            if not guard["allowed"]:
+                conflict_ids = [item["id"] for item in guard["conflicts"]]
+                return [
+                    {"type": "tool_call", "data": {
+                        "name": "check_synthesis", "status": "completed"}},
+                    {"type": "evidence", "data": {"items": evidence,
+                        "trace": recall.trace.model_dump()}},
+                    {"type": "answer", "data": {
+                        "text": "**Refusal:** This synthesis conflicts with recorded scope "
+                        f"decisions {', '.join(f'[{key}]' for key in conflict_ids)}. "
+                        "The projects may contribute evidence through bounded adapters, "
+                        "but Aria will not propose merging them.",
+                        "degraded": True,
+                    }},
+                ]
         summary = (
             "A private mobile assistant can use Project Memory as the durable evidence layer, "
             "Hexagon as the future device inference adapter, and Command Center as the visual "

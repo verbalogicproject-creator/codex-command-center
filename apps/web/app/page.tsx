@@ -208,6 +208,18 @@ function AriaSurface({
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [trace, setTrace] = useState<Trace | null>(null);
 
+  useEffect(() => {
+    if (!sessionId) {
+      setItems([]);
+      return;
+    }
+    void api<{items: {role: "user" | "assistant"; content: string}[]}>(
+      `/api/v1/sessions/${sessionId}/turns`,
+    ).then((result) => setItems(result.items.map((item) => ({
+      role: item.role, text: item.content,
+    })))).catch(() => setItems([]));
+  }, [sessionId]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     const text = message.trim();

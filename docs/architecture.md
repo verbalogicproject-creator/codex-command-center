@@ -51,7 +51,9 @@ and executes one of four domain operations:
 - `invalidate_fact`
 
 Confirmation is idempotent. Rejection changes no memory. Every transition emits
-an append-only audit event.
+an append-only audit event. The MUD guard also checks proposed merge decisions
+against active project-boundary decisions; a conflict transitions the proposal
+to `failed` without changing memory.
 
 ## Privacy and availability
 
@@ -64,4 +66,3 @@ returns lexical/structural evidence with `degraded=true`.
 Cloud workspaces use one SQLite file per authenticated browser under `/tmp`.
 This provides demo isolation rather than durable cloud storage. Local workspaces
 persist under gitignored `data/`.
-

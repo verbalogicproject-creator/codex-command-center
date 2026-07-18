@@ -77,3 +77,24 @@ def test_rejection_does_not_mutate_memory(settings, tmp_path: Path):
     assert store.reject(proposal.id).status == "rejected"
     assert db.count("memories") == before
     assert any(item.action == "proposal.rejected" for item in store.audit())
+
+
+def test_mud_guard_refuses_conflicting_merge(settings, tmp_path: Path):
+    db = Database(tmp_path / "mud.db", settings.seed_path)
+    store = AppStore(db)
+    before = db.count("memories")
+    proposal = store.create_proposal(
+        None, "record_fact",
+        {"project": "Command Center", "kind": "decision",
+         "title": "Merge LifeOS into Command Center",
+         "content": "Merge LifeOS and Hexagon into one application."},
+        "Conflicting synthesis", ["fact_life_06", "fact_hex_07"],
+    )
+    try:
+        store.confirm(proposal.id)
+        raise AssertionError("guard should refuse")
+    except ValueError as exc:
+        assert "MUD guard" in str(exc)
+    assert db.count("memories") == before
+    assert store.get_proposal(proposal.id).status == "failed"
+    assert any(item.action == "proposal.failed" for item in store.audit())

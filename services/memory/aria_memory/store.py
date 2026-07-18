@@ -5,7 +5,7 @@ import uuid
 from typing import Any
 
 from .db import Database
-from .models import AuditEvent, Proposal, Session, utc_now
+from .models import AuditEvent, Proposal, Session, Turn, utc_now
 
 
 def uid(prefix: str) -> str:
@@ -56,6 +56,18 @@ class AppStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def visible_turns(self, session_id: str, limit: int = 100) -> list[Turn]:
+        with self.db.connect() as conn:
+            rows = conn.execute(
+                """SELECT id,role,content,evidence_json,created_at FROM turns
+                WHERE session_id=? ORDER BY created_at LIMIT ?""",
+                (session_id, limit),
+            ).fetchall()
+        return [Turn(
+            id=row["id"], role=row["role"], content=row["content"],
+            evidence_ids=json.loads(row["evidence_json"]), created_at=row["created_at"],
+        ) for row in rows]
+
     def create_proposal(
         self, session_id: str | None, operation: str, payload: dict[str, Any],
         rationale: str, evidence_ids: list[str],
@@ -95,6 +107,23 @@ class AppStore:
         )
 
     def confirm(self, proposal_id: str) -> Proposal:
+        try:
+            return self._confirm_once(proposal_id)
+        except ValueError as exc:
+            with self.db.transaction() as conn:
+                row = conn.execute(
+                    "SELECT status,operation FROM proposals WHERE id=?", (proposal_id,)
+                ).fetchone()
+                if row and row["status"] == "pending":
+                    conn.execute(
+                        """UPDATE proposals SET status='failed',resolved_at=?,error=?
+                        WHERE id=?""", (utc_now(), str(exc), proposal_id),
+                    )
+                    self._audit(conn, "proposal.failed", "system", proposal_id, None,
+                                {"operation": row["operation"], "error": str(exc)})
+            raise
+
+    def _confirm_once(self, proposal_id: str) -> Proposal:
         with self.db.transaction() as conn:
             row = conn.execute("SELECT * FROM proposals WHERE id=?", (proposal_id,)).fetchone()
             if not row:
@@ -116,6 +145,19 @@ class AppStore:
                     raise ValueError("active fact target not found")
                 memory_id = target
             else:
+                claim = f"{payload.get('title', '')} {payload.get('content', '')}".lower()
+                if "merge" in claim:
+                    boundaries = conn.execute(
+                        """SELECT id,content FROM memories WHERE kind='decision' AND status='active'
+                        AND (lower(content) LIKE '%not merge%'
+                          OR lower(content) LIKE '%will not merge%'
+                          OR lower(content) LIKE '%not as a merged%')"""
+                    ).fetchall()
+                    if boundaries:
+                        raise ValueError(
+                            "MUD guard: proposed synthesis conflicts with "
+                            + ", ".join(row["id"] for row in boundaries)
+                        )
                 if operation == "supersede_fact":
                     target = payload.get("target_id")
                     old = conn.execute(

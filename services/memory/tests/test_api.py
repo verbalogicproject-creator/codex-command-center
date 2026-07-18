@@ -45,6 +45,9 @@ def test_session_and_fallback_sse_proposal(client):
     assert "event: render" in result.text
     assert "event: proposal" in result.text
     assert "event: answer" in result.text
+    turns = client.get(f"/api/v1/sessions/{session['id']}/turns").json()["items"]
+    assert [turn["role"] for turn in turns] == ["user", "assistant"]
+    assert turns[1]["evidence_ids"]
 
 
 def test_workspace_isolation(settings):
@@ -70,4 +73,3 @@ def test_recall_quota(settings):
     result = client.post("/api/v1/recall", json={"query": "memory"})
     assert result.status_code == 429
     assert result.json()["error"]["code"] == "quota_exceeded"
-

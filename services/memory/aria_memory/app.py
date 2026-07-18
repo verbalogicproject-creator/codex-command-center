@@ -3,12 +3,12 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import shutil
 import uuid
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +22,7 @@ from .models import (
     ErrorResponse, GraphEdge, GraphNode, GraphResponse, RecallRequest,
     RecallResponse, Session, SessionCreate, SessionList, StatusResponse,
     SyncResponse, TimelineResponse,
+    TurnList,
 )
 from .retrieval import Retriever
 from .store import AppStore
@@ -183,6 +184,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                        workspace: Workspace = Depends(current_workspace)) -> Session:
         return workspace.store.create_session(body.title)
 
+    @app.get("/api/v1/sessions/{session_id}/turns", response_model=TurnList)
+    def session_turns(session_id: str,
+                      workspace: Workspace = Depends(current_workspace)) -> TurnList:
+        if not workspace.store.session_exists(session_id):
+            raise HTTPException(404, "session not found")
+        return TurnList(items=workspace.store.visible_turns(session_id))
+
     @app.post("/api/v1/chat/stream")
     async def chat(body: ChatRequest,
                    workspace: Workspace = Depends(current_workspace)):
@@ -245,6 +253,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorResponse(error=ErrorDetail(**detail)).model_dump(),
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(_: Request, exc: RequestValidationError):
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(
+            status_code=422,
+            content=ErrorResponse(error=ErrorDetail(
+                code="validation_error",
+                message="; ".join(error["msg"] for error in exc.errors()),
+            )).model_dump(),
         )
 
     web_out = ROOT / "apps" / "web" / "out"

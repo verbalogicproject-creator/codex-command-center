@@ -132,6 +132,18 @@ class SessionList(BaseModel):
     items: list[Session]
 
 
+class Turn(BaseModel):
+    id: str
+    role: Literal["user", "assistant"]
+    content: str
+    evidence_ids: list[str]
+    created_at: str
+
+
+class TurnList(BaseModel):
+    items: list[Turn]
+
+
 class ChatRequest(BaseModel):
     session_id: str
     message: str = Field(min_length=1, max_length=8_000)

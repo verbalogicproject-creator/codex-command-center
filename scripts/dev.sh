@@ -2,6 +2,11 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+if [ -f "$ROOT/.env" ]; then
+  set -a
+  . "$ROOT/.env"
+  set +a
+fi
 PYTHON=${PMEM_PYTHON:-"$ROOT/.venv/bin/python"}
 test -x "$PYTHON" || PYTHON=$(command -v python)
 
@@ -11,4 +16,3 @@ API_PID=$!
 trap 'kill "$API_PID" 2>/dev/null || true' EXIT INT TERM
 
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm --prefix "$ROOT/apps/web" run dev
-
