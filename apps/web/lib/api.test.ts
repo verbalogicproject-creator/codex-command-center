@@ -1,8 +1,11 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {api} from "./api";
+import {api, apiUrl} from "./api";
 
 describe("api", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
   it("returns typed JSON and sends same-origin credentials", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -12,8 +15,13 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
     await expect(api<{memories: number}>("/api/v1/status")).resolves.toEqual({memories: 46});
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/status", expect.objectContaining({
-      credentials: "same-origin",
+      credentials: "include",
     }));
+  });
+
+  it("keeps loopback API requests on the browser hostname for cookie continuity", () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "http://127.0.0.1:8000");
+    expect(apiUrl("/api/v1/status")).toBe("http://localhost:8000/api/v1/status");
   });
 
   it("unwraps structured API errors", async () => {

@@ -230,7 +230,7 @@ function AriaSurface({
     setItems((old) => [...old, {role: "user", text}]);
     try {
       const response = await fetch(apiUrl("/api/v1/chat/stream"), {
-        method: "POST", credentials: "same-origin",
+        method: "POST", credentials: "include",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({session_id: sessionId, message: text, deep_synthesis: deep}),
       });

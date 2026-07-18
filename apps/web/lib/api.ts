@@ -1,11 +1,23 @@
 export function apiUrl(path: string) {
-  return `${process.env.NEXT_PUBLIC_API_BASE ?? ""}${path}`;
+  const configuredBase = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  if (!configuredBase) return path;
+
+  const base = new URL(configuredBase);
+  if (typeof window !== "undefined") {
+    const loopback = new Set(["localhost", "127.0.0.1", "::1"]);
+    if (loopback.has(base.hostname) && loopback.has(window.location.hostname)) {
+      // Cookies are hostname-scoped. Keep the API on the same loopback name
+      // the user opened, even when dev.sh supplied a different loopback alias.
+      base.hostname = window.location.hostname;
+    }
+  }
+  return new URL(path, base).toString();
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(apiUrl(path), {
     ...init,
-    credentials: "same-origin",
+    credentials: "include",
     headers: {"Content-Type": "application/json", ...init?.headers},
   });
   const body = await response.json();

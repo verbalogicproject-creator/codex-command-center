@@ -7,6 +7,7 @@ if [ -f "$ROOT/.env" ]; then
   . "$ROOT/.env"
   set +a
 fi
+cd "$ROOT"
 PYTHON=${PMEM_PYTHON:-"$ROOT/.venv/bin/python"}
 test -x "$PYTHON" || PYTHON=$(command -v python)
 
