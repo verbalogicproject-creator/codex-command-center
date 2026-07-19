@@ -47,9 +47,15 @@ python3 plugins/codex-command-center/scripts/health.py
 ```
 
 Select **Pair Codex** in the browser to obtain `THE-BROWSER-CODE`.
+Use the dialog's **Copy terminal command** action and paste it into the shell,
+not into the Codex prompt. The pairing code is consumed once and is not part of
+the generated `/plan Load Command Center handoff ...` command.
 Start Codex from the repository root or a nested directory. The checked-in
 `.codex/config.toml` starts the stdio adapter and the hooks inherit
 `COMMAND_CENTER_URL`; when the variable is unset they default to the local API.
+Starting Codex before pairing is supported: hooks report an expected unpaired
+state without failing, and the running stdio adapter discovers the token after
+the terminal pairing command completes.
 
 ## Use hosted Command Center and hosted MCP
 
@@ -120,7 +126,8 @@ python3 plugins/codex-command-center/scripts/health.py
 
 The one-time code expires in five minutes. The helper exchanges it for a
 revocable workspace token and stores that token outside the repository with
-user-only filesystem permissions.
+user-only filesystem permissions. Run this command in the terminal only; never
+append the pairing code to a Codex prompt or handoff command.
 
 Install `plugins/codex-command-center` using Codex’s local plugin flow, or use
 the repository-local `.codex/config.toml` and `.codex/hooks.json` while

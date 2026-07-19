@@ -198,6 +198,33 @@ def handoff_directive(
     ])
 
 
+def unavailable_output(kind: str, *, paired: bool) -> dict[str, Any]:
+    if kind not in {"session_start", "user_prompt_submit"}:
+        return {}
+    event_name = "SessionStart" if kind == "session_start" else "UserPromptSubmit"
+    state = (
+        "Command Center is not paired yet. This is an expected optional "
+        "integration state, not a hook failure. In the browser, select Pair "
+        "Codex; copy the terminal command; run it outside the Codex prompt; "
+        "then resubmit the exact handoff command."
+        if not paired
+        else
+        "Command Center is temporarily unavailable or its authentication needs "
+        "repair. Run the health helper, pair again if requested, and resubmit "
+        "the exact handoff command."
+    )
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": event_name,
+            "additionalContext": (
+                state
+                + " No Command Center context was injected. Do not claim a "
+                "handoff activation or repository evidence from this hook."
+            ),
+        },
+    }
+
+
 def main() -> None:
     if len(sys.argv) != 2 or sys.argv[1] not in KINDS:
         raise SystemExit("usage: hook.py <session_start|user_prompt_submit|post_tool_use|stop>")
@@ -205,78 +232,84 @@ def main() -> None:
     client = CommandCenterClient()
     repo = repository(event)
     session_id = str(event.get("session_id") or "") or None
-    if kind == "session_start":
-        local_check: dict[str, Any]
-        try:
-            payload = architecture.inventory(repository_path(event))
-            local_check = architecture.status(client, payload)
-        except FileNotFoundError:
-            local_check = {
-                "degraded": True,
-                "degraded_reasons": ["architecture_manifest_missing"],
-            }
-        result = {
-            "packet_schema": "command-center-session-brief-v1",
-            "architecture_brief": client.architecture_brief(
-                repo,
-                mode="boot",
-                prompt=(
-                    "Repository briefing: interfaces, safe edit points, "
-                    "dependencies, and risks."
-                ),
-                token_budget=1_200,
-            ),
-            "local_architecture_check": local_check,
-        }
-        output = context_output("SessionStart", result)
-    elif kind == "user_prompt_submit":
-        prompt = str(event.get("prompt") or event.get("message") or "Current coding task")
-        directive = handoff_directive(prompt, repo, session_id)
-        if directive:
-            output = {
-                "hookSpecificOutput": {
-                    "hookEventName": "UserPromptSubmit",
-                    "additionalContext": directive,
-                },
-            }
-        else:
-            result = client.task_pack(prompt, repo, 2_000)
-            output = context_output("UserPromptSubmit", result)
+    if not client.token and not client.pair_code:
+        output = unavailable_output(kind, paired=False)
     else:
-        tool_name = str(event.get("tool_name") or "")[:120] or None
-        detail = {
-            "summary": (
-                str(
-                    event.get("summary")
-                    or event.get("outcome")
-                    or event.get("last_assistant_message")
-                    or ""
-                )[:2000]
-                if kind == "stop"
-                else f"{tool_name or 'Codex tool'} completed"
-            ),
-            "changed_files": list(event.get("changed_files") or [])[:50],
-            "duration_ms": event.get("duration_ms"),
-            "exit_code": event.get("exit_code"),
-            "draft_proposal": kind == "stop" and stop_proposals_enabled(),
-        }
-        result = client.request("POST", "/api/v1/hooks/events", {
-            "kind": kind, "repository": repo, "session_id": session_id,
-            "tool_name": tool_name,
-            "source_ids": list(event.get("source_ids") or [])[:20],
-            "detail": detail,
-        })
-        if kind == "stop" and result.get("proposal"):
-            proposal_id = str(result["proposal"].get("id") or "")
-            output = {
-                "continue": True,
-                "systemMessage": (
-                    f"Command Center drafted pending proposal {proposal_id}; "
-                    "only the browser can confirm it."
-                ),
-            }
-        else:
-            output = {}
+        try:
+            if kind == "session_start":
+                local_check: dict[str, Any]
+                try:
+                    payload = architecture.inventory(repository_path(event))
+                    local_check = architecture.status(client, payload)
+                except FileNotFoundError:
+                    local_check = {
+                        "degraded": True,
+                        "degraded_reasons": ["architecture_manifest_missing"],
+                    }
+                result = {
+                    "packet_schema": "command-center-session-brief-v1",
+                    "architecture_brief": client.architecture_brief(
+                        repo,
+                        mode="boot",
+                        prompt=(
+                            "Repository briefing: interfaces, safe edit points, "
+                            "dependencies, and risks."
+                        ),
+                        token_budget=1_200,
+                    ),
+                    "local_architecture_check": local_check,
+                }
+                output = context_output("SessionStart", result)
+            elif kind == "user_prompt_submit":
+                prompt = str(event.get("prompt") or event.get("message") or "Current coding task")
+                directive = handoff_directive(prompt, repo, session_id)
+                if directive:
+                    output = {
+                        "hookSpecificOutput": {
+                            "hookEventName": "UserPromptSubmit",
+                            "additionalContext": directive,
+                        },
+                    }
+                else:
+                    result = client.task_pack(prompt, repo, 2_000)
+                    output = context_output("UserPromptSubmit", result)
+            else:
+                tool_name = str(event.get("tool_name") or "")[:120] or None
+                detail = {
+                    "summary": (
+                        str(
+                            event.get("summary")
+                            or event.get("outcome")
+                            or event.get("last_assistant_message")
+                            or ""
+                        )[:2000]
+                        if kind == "stop"
+                        else f"{tool_name or 'Codex tool'} completed"
+                    ),
+                    "changed_files": list(event.get("changed_files") or [])[:50],
+                    "duration_ms": event.get("duration_ms"),
+                    "exit_code": event.get("exit_code"),
+                    "draft_proposal": kind == "stop" and stop_proposals_enabled(),
+                }
+                result = client.request("POST", "/api/v1/hooks/events", {
+                    "kind": kind, "repository": repo, "session_id": session_id,
+                    "tool_name": tool_name,
+                    "source_ids": list(event.get("source_ids") or [])[:20],
+                    "detail": detail,
+                })
+                if kind == "stop" and result.get("proposal"):
+                    proposal_id = str(result["proposal"].get("id") or "")
+                    output = {
+                        "continue": True,
+                        "systemMessage": (
+                            f"Command Center drafted pending proposal {proposal_id}; "
+                            "only the browser can confirm it."
+                        ),
+                    }
+                else:
+                    output = {}
+        except Exception:
+            output = unavailable_output(kind, paired=True)
     print(json.dumps(output, separators=(",", ":")))
 
 

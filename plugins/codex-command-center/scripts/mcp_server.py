@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import architecture  # noqa: E402
 from client import CommandCenterClient  # noqa: E402
 
 TOOLS = [
@@ -101,6 +102,18 @@ def walk(client: CommandCenterClient, source_id: str, depth: int) -> Any:
 
 
 def call(client: CommandCenterClient, name: str, args: dict[str, Any]) -> Any:
+    if name == "load_handoff":
+        repository = str(args.get("repository") or "")
+        candidate = Path(repository).expanduser()
+        if candidate.is_absolute() or "/" in repository or "\\" in repository:
+            try:
+                payload = architecture.inventory(candidate)
+                args = {
+                    **args,
+                    "repository": str(payload["manifest"]["repository"]["id"]),
+                }
+            except (FileNotFoundError, OSError, ValueError):
+                pass
     return client.mcp_tool(name, args)
 
 
@@ -126,7 +139,9 @@ def main() -> None:
                         "capability versions and evidence IDs, then interview the user. "
                         "Screenshot observations and role-labelled visual comparisons "
                         "are inferences. Comparison handoffs permit at most three "
-                        "focused questions. Memory writes remain pending until browser "
+                        "focused questions. Use the repository identity supplied by the "
+                        "handoff directive or local architecture manifest, never a "
+                        "filesystem path. Memory writes remain pending until browser "
                         "confirmation."
                     ),
                 })

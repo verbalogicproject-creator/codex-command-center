@@ -10,10 +10,13 @@ from pathlib import Path
 from typing import Any
 
 
+class CommandCenterNotPaired(RuntimeError):
+    """The client has no usable browser-issued workspace token."""
+
+
 class CommandCenterClient:
     def __init__(self) -> None:
         self.base = os.getenv("COMMAND_CENTER_URL", "http://127.0.0.1:8000").rstrip("/")
-        self.access_code = os.getenv("COMMAND_CENTER_ACCESS_CODE", "command-center")
         self.pair_code = os.getenv("COMMAND_CENTER_PAIR_CODE")
         state = Path(os.getenv(
             "COMMAND_CENTER_STATE_DIR",
@@ -28,6 +31,12 @@ class CommandCenterClient:
             return value or None
         except OSError:
             return None
+
+    def _refresh_token(self) -> bool:
+        value = self._read_token()
+        changed = value != self.token
+        self.token = value
+        return changed
 
     def _save_token(self, value: str) -> None:
         self.token_path.parent.mkdir(parents=True, exist_ok=True)
@@ -49,11 +58,14 @@ class CommandCenterClient:
             return json.loads(response.read())
 
     def login(self) -> None:
-        path = "/api/v1/auth/pair" if self.pair_code else "/api/v1/auth/demo"
-        body = {"code": self.pair_code or self.access_code}
+        if not self.pair_code:
+            raise CommandCenterNotPaired(
+                "Command Center is not paired; use Pair Codex in the browser "
+                "and run the pairing helper in a terminal."
+            )
         request = urllib.request.Request(
-            self.base + path,
-            data=json.dumps(body).encode(),
+            self.base + "/api/v1/auth/pair",
+            data=json.dumps({"code": self.pair_code}).encode(),
             headers={"Content-Type": "application/json"},
             method="POST",
         )
@@ -67,12 +79,27 @@ class CommandCenterClient:
     def request(
         self, method: str, path: str, body: dict[str, Any] | None = None,
     ) -> Any:
+        self._refresh_token()
+        if not self.token:
+            if self.pair_code:
+                self.login()
+            else:
+                raise CommandCenterNotPaired(
+                    "Command Center is not paired; use Pair Codex in the "
+                    "browser and run the pairing helper in a terminal."
+                )
         try:
             return self._request(method, path, body)
         except urllib.error.HTTPError as error:
             if error.code == 401:
-                self.login()
-                return self._request(method, path, body)
+                previous = self.token
+                self._refresh_token()
+                if self.token and self.token != previous:
+                    return self._request(method, path, body)
+                raise CommandCenterNotPaired(
+                    "The stored Command Center token is invalid or revoked; "
+                    "pair this Codex session again."
+                ) from error
             detail = error.read().decode(errors="replace")
             raise RuntimeError(f"Command Center HTTP {error.code}: {detail}") from error
 

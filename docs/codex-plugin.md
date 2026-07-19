@@ -52,6 +52,8 @@ The code expires in five minutes and is consumed once. The server returns a
 revocable workspace token; only its hash is stored server-side. The client token
 lives under `COMMAND_CENTER_STATE_DIR` or `~/.command-center/` with user-only
 permissions. Never place it in a repository, URL, handoff, or log.
+The browser copies a complete terminal command. Run that command in the
+repository shell; do not append its one-time code to the Codex prompt.
 
 ## Transport choices
 
@@ -73,6 +75,9 @@ They do not pin a host: unset `COMMAND_CENTER_URL` uses
 `http://127.0.0.1:8000`, while exporting the hosted origin before launching
 Codex switches both MCP and hooks together.
 Workspace tokens use `~/.command-center/` by default and never a checkout path.
+Before pairing, hooks return a bounded non-blocking “not paired yet” receipt
+instead of exiting as failures. If pairing completes after the stdio MCP process
+starts, the process reloads the new token from disk on its next request.
 
 ## Architecture awareness
 

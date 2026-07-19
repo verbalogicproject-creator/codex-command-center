@@ -15,9 +15,9 @@ PLUGIN_SCRIPTS = (
 )
 sys.path.insert(0, str(PLUGIN_SCRIPTS))
 
-from client import CommandCenterClient  # noqa: E402
-from hook import context_output, handoff_directive  # noqa: E402
-from mcp_server import TOOLS, tool_schema, walk  # noqa: E402
+from client import CommandCenterClient, CommandCenterNotPaired  # noqa: E402
+from hook import context_output, handoff_directive, unavailable_output  # noqa: E402
+from mcp_server import TOOLS, call, tool_schema, walk  # noqa: E402
 import architecture as plugin_architecture  # noqa: E402
 from aria_memory.mcp import TOOL_DEFINITIONS, tool_schema as http_tool_schema  # noqa: E402
 
@@ -58,6 +58,70 @@ def test_context_pack_uses_canonical_task_pack_with_exact_repository(monkeypatch
     }
 
 
+def test_client_requires_pairing_without_an_unauthenticated_request(
+    monkeypatch, tmp_path,
+):
+    monkeypatch.setenv("COMMAND_CENTER_STATE_DIR", str(tmp_path))
+    monkeypatch.delenv("COMMAND_CENTER_PAIR_CODE", raising=False)
+    client = CommandCenterClient()
+    monkeypatch.setattr(
+        client,
+        "_request",
+        lambda *_args, **_kwargs: pytest.fail("unpaired client made a request"),
+    )
+    with pytest.raises(CommandCenterNotPaired, match="not paired"):
+        client.request("GET", "/api/v1/status")
+
+
+def test_running_client_picks_up_token_written_after_start(monkeypatch, tmp_path):
+    monkeypatch.setenv("COMMAND_CENTER_STATE_DIR", str(tmp_path))
+    monkeypatch.delenv("COMMAND_CENTER_PAIR_CODE", raising=False)
+    client = CommandCenterClient()
+    assert client.token is None
+    token_path = tmp_path / "codex-workspace-token"
+    token_path.write_text("late-browser-token", encoding="utf-8")
+    monkeypatch.setattr(
+        client,
+        "_request",
+        lambda *_args, **_kwargs: {"token": client.token},
+    )
+    assert client.request("GET", "/api/v1/status") == {
+        "token": "late-browser-token",
+    }
+
+
+def test_unpaired_hooks_degrade_without_blocking_codex(monkeypatch, tmp_path):
+    monkeypatch.setenv("COMMAND_CENTER_STATE_DIR", str(tmp_path))
+    monkeypatch.delenv("COMMAND_CENTER_PAIR_CODE", raising=False)
+    event = json.dumps({"cwd": str(ROOT), "prompt": "Inspect the graph"})
+    for kind in ("session_start", "user_prompt_submit", "post_tool_use", "stop"):
+        process = subprocess.run(
+            [sys.executable, str(PLUGIN_SCRIPTS / "hook.py"), kind],
+            cwd=ROOT,
+            env=os.environ.copy(),
+            input=event,
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=True,
+        )
+        output = json.loads(process.stdout)
+        if kind in {"session_start", "user_prompt_submit"}:
+            context = output["hookSpecificOutput"]["additionalContext"]
+            assert "not paired yet" in context
+            assert "not a hook failure" in context
+            assert "outside the Codex prompt" in context
+        else:
+            assert output == {}
+
+
+def test_unavailable_hook_output_never_exposes_an_exception():
+    output = unavailable_output("user_prompt_submit", paired=True)
+    context = output["hookSpecificOutput"]["additionalContext"]
+    assert "authentication needs repair" in context
+    assert "Traceback" not in context
+
+
 def test_dependency_walk_deduplicates_nodes():
     class Client:
         def request(self, _method, _path):
@@ -82,6 +146,19 @@ def test_dependency_walk_deduplicates_nodes():
         ["doc_a", "project:a"],
         ["doc_a", "doc_b"],
     ]
+
+
+def test_stdio_load_handoff_resolves_local_path_to_manifest_identity(monkeypatch):
+    class Client:
+        def mcp_tool(self, name, arguments):
+            return {"name": name, "arguments": arguments}
+
+    result = call(Client(), "load_handoff", {
+        "handoff_id": "hoff_test",
+        "repository": str(ROOT),
+        "client_name": "Codex",
+    })
+    assert result["arguments"]["repository"] == "command-center"
 
 
 def test_only_proposal_tool_is_marked_write_capable():

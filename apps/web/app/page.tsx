@@ -165,7 +165,9 @@ export default function Page() {
 
   async function copyPairCode() {
     try {
-      await navigator.clipboard.writeText(pairCode);
+      await navigator.clipboard.writeText(
+        `python3 plugins/codex-command-center/scripts/pair.py '${pairCode}'`,
+      );
       setPairCopied(true);
     } catch {
       setPairCopied(false);
@@ -569,9 +571,10 @@ export default function Page() {
           <button className="pair-copy" onClick={() => void copyPairCode()}
             aria-live="polite">
             {pairCopied ? <Check /> : <Copy />}
-            {pairCopied ? "Copied" : "Copy code"}
+            {pairCopied ? "Terminal command copied" : "Copy terminal command"}
           </button>
-          <small>Set it as COMMAND_CENTER_PAIR_CODE before the plugin’s first call.</small>
+          <small>Paste the copied command into a terminal in this repository—not
+            into the Codex prompt. Then submit the exact handoff command separately.</small>
         </>}
       </aside>}
       {credentialPanel && <ProviderCredentialPanel
