@@ -47,6 +47,9 @@ class Settings:
     aria_deep_model: str = field(
         default_factory=lambda: os.getenv("ARIA_DEEP_MODEL", "gpt-5.6-sol")
     )
+    aria_tour_model: str = field(
+        default_factory=lambda: os.getenv("ARIA_TOUR_MODEL", "gpt-5.6-luna")
+    )
     realtime_model: str = field(
         default_factory=lambda: os.getenv("ARIA_REALTIME_MODEL", "gpt-realtime-2.1")
     )

@@ -17,7 +17,24 @@ function dependencies(): CommandDependencies {
     openContextPacket: vi.fn(async () => true),
     tour: vi.fn(async () => undefined),
     draftProposal: vi.fn(async () => "prop_voice"),
-    publishHandoff: vi.fn(async () => "hoff_voice"),
+    startRedesignSession: vi.fn(async () => ({
+      ok: true, message: "Started.", surface: "handoff" as const,
+    })),
+    prepareRedesignHandoff: vi.fn(async () => ({
+      ok: true, message: "Prepared.", surface: "handoff" as const,
+    })),
+    selectHandoffCapability: vi.fn(async () => ({
+      ok: true, message: "Selected.", surface: "handoff" as const,
+    })),
+    editOpenPlan: vi.fn(async () => ({
+      ok: true, message: "Edited.", surface: "handoff" as const,
+    })),
+    openHandoffPacket: vi.fn(async () => ({
+      ok: true, message: "Opened.", surface: "handoff" as const,
+    })),
+    publishHandoff: vi.fn(async () => ({
+      ok: true, message: "Published handoff hoff_voice.", surface: "handoff" as const,
+    })),
   };
 }
 
@@ -59,6 +76,10 @@ describe("Aria command router", () => {
     }, deps);
     expect(refused.ok).toBe(false);
     expect(deps.publishHandoff).not.toHaveBeenCalled();
+    const wrongCase = await executeAriaCommand({
+      name: "approve_handoff", arguments: {confirmation_phrase: "approve this handoff."},
+    }, deps);
+    expect(wrongCase.ok).toBe(false);
 
     const approved = await executeAriaCommand({
       name: "approve_handoff",
@@ -66,5 +87,31 @@ describe("Aria command router", () => {
     }, deps);
     expect(approved.ok).toBe(true);
     expect(deps.publishHandoff).toHaveBeenCalledOnce();
+  });
+
+  it("routes reversible redesign draft controls without publication", async () => {
+    const deps = dependencies();
+    const prepared = await executeAriaCommand({
+      name: "prepare_redesign_handoff", arguments: {},
+    }, deps);
+    expect(prepared.ok).toBe(true);
+    expect(deps.prepareRedesignHandoff).toHaveBeenCalledOnce();
+    expect(deps.publishHandoff).not.toHaveBeenCalled();
+
+    await executeAriaCommand({
+      name: "edit_open_plan",
+      arguments: {operation: "replace", index: 1, text: "Verify reduced motion."},
+    }, deps);
+    expect(deps.editOpenPlan).toHaveBeenCalledWith(
+      "replace", 1, "Verify reduced motion.", undefined,
+    );
+  });
+
+  it("can start the redesign-specific guided tour", async () => {
+    const deps = dependencies();
+    await executeAriaCommand({
+      name: "start_guided_tour", arguments: {mode: "redesign"},
+    }, deps);
+    expect(deps.tour).toHaveBeenCalledWith("start", "redesign");
   });
 });

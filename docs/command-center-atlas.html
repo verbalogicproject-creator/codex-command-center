@@ -335,7 +335,7 @@
         <div class="stat"><div class="n">0</div><div class="l">Raw screenshots retained — hash &amp; findings only</div></div>
         <div class="stat"><div class="n">10</div><div class="l">MCP tools · 9 read-only + 1 propose-only</div></div>
         <div class="stat"><div class="n">6</div><div class="l">Verified provider-neutral built-in capabilities</div></div>
-        <div class="stat"><div class="n">v0.4</div><div class="l">BYOK · three-service split · shared arch awareness</div></div>
+        <div class="stat"><div class="n">v0.5</div><div class="l">Taste · voice draft controller · Luna tour</div></div>
       </div>
 
       <p class="lede" style="margin-top:22px">Codex is the primary client and competition focus. The hosted MCP contract is portable to other compatible clients without changing the visible demo story. This atlas is one self-contained page: a judge-facing tour up top, a walkable demo, and a complete developer reference below — every claim grounded in the repository.</p>
@@ -584,7 +584,7 @@
     <!-- ===================== ARCH AWARENESS ===================== -->
     <section id="arch-aware">
       <h2>Architecture awareness <span class="badge ok">implemented</span></h2>
-      <p class="lede">The headline of the latest Codex cycle: the complete declared architecture is now <b>versioned and queryable</b>, while each model receives only the relevant, repository-scoped slice. One <span class="mono">ArchitectureBrief</span> (<span class="mono">command-center-architecture-brief-v1</span>) is shared by Aria, published handoffs, the remote MCP, the stdio adapter, and Codex hooks — shipped in <b>Codex Command Center v0.4</b> on application migration&nbsp;5.</p>
+      <p class="lede">The complete declared architecture is <b>versioned and queryable</b>, while each model receives only the relevant repository-scoped slice. One <span class="mono">ArchitectureBrief</span> is shared by Aria, handoffs, MCP, and Codex hooks. <b>Codex Command Center v0.5</b> adds migration&nbsp;6 planning receipts, deterministic redesign suggestions, controller-backed voice drafting, and an evidence-aware Luna tour.</p>
       <div class="quote">Sync the architecture once. Plan with Aria. Continue in Codex with the same repository understanding and evidence receipts.</div>
       <div class="split">
         <div>
@@ -739,8 +739,8 @@ Content-Type: application/json
 
     <!-- ===================== PLUGIN ===================== -->
     <section id="plugin">
-      <h2>Codex plugin <span class="badge ok">v0.4.0</span></h2>
-      <p class="lede">The installable <b>Codex Command Center v0.4</b> plugin — "bring an inspectable toolbox everywhere" — injects provider-neutral workflow instructions and the versioned <span class="mono">ArchitectureBrief</span> as bounded session context, and adds an explicit architecture sync helper. It does not claim native skill installation.</p>
+      <h2>Codex plugin <span class="badge ok">v0.5.0</span></h2>
+      <p class="lede">The installable <b>Codex Command Center v0.5</b> plugin recognizes the exact generated handoff prompt and requires a visible <span class="mono">load_handoff</span> call before inspection or edits. It injects provider-neutral workflow instructions and versioned architecture receipts; it does not claim native skill installation.</p>
       <div class="split">
         <div>
           <h3>Four declared hooks</h3>
@@ -892,7 +892,7 @@ python3 plugins/codex-command-center/scripts/architecture.py sync .</div>
         <p><b>Codex Command Center</b> — OpenAI Build Week 2026 submission. Generated from the repository's own documentation set, grounded in git HEAD <span class="mono">7d25e72</span>, using only synthetic public examples. The core product surfaces are <span class="badge ok">implemented</span> in source; the remaining roadmap is architecture-section dense retrieval reconciliation, <b>three-service cloud promotion</b> (reconciled source → three images → least-privilege GCP + Cloud SQL → twelve staging gates), and evidence-aware <b>GPT‑5.6 Luna</b> tour narration.</p>
         <p class="repo">Public target: github.com/verbalogicproject-creator/codex-command-center</p>
         <p style="margin-top:14px">Source docs: README · architecture.md · <b>architecture-awareness.md</b> · <b>byok.md</b> · handoffs.md · capability-authoring.md · api-mcp.md · security-privacy.md · aria-voice.md · graph-canvas.md · codex-plugin.md · eval-report.md · cloud-run.md · <b>deployment-topology.md</b> · <b>deployment-state.md</b> · postgresql-proot.md · demo-script.md · roadmap.md · docs/plans/full-architecture-awareness.md</p>
-        <p class="repo" style="margin-top:6px">Reflects git HEAD <b>7d25e72</b> — deployment continuation state after the Taste, BYOK, three-service, and Codex Command Center v0.4 cycle (2026-07-19).</p>
+        <p class="repo" style="margin-top:6px">Reflects the Codex Command Center v0.5 Taste workflow, planning receipt, voice controller, Luna tour, and visible-load cycle (2026-07-19).</p>
       </div>
     </section>
   </main>

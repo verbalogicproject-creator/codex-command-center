@@ -51,7 +51,7 @@ from .models import (
     ProviderCredentialSetRequest, ProviderCredentialStatus,
     ProposalList, RecallRequest, RecallResponse, Session,
     SessionCreate, SessionList, StatusResponse, SyncResponse, TimelineResponse,
-    TurnList,
+    TourScript, TourScriptRequest, TurnList,
 )
 from .mcp import handle_rpc
 from .workspaces import Workspace, Workspaces
@@ -86,7 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings.credential_secret, settings.provider_credential_ttl_seconds,
     )
     app = FastAPI(
-        title="Command Center v3", version="0.1.0",
+        title="Command Center v3", version="0.5.0",
         responses={401: {"model": ErrorResponse}, 429: {"model": ErrorResponse}},
     )
     if not settings.cloud:
@@ -343,11 +343,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def create_handoff(
         body: HandoffDraftRequest,
         workspace: Workspace = Depends(current_workspace),
+        credential: ProviderCredential | None = Depends(openai_credential),
     ) -> Handoff:
         try:
-            return workspace.toolbox.create_handoff(body, "browser")
+            return workspace.toolbox.create_handoff(
+                body, "browser", credential.api_key if credential else None,
+            )
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
+
+    @app.post("/api/v1/tours/script", response_model=TourScript)
+    def tour_script(
+        body: TourScriptRequest,
+        workspace: Workspace = Depends(current_workspace),
+        credential: ProviderCredential | None = Depends(openai_credential),
+    ) -> TourScript:
+        try:
+            return workspace.toolbox.tour_script(
+                body, credential.api_key if credential else None,
+            )
+        except KeyError:
+            raise HTTPException(404, "handoff not found") from None
 
     @app.get("/api/v1/handoffs/{handoff_id}", response_model=Handoff)
     def get_handoff(
@@ -442,6 +458,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "SELECT COUNT(*) FROM proposals WHERE status='pending'"
             ).fetchone()[0]
         return StatusResponse(
+            service_version="0.5.0",
             memories=workspace.db.count("memories"), documents=workspace.db.count("documents"),
             sessions=workspace.db.count("sessions"),
             proposals_pending=pending, embeddings=embedding,
@@ -895,10 +912,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         async def event_stream():
             try:
-                for event in await workspace.aria.run(
+                events = await workspace.aria.run(
                     body, credential.api_key if credential else None,
-                ):
+                )
+                suggestion = workspace.toolbox.redesign_suggestion(
+                    body.message, "Command Center",
+                )
+                suggestion_emitted = False
+                for event in events:
                     yield f"event: {event['type']}\ndata: {json.dumps(event['data'])}\n\n"
+                    if (
+                        suggestion and not suggestion_emitted
+                        and event["type"] == "architecture_brief"
+                    ):
+                        yield (
+                            "event: redesign_suggestion\ndata: "
+                            f"{suggestion.model_dump_json()}\n\n"
+                        )
+                        suggestion_emitted = True
+                if suggestion and not suggestion_emitted:
+                    yield (
+                        "event: redesign_suggestion\ndata: "
+                        f"{suggestion.model_dump_json()}\n\n"
+                    )
             except Exception as exc:
                 error = {"code": "chat_failed", "message": str(exc), "retryable": False}
                 yield f"event: error\ndata: {json.dumps(error)}\n\n"

@@ -505,9 +505,13 @@ kbd {
 .guided-tour h2 { margin: 6px 0 7px; font-size: 20px; letter-spacing: -.035em; }
 .guided-tour p { margin: 0; color: #b7bec2; font-size: 11px; line-height: 1.65; }
 .guided-tour > footer { display: flex; justify-content: flex-end; gap: 7px; margin-top: 16px; }
-.guided-tour > footer button { border: 1px solid #6a58a0; border-radius: 6px; background: var(--violet); color: #130f1c; padding: 8px 12px; font-size: 10px; font-weight: 700; cursor: pointer; }
+.guided-tour > footer button { min-height: 44px; border: 1px solid #6a58a0; border-radius: 6px; background: var(--violet); color: #130f1c; padding: 8px 12px; font-size: 10px; font-weight: 700; cursor: pointer; }
 .guided-tour > footer button.secondary { background: transparent; color: var(--muted); border-color: var(--line-hi); }
 .guided-tour > footer button:disabled { opacity: .3; cursor: default; }
+.tour-receipts { display:flex; flex-wrap:wrap; gap:5px; margin-top:12px; }
+.tour-receipts code { padding:4px 6px; border:1px solid #3f3560; border-radius:5px; color:#bca8f0; font:8px var(--mono); }
+.guided-tour p.tour-pause { margin-top:12px; padding:9px 10px; border-left:2px solid var(--amber); background:#1a160f; color:#d6bd8b; }
+.aria-tour-highlight { outline:2px solid var(--violet)!important; outline-offset:4px; box-shadow:0 0 0 8px rgba(167,139,250,.11)!important; }
 
 .login, .boot { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
 .boot { align-content: center; gap: 15px; color: var(--muted); font: 10px var(--mono); }
@@ -612,6 +616,18 @@ kbd {
 .capability-grid dd { margin:0; color:#c9d4df; font-size:12px; }
 .capability-grid footer { padding-top:14px; border-top:1px solid var(--line); color:#7f91a3; font-size:11px; }
 .capability-grid footer code { color:var(--cyan); }
+.redesign-suggestion { margin:18px 0; padding:19px; border:1px solid #4b3d70; border-radius:12px; background:linear-gradient(145deg,#171320,#101619); }
+.redesign-suggestion > header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.redesign-suggestion > header span { display:flex; align-items:center; gap:7px; color:var(--violet); font:9px var(--mono); letter-spacing:.12em; }
+.redesign-suggestion > header svg { width:14px; }
+.redesign-suggestion > header b { color:var(--cyan); font:8px var(--mono); }
+.redesign-suggestion h3 { margin:17px 0 7px; }
+.redesign-suggestion p { color:var(--muted); font:11px var(--mono); }
+.suggestion-receipts { display:flex; flex-wrap:wrap; gap:5px; margin:13px 0; }
+.suggestion-receipts code { padding:5px 7px; border:1px solid #34304d; border-radius:5px; color:#bba9e7; font:8px var(--mono); }
+.redesign-suggestion > button,.redesign-tour-trigger,.packet-toggle { min-height:44px; border:1px solid #665196; border-radius:9px; padding:10px 13px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; background:#241b35; color:#dfd4fa; font-weight:700; }
+.redesign-suggestion > button svg,.redesign-tour-trigger svg { width:16px; }
+.redesign-tour-trigger { align-self:flex-end; flex:none; margin:-12px 40px 14px 0; }
 .handoff-grid { overflow:auto; padding:0 28px 120px; display:grid; grid-template-columns:minmax(280px,.82fr) minmax(420px,1.4fr); gap:20px; }
 .handoff-input,.handoff-review > article { border:1px solid var(--line); border-radius:16px; background:rgba(7,17,28,.86); }
 .handoff-input { align-self:start; position:sticky; top:0; padding:20px; display:grid; gap:15px; }
@@ -650,9 +666,15 @@ kbd {
 .handoff-packet dd { margin:3px 0 0; color:#c9d4df; font-size:12px; overflow-wrap:anywhere; }
 .handoff-receipts { display:grid; gap:5px; margin-top:16px; }
 .handoff-receipts code { padding:7px 9px; border:1px solid rgba(83,214,232,.16); border-radius:7px; color:#8fcbd3; font-size:9px; overflow-wrap:anywhere; }
+.packet-toggle { margin-top:14px; min-height:40px; background:rgba(21,49,61,.7); border-color:#315966; color:#a8d8df; }
 .codex-command { display:block; margin:18px 0; padding:14px; border:1px solid rgba(218,157,54,.3); border-radius:10px; color:#f0c979; white-space:pre-wrap; line-height:1.5; background:rgba(3,9,14,.7); }
 .approve-handoff { margin-left:auto; background:linear-gradient(120deg,#92651f,#bd8933); }
 .published-receipt { display:flex; align-items:center; gap:8px; color:#6fe0ae; }
 .published-receipt svg { width:17px; }
 @media (max-width:960px) { .handoff-grid { grid-template-columns:1fr; } .handoff-input { position:static; } }
-@media (max-width:620px) { .capability-grid,.handoff-grid { padding-inline:14px; } .capability-toolbar { margin-inline:14px; } .handoff-packet dl { grid-template-columns:1fr; } }
+@media (max-width:620px) {
+  .capability-grid,.handoff-grid { padding-inline:14px; }
+  .capability-toolbar { margin-inline:14px; }
+  .handoff-packet dl { grid-template-columns:1fr; }
+  .redesign-tour-trigger { align-self:stretch; margin:-8px 14px 14px; }
+}

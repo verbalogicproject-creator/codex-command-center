@@ -188,11 +188,12 @@ into the draft. Publication makes it immutable. `load_handoff` verifies the
 active repository by registered ID, name, or alias and records a separate
 activation. A later sync affects new task packs but not the published packet.
 
-Codex Command Center v0.4 uses:
+Codex Command Center v0.5 uses:
 
 - SessionStart: local hash-only check plus boot ArchitectureBrief;
-- UserPromptSubmit: `command-center-task-pack-v2`, containing the task brief
-  and separately labelled durable context;
+- UserPromptSubmit: a visible `load_handoff` directive for the exact generated
+  command; otherwise `command-center-task-pack-v2` with separately labelled
+  durable context;
 - human-readable model context with snapshot, receipts, interfaces, selected
   sections, safe points, risks, degraded reasons, and omissions;
 - no unfiltered fallback when a repository is unknown.

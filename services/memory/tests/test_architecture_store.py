@@ -29,7 +29,7 @@ def architecture_store(architecture_db: Database) -> ArchitectureStore:
     return ArchitectureStore(architecture_db)
 
 
-def test_empty_and_v4_databases_apply_ordered_v5_migration(tmp_path: Path):
+def test_empty_and_v4_databases_apply_ordered_app_migrations(tmp_path: Path):
     empty = Database(tmp_path / "empty.db")
     with empty.connect() as conn:
         versions = [
@@ -37,7 +37,7 @@ def test_empty_and_v4_databases_apply_ordered_v5_migration(tmp_path: Path):
                 "SELECT version FROM app_migrations ORDER BY version"
             )
         ]
-    assert versions == [4, APP_MIGRATION_VERSION]
+    assert versions == [4, 5, APP_MIGRATION_VERSION]
 
     previous_path = tmp_path / "previous.db"
     with sqlite3.connect(previous_path) as conn:
@@ -57,7 +57,7 @@ def test_empty_and_v4_databases_apply_ordered_v5_migration(tmp_path: Path):
                 "SELECT name FROM sqlite_master WHERE type='table'"
             )
         }
-    assert versions == [4, 5]
+    assert versions == [4, 5, 6]
     assert {
         "architecture_snapshots",
         "architecture_document_versions",

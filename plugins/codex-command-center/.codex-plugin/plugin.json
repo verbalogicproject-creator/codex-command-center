@@ -1,19 +1,29 @@
 {
   "name": "codex-command-center",
-  "version": "0.4.0",
+  "version": "0.5.0+codex.20260719070937",
   "description": "Plan with Aria, continue in Codex, and bring an inspectable toolbox everywhere.",
   "author": {
     "name": "Eyal Nof / Verbalogic"
   },
   "license": "Apache-2.0",
-  "keywords": ["handoff", "workflow", "context", "evidence", "codex"],
+  "keywords": [
+    "handoff",
+    "workflow",
+    "context",
+    "evidence",
+    "codex"
+  ],
   "interface": {
     "displayName": "Codex Command Center",
     "shortDescription": "Shared architecture awareness with receipts.",
     "longDescription": "Gives Aria and Codex the same versioned repository architecture, approved plans, exact workflow versions, evidence receipts, safe edit points, risks, and human-gated memory proposals.",
     "developerName": "Eyal Nof / Verbalogic",
     "category": "Productivity",
-    "capabilities": ["Context", "MCP", "Hooks"],
+    "capabilities": [
+      "Context",
+      "MCP",
+      "Hooks"
+    ],
     "defaultPrompt": [
       "Load a Command Center handoff and interview me before editing.",
       "Recall evidence for my current task.",

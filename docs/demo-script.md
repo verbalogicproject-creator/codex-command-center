@@ -7,7 +7,7 @@ ai_card:
   title: Three-Minute Competition Demo
   kind: demo_script
   audience: [presenter, evaluator, ai_agent]
-  status: implementation_ready
+  status: implemented
   owner_area: submission
   main_files: [apps/web/app/page.tsx, plugins/codex-command-center]
   public_interfaces: [Handoff Builder, Aria voice, "load_handoff"]
@@ -15,8 +15,8 @@ ai_card:
   depends_on: [command-center.architecture-awareness, command-center.handoffs, command-center.codex-plugin]
   safe_edit_points: [timing and narration that preserve demonstrated facts]
   risk_areas: [showing another provider, claiming deployment before verification]
-  graph_rag_entities: [Aria, GPT-5.6 Sol, Codex]
-  last_verified: 2026-07-18
+  graph_rag_entities: [Aria, GPT-5.6 Sol, GPT-5.6 Luna, Codex]
+  last_verified: 2026-07-19
 ```
 
 ## 0:00–0:20 — Promise
@@ -37,13 +37,14 @@ the **Screenshot-derived inferences** label.
 
 ## 0:55–1:30 — Inspect the toolbox
 
-Show the primary **Frontend redesign interview** recommendation and its exact
-version. Briefly reveal the mobile accessibility and evidence-plan
+Show the primary **Taste-guided frontend redesign interview** recommendation
+and its exact version/hash. Briefly reveal the visible
 alternatives. Edit one Open Plan line.
 
 Open the exact bounded packet. Point to architecture, evidence IDs and selection
 reasons, pinned snapshot and source revision, architecture coverage, safe edit
-points, risks, omitted candidates, token estimate, and degraded state.
+points, risks, omitted candidates, token estimate, planning model, and degraded
+state. Start the redesign tour and show its evidence receipts and pause reason.
 
 ## 1:30–1:50 — Approve by voice
 

@@ -16,7 +16,7 @@ ai_card:
   safe_edit_points: [documented browser and plugin workflows]
   risk_areas: [confusing proposals with durable memory, skipping repository verification]
   graph_rag_entities: [UserWorkflow, Aria, Codex Command Center]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 Command Center answers two practical questions: **what context did the coding
@@ -62,19 +62,23 @@ that upload.
 
 Open **Handoff Builder** and choose a repository. Upload or paste a screenshot,
 describe the desired change, and select **Analyze and prepare for Codex**.
+Alternatively, ask text Aria for a frontend redesign and use its exact
+**Prepare in Handoff Builder** suggestion.
 
 The builder separates:
 
 - Sol’s screenshot-derived inferences;
 - the primary workflow and visible alternatives;
 - an editable Open Plan;
+- the Sol or deterministic planning receipt and degradation reasons;
 - exact evidence included and candidates omitted;
 - pinned architecture snapshot, revision, coverage, and source hashes;
 - safe edit points and risks;
 - the exact packet and Codex command.
 
-Raw screenshot bytes are not retained. Review the plan and select or say the
-exact phrase **Approve this handoff**. Publication makes the bounded packet
+Raw screenshot bytes are not retained or sent into plan/tour generation.
+Review the plan and select or say the exact phrase
+**Approve this handoff.** Publication makes the bounded packet
 available to paired clients, but performs no code or external action.
 
 Published handoffs are immutable. If the plan changes, create a new version.
@@ -99,9 +103,10 @@ it pinned.
 
 Select the floating microphone orb to start an OpenAI Realtime session. Aria can
 navigate all seven surfaces, scroll, open cited evidence, run recall, focus the
-graph, switch Deep Synthesis, control the guided tour, and create pending
-proposals. It may publish a bounded handoff only after the exact phrase
-“Approve this handoff.” Say “stop” to interrupt an answer or select the square
+graph, switch Deep Synthesis, control either guided-tour mode, start and prepare
+a redesign session, select a visible trusted workflow, edit the Open Plan, open
+the packet, and create pending proposals. It may publish only after the exact
+phrase “Approve this handoff.” Say “stop” to interrupt an answer or select the square
 button to close the microphone session.
 
 Voice is an optional control layer. The button-driven tour and every ordinary

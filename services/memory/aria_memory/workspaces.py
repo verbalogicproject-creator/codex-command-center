@@ -36,6 +36,7 @@ class Workspace:
         self.context = ContextCompiler(settings, self.retriever, self.documents)
         self.toolbox = Toolbox(
             db, self.context, settings.aria_deep_model, self.architecture_compiler,
+            settings.aria_tour_model,
         )
         self.aria = Aria(
             settings, db, self.store, self.retriever, self.context,

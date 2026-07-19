@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,10 @@ from client import CommandCenterClient  # noqa: E402
 
 KINDS = {"session_start", "user_prompt_submit", "post_tool_use", "stop"}
 TRUTHY = {"1", "true", "yes", "on"}
+HANDOFF_PROMPT = re.compile(
+    r"^/plan Load Command Center handoff (?P<id>hoff_[A-Za-z0-9_-]+) "
+    r"and interview me before editing\.$"
+)
 
 
 def read_event() -> dict[str, Any]:
@@ -163,6 +168,35 @@ def stop_proposals_enabled() -> bool:
     return os.getenv("COMMAND_CENTER_STOP_PROPOSALS", "").lower() in TRUTHY
 
 
+def handoff_directive(
+    prompt: str, repository_id: str, session_id: str | None,
+) -> str | None:
+    match = HANDOFF_PROMPT.fullmatch(prompt.strip())
+    if not match:
+        return None
+    handoff_id = match.group("id")
+    return "\n".join([
+        f"Command Center handoff activation requested: {handoff_id}.",
+        "Before repository inspection or edits, visibly call the MCP tool "
+        "`load_handoff` with:",
+        json.dumps({
+            "handoff_id": handoff_id,
+            "repository": repository_id,
+            "client_name": "Codex",
+            "session_id": session_id,
+        }, separators=(",", ":")),
+        "Do not secretly load the handoff in this hook and do not substitute "
+        "`build_task_pack`.",
+        "After the tool returns, report its activation ID; exact capability "
+        "version, hash, and provenance; Open Plan; labelled screenshot "
+        "inferences; architecture snapshot; evidence IDs; safe edit points; "
+        "risks; omissions; and degradation state.",
+        "Then ask one focused redesign interview question. Do not edit files "
+        "until the user confirms the design direction and explicitly approves "
+        "the implementation plan.",
+    ])
+
+
 def main() -> None:
     if len(sys.argv) != 2 or sys.argv[1] not in KINDS:
         raise SystemExit("usage: hook.py <session_start|user_prompt_submit|post_tool_use|stop>")
@@ -196,8 +230,17 @@ def main() -> None:
         output = context_output("SessionStart", result)
     elif kind == "user_prompt_submit":
         prompt = str(event.get("prompt") or event.get("message") or "Current coding task")
-        result = client.task_pack(prompt, repo, 2_000)
-        output = context_output("UserPromptSubmit", result)
+        directive = handoff_directive(prompt, repo, session_id)
+        if directive:
+            output = {
+                "hookSpecificOutput": {
+                    "hookEventName": "UserPromptSubmit",
+                    "additionalContext": directive,
+                },
+            }
+        else:
+            result = client.task_pack(prompt, repo, 2_000)
+            output = context_output("UserPromptSubmit", result)
     else:
         tool_name = str(event.get("tool_name") or "")[:120] or None
         detail = {

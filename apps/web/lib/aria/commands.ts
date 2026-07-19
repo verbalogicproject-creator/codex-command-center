@@ -13,7 +13,7 @@ export type AriaCommand =
   | {name: "run_recall"; arguments: {query: string}}
   | {name: "set_deep_synthesis"; arguments: {enabled: boolean}}
   | {name: "open_context_packet"; arguments: Record<string, never>}
-  | {name: "start_guided_tour"; arguments: Record<string, never>}
+  | {name: "start_guided_tour"; arguments: {mode?: "overview" | "redesign"}}
   | {name: "tour_next"; arguments: Record<string, never>}
   | {name: "tour_back"; arguments: Record<string, never>}
   | {name: "tour_repeat"; arguments: Record<string, never>}
@@ -21,6 +21,16 @@ export type AriaCommand =
   | {name: "draft_memory_proposal"; arguments: {
     title: string; content: string; rationale: string;
   }}
+  | {name: "start_redesign_session"; arguments: {repository: string; intent: string}}
+  | {name: "prepare_redesign_handoff"; arguments: Record<string, never>}
+  | {name: "select_handoff_capability"; arguments: {capability_ref: string}}
+  | {name: "edit_open_plan"; arguments: {
+    operation: "append" | "replace" | "remove" | "reorder";
+    index: number;
+    text?: string;
+    destination?: number;
+  }}
+  | {name: "open_handoff_packet"; arguments: Record<string, never>}
   | {name: "approve_handoff"; arguments: {confirmation_phrase: string}};
 
 export type CommandResult = {
@@ -41,9 +51,22 @@ export type CommandDependencies = {
   runRecall: (query: string) => Promise<void>;
   setDeepSynthesis: (enabled: boolean) => Promise<void>;
   openContextPacket: () => Promise<boolean>;
-  tour: (action: "start" | "next" | "back" | "repeat" | "stop") => Promise<void>;
+  tour: (
+    action: "start" | "next" | "back" | "repeat" | "stop",
+    mode?: "overview" | "redesign",
+  ) => Promise<void>;
   draftProposal: (title: string, content: string, rationale: string) => Promise<string>;
-  publishHandoff?: () => Promise<string | null>;
+  startRedesignSession?: (repository: string, intent: string) => Promise<CommandResult>;
+  prepareRedesignHandoff?: () => Promise<CommandResult>;
+  selectHandoffCapability?: (capabilityRef: string) => Promise<CommandResult>;
+  editOpenPlan?: (
+    operation: "append" | "replace" | "remove" | "reorder",
+    index: number,
+    text?: string,
+    destination?: number,
+  ) => Promise<CommandResult>;
+  openHandoffPacket?: () => Promise<CommandResult>;
+  publishHandoff?: () => Promise<CommandResult>;
 };
 
 const emptyObject = {type: "object", properties: {}, additionalProperties: false};
@@ -71,6 +94,51 @@ export const ariaVoiceTools = [
       }},
       required: ["confirmation_phrase"],
     },
+  },
+  {
+    type: "function", name: "start_redesign_session",
+    description: "Open Handoff Builder and prefill a repository-scoped redesign intent.",
+    parameters: {
+      type: "object", additionalProperties: false,
+      properties: {
+        repository: {type: "string"},
+        intent: {type: "string"},
+      },
+      required: ["repository", "intent"],
+    },
+  },
+  {
+    type: "function", name: "prepare_redesign_handoff",
+    description: "Analyze the already uploaded screenshot, recommend Taste, and create the visible draft handoff.",
+    parameters: emptyObject,
+  },
+  {
+    type: "function", name: "select_handoff_capability",
+    description: "Select an exact capability reference only when it is a visible trusted recommendation.",
+    parameters: {
+      type: "object", additionalProperties: false,
+      properties: {capability_ref: {type: "string"}},
+      required: ["capability_ref"],
+    },
+  },
+  {
+    type: "function", name: "edit_open_plan",
+    description: "Reversibly append, replace, remove, or reorder one visible Open Plan step.",
+    parameters: {
+      type: "object", additionalProperties: false,
+      properties: {
+        operation: {type: "string", enum: ["append", "replace", "remove", "reorder"]},
+        index: {type: "integer"},
+        text: {type: "string"},
+        destination: {type: "integer"},
+      },
+      required: ["operation", "index"],
+    },
+  },
+  {
+    type: "function", name: "open_handoff_packet",
+    description: "Expand the exact visible handoff packet and return its receipt summary.",
+    parameters: emptyObject,
   },
   {
     type: "function", name: "scroll_page",
@@ -149,7 +217,14 @@ export const ariaVoiceTools = [
     },
   },
   {type: "function", name: "open_context_packet", description: "Open the latest bounded context packet.", parameters: emptyObject},
-  {type: "function", name: "start_guided_tour", description: "Start Aria's interactive Command Center tour.", parameters: emptyObject},
+  {
+    type: "function", name: "start_guided_tour",
+    description: "Start Aria's interactive overview or evidence-aware redesign tour.",
+    parameters: {
+      type: "object", additionalProperties: false,
+      properties: {mode: {type: "string", enum: ["overview", "redesign"]}},
+    },
+  },
   {type: "function", name: "tour_next", description: "Advance the guided tour.", parameters: emptyObject},
   {type: "function", name: "tour_back", description: "Go back one guided-tour step.", parameters: emptyObject},
   {type: "function", name: "tour_repeat", description: "Repeat the current guided-tour explanation.", parameters: emptyObject},
@@ -177,7 +252,9 @@ finished before its tool result says it did. You may draft a pending memory prop
 you must never confirm or imply confirmation of a durable write. Tell the user that durable
 memory requires an explicit browser tap. You may publish a bounded handoff only when
 the user says the exact phrase “Approve this handoff.” Publication cannot edit code,
-install tools, confirm memory, or perform external actions. Never ask for or repeat secrets.`;
+install tools, confirm memory, or perform external actions. You may revise the visible
+draft because it is reversible, but you may not upload files, invent capability references,
+bypass plan bounds, edit code, deploy, install, or confirm memory. Never ask for or repeat secrets.`;
 
 export function ariaRealtimeSessionUpdate() {
   return {
@@ -264,23 +341,47 @@ export async function executeAriaCommand(
         ? "Opened the latest bounded context packet."
         : "There is no context packet to open yet.", surface: "aria"};
     }
+    case "start_redesign_session": {
+      if (!dependencies.startRedesignSession) {
+        return {ok: false, message: "Handoff Builder is unavailable.", surface: "handoff"};
+      }
+      return dependencies.startRedesignSession(
+        command.arguments.repository,
+        command.arguments.intent,
+      );
+    }
+    case "prepare_redesign_handoff":
+      return dependencies.prepareRedesignHandoff
+        ? dependencies.prepareRedesignHandoff()
+        : {ok: false, message: "Handoff Builder is unavailable.", surface: "handoff"};
+    case "select_handoff_capability":
+      return dependencies.selectHandoffCapability
+        ? dependencies.selectHandoffCapability(command.arguments.capability_ref)
+        : {ok: false, message: "Handoff Builder is unavailable.", surface: "handoff"};
+    case "edit_open_plan":
+      return dependencies.editOpenPlan
+        ? dependencies.editOpenPlan(
+          command.arguments.operation,
+          command.arguments.index,
+          command.arguments.text,
+          command.arguments.destination,
+        )
+        : {ok: false, message: "Handoff Builder is unavailable.", surface: "handoff"};
+    case "open_handoff_packet":
+      return dependencies.openHandoffPacket
+        ? dependencies.openHandoffPacket()
+        : {ok: false, message: "There is no visible handoff packet.", surface: "handoff"};
     case "approve_handoff": {
-      if (command.arguments.confirmation_phrase.trim().toLowerCase().replace(/[.!]+$/, "")
-        !== "approve this handoff") {
+      if (command.arguments.confirmation_phrase.trim() !== "Approve this handoff.") {
         return {
           ok: false,
           message: "Say the exact phrase “Approve this handoff.” to publish.",
           surface: "handoff",
         };
       }
-      const handoffId = await (dependencies.publishHandoff?.() ?? Promise.resolve(null));
-      return {
-        ok: Boolean(handoffId),
-        message: handoffId
-          ? `Published handoff ${handoffId}. Read the exact Codex command shown in the builder.`
-          : "There is no draft handoff ready to publish.",
-        surface: "handoff",
-      };
+      return dependencies.publishHandoff
+        ? dependencies.publishHandoff()
+        : {ok: false, message: "There is no draft handoff ready to publish.", surface: "handoff"};
     }
     case "start_guided_tour":
     case "tour_next":
@@ -291,7 +392,10 @@ export async function executeAriaCommand(
         : command.name === "tour_next" ? "next"
           : command.name === "tour_back" ? "back"
             : command.name === "tour_repeat" ? "repeat" : "stop";
-      await dependencies.tour(action);
+      await dependencies.tour(
+        action,
+        command.name === "start_guided_tour" ? command.arguments.mode : undefined,
+      );
       return {ok: true, message: action === "stop"
         ? "Stopped the guided tour." : `Guided tour: ${action}.`};
     }

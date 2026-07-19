@@ -253,3 +253,19 @@ def test_mud_refusal_is_visible_in_chat_and_creates_no_proposal(client):
     after = client.get("/api/v1/status").json()
     assert after["memories"] == before["memories"]
     assert after["proposals_pending"] == before["proposals_pending"]
+
+
+def test_text_aria_emits_exact_redesign_suggestion_before_handoff(client):
+    session = client.post("/api/v1/sessions", json={
+        "title": "Redesign request",
+    }).json()
+    result = client.post("/api/v1/chat/stream", json={
+        "session_id": session["id"],
+        "message": "Redesign the Handoff Builder frontend interface.",
+        "deep_synthesis": False,
+    })
+    assert result.status_code == 200
+    assert "event: redesign_suggestion" in result.text
+    assert "command-center-redesign-suggestion-v1" in result.text
+    assert "taste-frontend-redesign-interview" in result.text
+    assert "prepare-in-handoff-builder" in result.text

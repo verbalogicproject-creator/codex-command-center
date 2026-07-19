@@ -11,7 +11,7 @@ from .models import MemoryRecord, utc_now
 
 SCHEMA_VERSION = 1
 BASE_APP_MIGRATION_VERSION = 4
-APP_MIGRATION_VERSION = 5
+APP_MIGRATION_VERSION = 6
 
 SQLITE_ARCHITECTURE_MIGRATION_V5 = """
 CREATE TABLE IF NOT EXISTS architecture_repositories(
@@ -107,8 +107,14 @@ CREATE INDEX IF NOT EXISTS idx_architecture_issues_snapshot
   ON architecture_issues(snapshot_id,severity,code);
 """
 
+SQLITE_HANDOFF_PLANNING_MIGRATION_V6 = """
+ALTER TABLE handoffs
+  ADD COLUMN planning_receipt_json TEXT NOT NULL DEFAULT '{}';
+"""
+
 SQLITE_APP_MIGRATIONS = {
     5: SQLITE_ARCHITECTURE_MIGRATION_V5,
+    6: SQLITE_HANDOFF_PLANNING_MIGRATION_V6,
 }
 
 

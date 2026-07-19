@@ -16,6 +16,9 @@ Version 0.3 adds the shared `command-center-architecture-brief-v1` contract.
 Version 0.4 changes MCP, hook, and helper launchers from the optional `python`
 alias to `python3`, fixing Linux installations where Codex otherwise receives a
 broken pipe during required MCP startup.
+Version 0.5 adds exact generated-command detection, requires a visible
+`load_handoff` call, and expands health checks across version compatibility,
+all ten tools, authentication, architecture, and handoff availability.
 SessionStart now checks local hashes without uploading documents and injects a
 boot brief. UserPromptSubmit uses `command-center-task-pack-v2`. The previous
 unfiltered context fallback was removed: a checkout must match a registered

@@ -203,8 +203,14 @@ CREATE INDEX IF NOT EXISTS idx_architecture_issues_snapshot
   ON architecture_issues(snapshot_id,severity,code);
 """
 
+POSTGRES_HANDOFF_PLANNING_MIGRATION_V6 = """
+ALTER TABLE handoffs
+  ADD COLUMN IF NOT EXISTS planning_receipt_json TEXT NOT NULL DEFAULT '{}';
+"""
+
 POSTGRES_APP_MIGRATIONS = {
     5: POSTGRES_ARCHITECTURE_MIGRATION_V5,
+    6: POSTGRES_HANDOFF_PLANNING_MIGRATION_V6,
 }
 
 

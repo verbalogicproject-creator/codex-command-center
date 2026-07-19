@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import base64
 import io
+import json
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from PIL import Image
 
@@ -174,6 +177,117 @@ def test_screenshot_is_validated_resized_and_not_retained(client):
     assert mismatch.status_code == 422
 
 
+def test_redesign_handoff_has_deterministic_planning_receipt_and_tour(client):
+    created = client.post("/api/v1/handoffs", json={
+        "repository": "Command Center",
+        "original_request": "Redesign the Handoff Builder and Guided Tour.",
+    })
+    assert created.status_code == 201
+    handoff = created.json()
+    assert handoff["capability_refs"][0].startswith(
+        "taste-frontend-redesign-interview@"
+    )
+    assert 1 <= len(handoff["open_plan"]) <= 12
+    receipt = handoff["planning_receipt"]
+    assert receipt["schema_version"] == "command-center-planning-receipt-v1"
+    assert receipt["model"] == "deterministic-taste-plan-v1"
+    assert receipt["capability_reference"]["content_hash"]
+    assert receipt["degraded"] is True
+    assert "sol_planning_requires_byok" in receipt["degraded_reasons"]
+
+    restored = client.get(f"/api/v1/handoffs/{handoff['id']}").json()
+    assert restored["planning_receipt"] == receipt
+    tour = client.post("/api/v1/tours/script", json={
+        "mode": "redesign",
+        "repository": "Command Center",
+        "handoff_id": handoff["id"],
+    })
+    assert tour.status_code == 200
+    script = tour.json()
+    assert script["schema_version"] == "command-center-tour-script-v1"
+    assert script["model"] == "deterministic-evidence-tour-v1"
+    assert [step["id"] for step in script["steps"]] == [
+        "redesign-problem",
+        "redesign-screenshot-boundary",
+        "redesign-taste",
+        "redesign-receipts",
+        "redesign-open-plan",
+        "redesign-publication",
+        "redesign-activation",
+    ]
+    assert script["steps"][1]["pause_reason"]
+    assert script["steps"][-1]["pause_reason"]
+
+
+def test_sol_and_luna_use_bounded_post_analysis_receipts(client, monkeypatch):
+    calls: list[dict] = []
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            if kwargs["model"] == "gpt-5.6-luna":
+                return SimpleNamespace(output_text=json.dumps([{
+                    "id": "redesign-problem",
+                    "surface": "handoff",
+                    "target": "heading",
+                    "evidence_ids": [],
+                    "narration": "Review the bounded redesign intent.",
+                    "action": "Review the problem.",
+                    "pause_reason": None,
+                }]))
+            if isinstance(kwargs.get("input"), list):
+                return SimpleNamespace(output_text=(
+                    "The hierarchy may need a clearer primary action.\n"
+                    "The layout may need narrow-screen verification."
+                ))
+            return SimpleNamespace(output_text=(
+                "Report all pinned receipts before planning.\n"
+                "Ask one focused design question before edits.\n"
+                "Present a bounded responsive plan for approval."
+            ))
+
+    class FakeOpenAI:
+        def __init__(self, **_kwargs):
+            self.responses = FakeResponses()
+
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
+    connected = client.post("/api/v1/provider-credentials/openai", json={
+        "api_key": "sk-test-" + "x" * 32,
+    })
+    assert connected.status_code == 200
+    analysis = client.post("/api/v1/screenshots/analyze", json={
+        "repository": "Command Center",
+        "user_request": "Redesign the Handoff Builder.",
+        "image_base64": _png(),
+        "mime_type": "image/png",
+    }).json()
+    assert analysis["degraded"] is False
+
+    handoff = client.post("/api/v1/handoffs", json={
+        "repository": "Command Center",
+        "original_request": "Redesign the Handoff Builder.",
+        "screenshot": analysis,
+    }).json()
+    assert handoff["planning_receipt"]["model"] == "gpt-5.6-sol"
+    planning_call = next(
+        call for call in calls
+        if call["model"] == "gpt-5.6-sol"
+        and isinstance(call.get("input"), str)
+    )
+    assert "data:image" not in planning_call["input"]
+    assert analysis["image_hash"] in planning_call["input"]
+    assert all(len(step) <= 500 for step in handoff["open_plan"])
+
+    tour = client.post("/api/v1/tours/script", json={
+        "mode": "redesign",
+        "handoff_id": handoff["id"],
+    }).json()
+    assert tour["model"] == "gpt-5.6-luna"
+    assert tour["degraded"] is False
+    luna_call = next(call for call in calls if call["model"] == "gpt-5.6-luna")
+    assert "data:image" not in luna_call["input"]
+
+
 def test_handoff_publication_immutability_repository_guard_and_activation(client):
     analysis = client.post("/api/v1/screenshots/analyze", json={
         "repository": "Command Center", "user_request": "Redesign the graph panel.",
@@ -209,6 +323,9 @@ def test_handoff_publication_immutability_repository_guard_and_activation(client
     assert loaded.status_code == 200
     packet = loaded.json()
     assert packet["interview_required"] is True
+    assert packet["planning_receipt"]["schema_version"] == (
+        "command-center-planning-receipt-v1"
+    )
     assert packet["workflow_instructions"][0]["version"] == 1
     assert all(item["classification"] == "inference"
                for item in packet["screenshot_observations"])
@@ -347,7 +464,7 @@ def test_pairing_token_auth_mcp_and_revocation(settings):
     })
     assert initialized.status_code == 200
     assert initialized.json()["result"]["serverInfo"]["name"] == "codex-command-center"
-    assert initialized.json()["result"]["serverInfo"]["version"] == "0.4.0"
+    assert initialized.json()["result"]["serverInfo"]["version"] == "0.5.0"
     tools = client.post("/mcp", headers=headers, json={
         "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {},
     }).json()["result"]["tools"]

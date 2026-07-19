@@ -16,7 +16,7 @@ ai_card:
   safe_edit_points: [documented service boundaries, additive application migrations]
   risk_areas: [cross-workspace leakage, bypassing pending proposal boundary]
   graph_rag_entities: [Aria, ArchitectureCompiler, Toolbox, Codex Command Center]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 ## Runtime
@@ -49,8 +49,11 @@ flowchart LR
   X --> C
   H[Handoff builder] --> TB[Versioned capability library]
   H --> S[Sol screenshot analysis]
+  S --> PR[validated Open Plan + planning receipt]
   H --> HP[Draft / published handoff]
+  PR --> HP
   AB --> HP
+  LU[Luna tour script] --> H
   HP -->|repository + snapshot verified| X
   X --> ACT[activation receipt]
   A --> P[pending proposal]
@@ -83,7 +86,9 @@ provider-neutral and contain no arbitrary executable payload.
 
 Handoffs are separate from memory. A draft pins exact capability versions, an
 architecture snapshot, exact document/section versions, and selected durable
-evidence. Publication records an immutable packet; editing a published packet
+evidence. Application migration 6 adds the persisted planning receipt: model,
+capability reference, architecture snapshot, evidence IDs, generation time,
+degradation state, and reasons. Publication records an immutable packet; editing a published packet
 creates another lineage version. A later architecture sync changes new task
 packs but not an existing published handoff. Revocation prevents new loads
 without destroying the record. Every successful client load records a separate
@@ -103,17 +108,23 @@ state: the canvas never creates a second graph store or writes layout into
 memory. See [evidence graph canvas](graph-canvas.md).
 
 Aria voice is a transport adapter over the browser command router. The declared
-command catalog, result contract, guided-tour state, and interface dispatcher do
+command catalog, result contract, shared Handoff Controller, guided-tour state, and interface dispatcher do
 not import a voice SDK. Realtime function calls enter the same typed router that
 tests and visible tour controls use. Results are returned only after the target
 surface has rendered or the graph movement has been requested, keeping narration
 aligned with the interface. See [Aria voice](aria-voice.md).
+
+Text Aria recognizes frontend redesign intent and emits
+`command-center-redesign-suggestion-v1`. The guided tour has generic overview
+and redesign modes. Optional Luna generation receives only bounded receipts and
+falls back to the deterministic `command-center-tour-script-v1` script.
 
 ## Memory and embeddings
 
 Episode and fact rows keep `schema_version=1`. The independent
 `app_migrations` table versions embeddings, sessions, visible turns, proposals,
 audit, quota, capabilities, handoffs, activations, and workspace tokens.
+Migration 6 extends handoffs without changing memory row schema version 1.
 
 The canonical embedding surface contains only entity type, project, kind,
 status, tags, title, content and reason. It excludes identifiers, secrets and

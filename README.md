@@ -29,19 +29,24 @@ portable to other compatible clients without changing the visible demo story.
   image retention.
 - Draft, immutable published, versioned, and revoked handoffs with exact
   capability pins, editable Open Plans, evidence receipts, risks, safe edit
-  points, omissions, degraded metadata, and per-client activation audit.
+  points, omissions, degraded metadata, persisted Sol planning receipts, and
+  per-client activation audit.
 - Stateless authenticated JSON-RPC MCP at `POST /mcp` plus a parity stdio
   adapter and ten capability, handoff, context, evidence, timeline, and
   pending-memory tools.
 - One-time browser pairing exchanged for revocable workspace tokens; only token
   hashes are stored server-side.
-- **Codex Command Center v0.4** plugin with remote/local MCP config, hash-only
+- **Codex Command Center v0.5** plugin with remote/local MCP config, hash-only
   SessionStart drift checks, boot/task architecture briefs, four hooks,
-  sanitized telemetry, pending Stop proposals, pairing and architecture
-  helpers, repository isolation, and migration from `command-center-memory`.
+  exact generated-command detection requiring a visible `load_handoff`,
+  compatibility health checks, sanitized telemetry, pending Stop proposals,
+  pairing and architecture helpers, and repository isolation.
 - Capability Library and Handoff Builder surfaces, graph capability/handoff
   nodes, active-handoff edges, voice publication, exact packet preview, and
   generated `/plan` command.
+- Deterministic text-Aria redesign suggestions, a shared typed Handoff
+  Controller for buttons and voice, and an evidence-aware Luna tour with a
+  no-key deterministic fallback.
 - Existing inspectable memory, declared retrieval, evidence graph, Aria chat and
   Realtime navigation, human-gated durable memory, and append-only audit.
 

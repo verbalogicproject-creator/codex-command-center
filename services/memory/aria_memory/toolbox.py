@@ -16,7 +16,8 @@ from .models import (
     Capability, CapabilityInput, CapabilityRecommendation,
     CapabilityRecommendationRequest, CapabilityRecommendations, Handoff,
     HandoffDraftRequest, HandoffLoadRequest, HandoffPacket, HandoffUpdateRequest,
-    ScreenshotAnalysis, ScreenshotAnalyzeRequest, utc_now,
+    PlanningReceipt, RedesignSuggestion, ScreenshotAnalysis,
+    ScreenshotAnalyzeRequest, TourScript, TourScriptRequest, TourStep, utc_now,
 )
 from .store import uid
 
@@ -272,16 +273,25 @@ AVAILABLE_MCP_TOOLS = [
     "walk_dependencies", "get_timeline", "propose_memory_write",
 ]
 
+REDESIGN_TERMS = {
+    "redesign", "design", "frontend", "interface", "layout", "visual",
+    "ui", "ux", "typography", "responsive", "screenshot",
+}
+MAX_OPEN_PLAN_STEPS = 12
+MAX_OPEN_PLAN_STEP_LENGTH = 500
+
 
 class Toolbox:
     def __init__(
         self, db: Database, context: ContextCompiler, deep_model: str,
         architecture: ArchitectureCompiler | None = None,
+        tour_model: str = "gpt-5.6-luna",
     ):
         self.db = db
         self.context = context
         self.deep_model = deep_model
         self.architecture = architecture
+        self.tour_model = tour_model
         self.seed()
 
     @staticmethod
@@ -433,6 +443,11 @@ class Toolbox:
             ))
             overlap = sorted(terms & haystack)
             score = len(overlap) / max(len(terms), 1)
+            if (
+                item.stable_id == "taste-frontend-redesign-interview"
+                and self.is_redesign_request(request.request)
+            ):
+                score += 1
             if item.stable_id == "evidence-bound-coding-plan":
                 score += 0.03
             ranked.append(CapabilityRecommendation(
@@ -444,6 +459,79 @@ class Toolbox:
             ))
         ranked.sort(key=lambda item: item.score, reverse=True)
         return CapabilityRecommendations(items=ranked[:request.limit])
+
+    @staticmethod
+    def is_redesign_request(text: str) -> bool:
+        terms = set(re.findall(r"[a-z0-9]+", text.casefold()))
+        return "redesign" in terms or (
+            bool(terms & {"frontend", "interface", "ui", "ux", "layout", "visual"})
+            and bool(terms & {"change", "improve", "design", "update", "refresh"})
+        )
+
+    def redesign_suggestion(
+        self, intent: str, repository: str,
+    ) -> RedesignSuggestion | None:
+        if not self.is_redesign_request(intent):
+            return None
+        recommendations = self.recommend(CapabilityRecommendationRequest(
+            request=intent,
+            repository=repository,
+            screenshot_findings=[],
+            limit=3,
+        ))
+        if not recommendations.items:
+            return None
+        primary = recommendations.items[0]
+        architecture = (
+            self.architecture.build(ArchitectureBriefRequest(
+                repository=repository,
+                mode="task",
+                prompt=intent,
+                token_budget=1_200,
+                document_limit=6,
+                section_limit=5,
+            ))
+            if self.architecture else None
+        )
+        identity = (
+            architecture.repository_identity
+            if architecture else {"repository": repository, "requested": repository}
+        )
+        snapshot = (
+            architecture.snapshot_receipt if architecture else {}
+        )
+        evidence_ids = (
+            [source.id for source in architecture.sources] if architecture else []
+        )
+        degraded_reasons = (
+            list(architecture.degraded_reasons) if architecture else [
+                "architecture_compiler_unavailable"
+            ]
+        )
+        return RedesignSuggestion(
+            repository_identity=identity,
+            primary_capability={
+                "stable_id": primary.capability.stable_id,
+                "version": primary.capability.version,
+                "content_hash": primary.capability.content_hash,
+                "name": primary.capability.name,
+                "trust_status": primary.capability.trust_status,
+                "provenance": primary.capability.provenance,
+            },
+            alternatives=[{
+                "stable_id": item.capability.stable_id,
+                "version": item.capability.version,
+                "content_hash": item.capability.content_hash,
+                "name": item.capability.name,
+                "selection_reasons": item.selection_reasons,
+            } for item in recommendations.items[1:]],
+            selection_reasons=primary.selection_reasons,
+            architecture_snapshot=snapshot,
+            evidence_ids=evidence_ids,
+            degraded=bool(architecture.degraded if architecture else True),
+            degraded_reasons=degraded_reasons,
+            original_intent=intent,
+        )
 
     def analyze_screenshot(
         self, request: ScreenshotAnalyzeRequest, api_key: str | None = None,
@@ -526,6 +614,21 @@ class Toolbox:
     @staticmethod
     def _handoff(row: Any) -> Handoff:
         handoff_id = row["id"]
+        raw_planning_receipt = (
+            row["planning_receipt_json"]
+            if "planning_receipt_json" in row.keys() else "{}"
+        )
+        planning_payload = json.loads(raw_planning_receipt or "{}")
+        if not planning_payload:
+            planning_payload = {
+                "model": "deterministic-taste-plan-v1",
+                "capability_reference": {},
+                "architecture_snapshot": {},
+                "evidence_ids": [],
+                "generated_at": row["created_at"],
+                "degraded": True,
+                "degraded_reasons": ["planning_receipt_missing_on_legacy_handoff"],
+            }
         return Handoff(
             id=handoff_id, lineage_id=row["lineage_id"], version=row["version"],
             repository=row["repository"], original_request=row["original_request"],
@@ -535,6 +638,7 @@ class Toolbox:
             ),
             capability_refs=json.loads(row["capability_refs_json"]),
             open_plan=json.loads(row["open_plan_json"]),
+            planning_receipt=PlanningReceipt(**planning_payload),
             architecture=json.loads(row["architecture_json"]),
             evidence_sources=json.loads(row["evidence_sources_json"]),
             safe_edit_points=json.loads(row["safe_edit_points_json"]),
@@ -561,7 +665,147 @@ class Toolbox:
             result.append(item)
         return result
 
-    def create_handoff(self, request: HandoffDraftRequest, creator: str) -> Handoff:
+    @staticmethod
+    def _validate_plan(plan: list[str]) -> list[str]:
+        bounded = [str(step).strip() for step in plan if str(step).strip()]
+        if not 1 <= len(bounded) <= MAX_OPEN_PLAN_STEPS:
+            raise ValueError(
+                f"Open Plan must contain between 1 and {MAX_OPEN_PLAN_STEPS} steps"
+            )
+        if any(len(step) > MAX_OPEN_PLAN_STEP_LENGTH for step in bounded):
+            raise ValueError(
+                f"Open Plan steps cannot exceed {MAX_OPEN_PLAN_STEP_LENGTH} characters"
+            )
+        return bounded
+
+    @staticmethod
+    def _deterministic_taste_plan(
+        screenshot: ScreenshotAnalysis | None,
+    ) -> list[str]:
+        screenshot_step = (
+            "Review the labelled screenshot inferences and validate them against "
+            "the cited repository evidence."
+            if screenshot else
+            "Pause for a screenshot upload, then label visual observations as "
+            "inferences before planning."
+        )
+        return [
+            "Report the activation ID, exact Taste capability version/hash, "
+            "architecture snapshot, evidence IDs, safe edit points, risks, "
+            "omissions, and degradation state.",
+            screenshot_step,
+            "Interview the user one focused question at a time about the primary "
+            "journey, preserve boundaries, references, and acceptance criteria.",
+            "Propose DESIGN_VARIANCE, MOTION_INTENSITY, and VISUAL_DENSITY values "
+            "as explicit design dials for user confirmation.",
+            "Inventory preserve, improve, retire, and unresolved items without "
+            "changing routes, API contracts, memory boundaries, or dependencies.",
+            "Present an evidence-cited implementation plan covering 375, 768, "
+            "1024, and 1440 pixel layouts, states, keyboard access, 44-pixel "
+            "targets, and reduced motion.",
+            "Do not edit repository files until the user confirms the design "
+            "direction and explicitly approves the implementation plan.",
+        ]
+
+    def _generate_open_plan(
+        self,
+        request: HandoffDraftRequest,
+        capability: Capability,
+        architecture: dict[str, Any],
+        evidence_ids: list[str],
+        safe_edit_points: list[str],
+        risks: list[str],
+        api_key: str | None,
+    ) -> tuple[list[str], PlanningReceipt]:
+        degraded_reasons: list[str] = []
+        model = self.deep_model
+        plan: list[str] | None = None
+        if api_key:
+            try:
+                from openai import OpenAI
+
+                screenshot = request.screenshot
+                bounded_input = {
+                    "original_intent": request.original_request,
+                    "screenshot": ({
+                        "image_hash": screenshot.image_hash,
+                        "width": screenshot.width,
+                        "height": screenshot.height,
+                        "findings": screenshot.findings,
+                        "findings_are_inferences": True,
+                        "retained": False,
+                    } if screenshot else None),
+                    "capability": {
+                        "stable_id": capability.stable_id,
+                        "version": capability.version,
+                        "content_hash": capability.content_hash,
+                        "instructions": capability.instructions,
+                    },
+                    "architecture": architecture,
+                    "evidence_ids": evidence_ids,
+                    "safe_edit_points": safe_edit_points,
+                    "risks": risks,
+                }
+                response = OpenAI(api_key=api_key).responses.create(
+                    model=model,
+                    instructions=(
+                        "You are Sol preparing a bounded Open Plan. Return only "
+                        "2-12 concise plan steps, one per line. The first step must "
+                        "report receipts; interview before edits; do not invent "
+                        "evidence or capability references."
+                    ),
+                    input=json.dumps(bounded_input, separators=(",", ":")),
+                    max_output_tokens=1_000,
+                    store=False,
+                )
+                parsed = [
+                    line.strip().lstrip("-•0123456789.) ").strip()
+                    for line in response.output_text.splitlines()
+                    if line.strip()
+                ]
+                plan = self._validate_plan(parsed)
+            except Exception as exc:
+                degraded_reasons.append(
+                    f"sol_planning_unavailable:{type(exc).__name__}"
+                )
+        else:
+            degraded_reasons.append("sol_planning_requires_byok")
+        if plan is None:
+            model = "deterministic-taste-plan-v1"
+            plan = self._deterministic_taste_plan(request.screenshot)
+        if request.screenshot and request.screenshot.degraded:
+            degraded_reasons.append("screenshot_analysis_degraded")
+        if architecture.get("degraded"):
+            degraded_reasons.extend(
+                f"architecture:{reason}"
+                for reason in architecture.get("degraded_reasons", [])
+            )
+            if not architecture.get("degraded_reasons"):
+                degraded_reasons.append("architecture:degraded")
+        degraded_reasons = list(dict.fromkeys(degraded_reasons))
+        receipt = PlanningReceipt(
+            model=model,
+            capability_reference={
+                "stable_id": capability.stable_id,
+                "version": capability.version,
+                "content_hash": capability.content_hash,
+                "provenance": capability.provenance,
+            },
+            architecture_snapshot=(
+                architecture.get("snapshot_receipt", {})
+                if isinstance(architecture, dict) else {}
+            ),
+            evidence_ids=evidence_ids,
+            generated_at=utc_now(),
+            degraded=bool(degraded_reasons),
+            degraded_reasons=degraded_reasons,
+        )
+        return plan, receipt
+
+    def create_handoff(
+        self, request: HandoffDraftRequest, creator: str,
+        api_key: str | None = None,
+    ) -> Handoff:
         recommendations = self.recommend(CapabilityRecommendationRequest(
             request=request.original_request, repository=request.repository,
             screenshot_findings=request.screenshot.findings if request.screenshot else [],
@@ -587,12 +831,6 @@ class Toolbox:
             ))
             if self.architecture else None
         )
-        plan = request.open_plan or [
-            "Confirm the redesign goal and acceptance criteria.",
-            "Inspect the cited architecture, safe edit points, and risks.",
-            "Interview the user before editing repository files.",
-            "Implement the smallest coherent change and verify responsive behavior.",
-        ]
         lineage_id, handoff_id, now = uid("handoff"), uid("hoff"), utc_now()
         tools = list(dict.fromkeys([
             *AVAILABLE_MCP_TOOLS,
@@ -627,6 +865,34 @@ class Toolbox:
             if architecture_brief and architecture_brief.risk_areas
             else pack.risk_areas
         )
+        if request.open_plan:
+            plan = self._validate_plan(request.open_plan)
+            planning_receipt = PlanningReceipt(
+                model="user-authored-open-plan",
+                capability_reference={
+                    "stable_id": capabilities[0].stable_id,
+                    "version": capabilities[0].version,
+                    "content_hash": capabilities[0].content_hash,
+                    "provenance": capabilities[0].provenance,
+                },
+                architecture_snapshot=architecture.get("snapshot_receipt", {}),
+                evidence_ids=[
+                    str(item.get("id")) for item in evidence if item.get("id")
+                ],
+                generated_at=now,
+                degraded=False,
+                degraded_reasons=[],
+            )
+        else:
+            plan, planning_receipt = self._generate_open_plan(
+                request,
+                capabilities[0],
+                architecture,
+                [str(item.get("id")) for item in evidence if item.get("id")],
+                safe_edit_points,
+                risks,
+                api_key,
+            )
 
         def packet_tokens() -> int:
             return estimate_tokens(json.dumps({
@@ -653,8 +919,14 @@ class Toolbox:
             )
         with self.db.transaction() as conn:
             conn.execute(
-                """INSERT INTO handoffs VALUES(
-                ?,?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?,?,NULL,NULL)""",
+                """INSERT INTO handoffs(
+                id,lineage_id,version,repository,original_request,screenshot_json,
+                capability_refs_json,open_plan_json,architecture_json,
+                evidence_sources_json,safe_edit_points_json,risks_json,
+                tool_references_json,token_estimate,omitted_candidates,degraded,
+                status,creator,created_at,published_at,revoked_at,
+                planning_receipt_json)
+                VALUES(?,?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?,?,NULL,NULL,?)""",
                 (
                     handoff_id, lineage_id, request.repository, request.original_request,
                     request.screenshot.model_dump_json() if request.screenshot else None,
@@ -667,9 +939,10 @@ class Toolbox:
                     int(
                         pack.degraded
                         or (architecture_brief.degraded if architecture_brief else False)
+                        or planning_receipt.degraded
                         or removed > 0
                     ),
-                    creator, now,
+                    creator, now, planning_receipt.model_dump_json(),
                 ),
             )
         return self.get_handoff(handoff_id)  # type: ignore[return-value]
@@ -696,7 +969,10 @@ class Toolbox:
         capability_refs = [
             f"{item.stable_id}@{item.version}" for item in capabilities
         ]
-        open_plan = patch.open_plan or current.open_plan
+        open_plan = (
+            self._validate_plan(patch.open_plan)
+            if patch.open_plan is not None else current.open_plan
+        )
         token_estimate = estimate_tokens(json.dumps({
             "capabilities": [item.instructions for item in capabilities],
             "plan": open_plan, "architecture": current.architecture,
@@ -760,6 +1036,223 @@ class Toolbox:
             )
         return self.get_handoff(result.id)  # type: ignore[return-value]
 
+    @staticmethod
+    def _overview_tour_steps() -> list[TourStep]:
+        return [
+            TourStep(
+                id="overview-aria", surface="aria", target="heading",
+                narration=(
+                    "Aria answers from bounded evidence and shows what was injected."
+                ),
+                action="Open Aria.",
+            ),
+            TourStep(
+                id="overview-recall", surface="recall", target="results",
+                narration=(
+                    "Recall exposes lexical, structural, and dense retrieval signals."
+                ),
+                action="Inspect ranked retrieval.",
+            ),
+            TourStep(
+                id="overview-graph", surface="graph", target="content",
+                narration=(
+                    "The graph separates declared structure, active context, and "
+                    "human-confirmed durable memory."
+                ),
+                action="Inspect the evidence graph.",
+            ),
+            TourStep(
+                id="overview-audit", surface="audit", target="content",
+                narration=(
+                    "Models may draft proposals, but only a human action confirms "
+                    "durable memory."
+                ),
+                action="Inspect the approval boundary.",
+            ),
+        ]
+
+    def _redesign_tour_steps(self, handoff: Handoff | None) -> list[TourStep]:
+        evidence_ids = [
+            str(item.get("id")) for item in (handoff.evidence_sources if handoff else [])
+            if item.get("id")
+        ]
+        capability = handoff.capability_refs[0] if handoff and handoff.capability_refs else (
+            "taste-frontend-redesign-interview"
+        )
+        snapshot = (
+            handoff.planning_receipt.architecture_snapshot.get("snapshot_id")
+            if handoff else None
+        )
+        return [
+            TourStep(
+                id="redesign-problem", surface="handoff", target="heading",
+                evidence_ids=evidence_ids[:3],
+                narration=(
+                    "Start with the real redesign intent and keep the work bounded "
+                    "to the selected product surfaces."
+                ),
+                action="Review repository and desired change.",
+            ),
+            TourStep(
+                id="redesign-screenshot-boundary", surface="handoff",
+                target="screenshot", evidence_ids=[],
+                narration=(
+                    "The raw screenshot is analyzed once. Only its hash, dimensions, "
+                    "and labelled findings continue; the image is not retained."
+                ),
+                action="Upload or inspect the screenshot inference receipt.",
+                pause_reason=(
+                    None if handoff and handoff.screenshot
+                    else "A screenshot must be uploaded before this boundary can be inspected."
+                ),
+            ),
+            TourStep(
+                id="redesign-taste", surface="handoff", target="recommendation",
+                evidence_ids=evidence_ids[:3],
+                narration=(
+                    f"Taste is the primary trusted workflow ({capability}); "
+                    "alternatives and selection reasons remain visible."
+                ),
+                action="Inspect the recommendation and alternatives.",
+                pause_reason=(
+                    "Continue after the user reviews or selects a trusted visible workflow."
+                ),
+            ),
+            TourStep(
+                id="redesign-receipts", surface="handoff", target="receipts",
+                evidence_ids=evidence_ids,
+                narration=(
+                    f"The handoff pins architecture snapshot {snapshot or 'unavailable'} "
+                    "and exposes every bounded evidence receipt."
+                ),
+                action="Inspect architecture, evidence, safe points, and risks.",
+            ),
+            TourStep(
+                id="redesign-open-plan", surface="handoff", target="open-plan",
+                evidence_ids=evidence_ids[:5],
+                narration=(
+                    "The Open Plan is reversible and editable. Codex must interview "
+                    "before editing and wait for explicit plan approval."
+                ),
+                action="Review or revise the visible plan.",
+                pause_reason=(
+                    "Codex interviews one question at a time; implementation waits "
+                    "for design-direction and plan approval."
+                ),
+            ),
+            TourStep(
+                id="redesign-publication", surface="handoff", target="publication",
+                narration=(
+                    "Publication is explicit and immutable. Voice requires the exact "
+                    "phrase, then the builder reveals the exact Codex command."
+                ),
+                action="Publish the draft when ready.",
+                pause_reason=(
+                    "Publication requires the user's explicit action."
+                    if not handoff or handoff.status == "draft" else None
+                ),
+            ),
+            TourStep(
+                id="redesign-activation", surface="graph", target="content",
+                evidence_ids=evidence_ids,
+                narration=(
+                    "After Codex visibly calls load_handoff, its activation receipt "
+                    "appears as an edge in the evidence graph."
+                ),
+                action="Inspect the Codex activation edge.",
+                pause_reason="Codex activation must occur in a separate Codex session.",
+            ),
+        ]
+
+    def tour_script(
+        self, request: TourScriptRequest, api_key: str | None = None,
+    ) -> TourScript:
+        handoff = self.get_handoff(request.handoff_id) if request.handoff_id else None
+        if request.handoff_id and not handoff:
+            raise KeyError("handoff not found")
+        fallback = (
+            self._redesign_tour_steps(handoff)
+            if request.mode == "redesign" else self._overview_tour_steps()
+        )
+        steps = fallback
+        model = "deterministic-evidence-tour-v1"
+        degraded_reasons: list[str] = []
+        if api_key:
+            try:
+                from openai import OpenAI
+
+                bounded = {
+                    "mode": request.mode,
+                    "repository": request.repository,
+                    "handoff": ({
+                        "id": handoff.id,
+                        "status": handoff.status,
+                        "original_request": handoff.original_request,
+                        "screenshot": (
+                            handoff.screenshot.model_dump(mode="json")
+                            if handoff.screenshot else None
+                        ),
+                        "capability_refs": handoff.capability_refs,
+                        "open_plan": handoff.open_plan,
+                        "planning_receipt": handoff.planning_receipt.model_dump(
+                            mode="json"
+                        ),
+                        "evidence_ids": [
+                            item.get("id") for item in handoff.evidence_sources
+                        ],
+                        "safe_edit_points": handoff.safe_edit_points,
+                        "risks": handoff.risks,
+                    } if handoff else None),
+                    "fallback_steps": [
+                        step.model_dump(mode="json") for step in fallback
+                    ],
+                }
+                response = OpenAI(api_key=api_key).responses.create(
+                    model=self.tour_model,
+                    instructions=(
+                        "You are Luna. Return only a JSON array of 1-12 tour step "
+                        "objects using the supplied stable IDs, surfaces, targets, "
+                        "and evidence IDs. Narration must stay evidence-bound. Never "
+                        "include or request raw screenshot bytes."
+                    ),
+                    input=json.dumps(bounded, separators=(",", ":")),
+                    max_output_tokens=1_600,
+                    store=False,
+                )
+                parsed = json.loads(response.output_text)
+                candidate = [TourStep(**item) for item in parsed]
+                allowed_ids = {step.id for step in fallback}
+                allowed_evidence = {
+                    evidence_id for step in fallback
+                    for evidence_id in step.evidence_ids
+                }
+                if (
+                    not candidate
+                    or any(step.id not in allowed_ids for step in candidate)
+                    or any(
+                        evidence_id not in allowed_evidence
+                        for step in candidate for evidence_id in step.evidence_ids
+                    )
+                ):
+                    raise ValueError("tour script escaped bounded receipts")
+                steps = candidate
+                model = self.tour_model
+            except Exception as exc:
+                degraded_reasons.append(
+                    f"luna_tour_unavailable:{type(exc).__name__}"
+                )
+        else:
+            degraded_reasons.append("luna_tour_requires_byok")
+        return TourScript(
+            mode=request.mode,
+            model=model,
+            handoff_id=handoff.id if handoff else None,
+            steps=steps,
+            generated_at=utc_now(),
+            degraded=bool(degraded_reasons),
+            degraded_reasons=degraded_reasons,
+        )
+
     def revoke_handoff(self, handoff_id: str) -> Handoff:
         with self.db.transaction() as conn:
             row = conn.execute("SELECT status FROM handoffs WHERE id=?", (handoff_id,)).fetchone()
@@ -802,6 +1295,7 @@ class Toolbox:
             degraded_reasons.append(
                 "Optional dense retrieval or model analysis was unavailable; declared and lexical evidence remains."
             )
+        degraded_reasons.extend(handoff.planning_receipt.degraded_reasons)
         if handoff.omitted_candidates:
             degraded_reasons.append(
                 f"{handoff.omitted_candidates} lower-ranked candidates were omitted to bound the packet."
@@ -819,6 +1313,7 @@ class Toolbox:
                 "provenance": item.provenance,
             } for item in capabilities],
             approved_open_plan=handoff.open_plan,
+            planning_receipt=handoff.planning_receipt,
             screenshot_observations=observations,
             declared_architecture=handoff.architecture,
             memories_and_documents=handoff.evidence_sources,

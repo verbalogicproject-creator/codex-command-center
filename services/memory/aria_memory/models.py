@@ -121,6 +121,41 @@ class ScreenshotAnalysis(BaseModel):
 HandoffStatus = Literal["draft", "published", "revoked"]
 
 
+class PlanningReceipt(BaseModel):
+    schema_version: Literal["command-center-planning-receipt-v1"] = (
+        "command-center-planning-receipt-v1"
+    )
+    model: str
+    capability_reference: dict[str, Any]
+    architecture_snapshot: dict[str, Any]
+    evidence_ids: list[str]
+    generated_at: str
+    degraded: bool
+    degraded_reasons: list[str] = []
+
+
+class RedesignSuggestionAction(BaseModel):
+    id: Literal["prepare-in-handoff-builder"] = "prepare-in-handoff-builder"
+    label: Literal["Prepare in Handoff Builder"] = "Prepare in Handoff Builder"
+    surface: Literal["handoff"] = "handoff"
+
+
+class RedesignSuggestion(BaseModel):
+    schema_version: Literal["command-center-redesign-suggestion-v1"] = (
+        "command-center-redesign-suggestion-v1"
+    )
+    repository_identity: dict[str, Any]
+    primary_capability: dict[str, Any]
+    alternatives: list[dict[str, Any]]
+    selection_reasons: list[str]
+    architecture_snapshot: dict[str, Any]
+    evidence_ids: list[str]
+    degraded: bool
+    degraded_reasons: list[str] = []
+    original_intent: str
+    action: RedesignSuggestionAction = Field(default_factory=RedesignSuggestionAction)
+
+
 class HandoffDraftRequest(BaseModel):
     repository: str = Field(min_length=1, max_length=240)
     original_request: str = Field(min_length=1, max_length=8_000)
@@ -145,6 +180,7 @@ class Handoff(BaseModel):
     screenshot: ScreenshotAnalysis | None
     capability_refs: list[str]
     open_plan: list[str]
+    planning_receipt: PlanningReceipt
     architecture: dict[str, Any]
     evidence_sources: list[dict[str, Any]]
     safe_edit_points: list[str]
@@ -159,6 +195,41 @@ class Handoff(BaseModel):
     published_at: str | None = None
     revoked_at: str | None = None
     codex_command: str
+
+
+TourMode = Literal["overview", "redesign"]
+TourSurface = Literal[
+    "aria", "handoff", "capabilities", "recall", "graph", "timeline", "audit"
+]
+
+
+class TourScriptRequest(BaseModel):
+    mode: TourMode = "overview"
+    repository: str = Field(default="Command Center", min_length=1, max_length=240)
+    handoff_id: str | None = Field(default=None, max_length=120)
+
+
+class TourStep(BaseModel):
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{2,79}$")
+    surface: TourSurface
+    target: str = Field(min_length=1, max_length=80)
+    evidence_ids: list[str] = []
+    narration: str = Field(min_length=1, max_length=700)
+    action: str = Field(min_length=1, max_length=240)
+    pause_reason: str | None = Field(default=None, max_length=240)
+
+
+class TourScript(BaseModel):
+    schema_version: Literal["command-center-tour-script-v1"] = (
+        "command-center-tour-script-v1"
+    )
+    mode: TourMode
+    model: str
+    handoff_id: str | None = None
+    steps: list[TourStep] = Field(min_length=1, max_length=12)
+    generated_at: str
+    degraded: bool
+    degraded_reasons: list[str] = []
 
 
 class HandoffList(BaseModel):
@@ -177,6 +248,7 @@ class HandoffPacket(BaseModel):
     repository_identity: dict[str, Any]
     workflow_instructions: list[dict[str, Any]]
     approved_open_plan: list[str]
+    planning_receipt: PlanningReceipt
     screenshot_observations: list[dict[str, Any]]
     declared_architecture: dict[str, Any]
     memories_and_documents: list[dict[str, Any]]
@@ -308,6 +380,7 @@ class EmbeddingStatus(BaseModel):
 
 
 class StatusResponse(BaseModel):
+    service_version: str = "0.5.0"
     memories: int
     documents: int = 0
     sessions: int

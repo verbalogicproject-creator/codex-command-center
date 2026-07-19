@@ -12,7 +12,7 @@ import {api, apiUrl, readSSE} from "@/lib/api";
 import type {
   ArchitectureBrief, Audit, Capability, ContextPack, DeclaredDocument, GraphData,
   Handoff, Memory, Proposal, ProviderCredentialStatus, RecallHit,
-  ScreenshotAnalysis, Session, Trace,
+  RedesignSuggestion, ScreenshotAnalysis, Session, TourScript, TourStep, Trace,
 } from "@/lib/types";
 import {MemoryGraph} from "@/components/MemoryGraph";
 import {InfiniteDock} from "@/components/InfiniteDock";
@@ -20,6 +20,9 @@ import {AriaVoice} from "@/components/AriaVoice";
 import {
   AriaCommand, executeAriaCommand, Surface,
 } from "@/lib/aria/commands";
+import {
+  editOpenPlan, HandoffController, HandoffControllerResult,
+} from "@/lib/handoff-controller";
 
 type ChatItem = {role: "user" | "assistant"; text: string};
 type RenderBlock = {title: string; summary: string; evidence_ids?: string[]; projects?: string[]};
@@ -34,26 +37,31 @@ const surfaces: {id: Surface; label: string; shortLabel: string; icon: typeof Sp
   {id: "audit", label: "Audit", shortLabel: "Audit", icon: ShieldCheck},
 ];
 
-const tourSteps: {surface: Surface; title: string; body: string; target: string}[] = [
+const overviewTourSteps: TourStep[] = [
   {
-    surface: "aria", target: "heading", title: "Meet Aria",
-    body: "Ask across development memory. Aria answers from bounded evidence and shows exactly what was injected.",
+    id: "overview-aria", surface: "aria", target: "heading", evidence_ids: [],
+    action: "Meet Aria",
+    narration: "Ask across development memory. Aria answers from bounded evidence and shows exactly what was injected.",
   },
   {
-    surface: "recall", target: "results", title: "Inspect retrieval",
-    body: "Recall Explorer reveals ranked evidence and the lexical, structural, and dense signals behind it.",
+    id: "overview-recall", surface: "recall", target: "results", evidence_ids: [],
+    action: "Inspect retrieval",
+    narration: "Recall Explorer reveals ranked evidence and the lexical, structural, and dense signals behind it.",
   },
   {
-    surface: "graph", target: "content", title: "Watch context assemble",
-    body: "Violet is declared structure, cyan is active context, and amber is durable human-confirmed memory.",
+    id: "overview-graph", surface: "graph", target: "content", evidence_ids: [],
+    action: "Watch context assemble",
+    narration: "Violet is declared structure, cyan is active context, and amber is durable human-confirmed memory.",
   },
   {
-    surface: "timeline", target: "content", title: "Follow the history",
-    body: "Sessions and durable records stay distinct, so you can see what happened without confusing chat with memory.",
+    id: "overview-timeline", surface: "timeline", target: "content", evidence_ids: [],
+    action: "Follow the history",
+    narration: "Sessions and durable records stay distinct, so you can see what happened without confusing chat with memory.",
   },
   {
-    surface: "audit", target: "content", title: "The approval boundary",
-    body: "Models can draft pending proposals. Only your explicit browser action can confirm a durable write.",
+    id: "overview-audit", surface: "audit", target: "content", evidence_ids: [],
+    action: "The approval boundary",
+    narration: "Models can draft pending proposals. Only your explicit browser action can confirm a durable write.",
   },
 ];
 
@@ -83,6 +91,10 @@ export default function Page() {
     useState<ProviderCredentialStatus | null>(null);
   const [tourStep, setTourStep] = useState<number | null>(null);
   const tourStepRef = useRef<number | null>(null);
+  const [tourScript, setTourScript] = useState<TourScript | null>(null);
+  const tourScriptRef = useRef<TourScript | null>(null);
+  const tourFocusRef = useRef<HTMLElement | null>(null);
+  const handoffControllerRef = useRef<HandoffController | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -303,23 +315,63 @@ export default function Page() {
         await afterPaint();
         return true;
       },
-      tour: async (action) => {
+      tour: async (action, mode = "overview") => {
         if (action === "stop") {
+          document.querySelector(".aria-tour-highlight")
+            ?.classList.remove("aria-tour-highlight");
           tourStepRef.current = null;
           setTourStep(null);
+          tourFocusRef.current?.focus();
           return;
         }
+        let script = tourScriptRef.current;
         if (action === "start") {
+          tourFocusRef.current = document.activeElement as HTMLElement | null;
           window.dispatchEvent(new CustomEvent("aria:tour-started"));
+          try {
+            script = await api<TourScript>("/api/v1/tours/script", {
+              method: "POST",
+              body: JSON.stringify({
+                mode,
+                repository: "Command Center",
+                handoff_id: mode === "redesign" && activeHandoffId
+                  ? activeHandoffId : null,
+              }),
+            });
+          } catch {
+            script = {
+              schema_version: "command-center-tour-script-v1",
+              mode: "overview",
+              model: "browser-overview-fallback-v1",
+              steps: overviewTourSteps,
+              generated_at: new Date().toISOString(),
+              degraded: true,
+              degraded_reasons: ["tour_endpoint_unavailable"],
+            };
+          }
+          tourScriptRef.current = script;
+          setTourScript(script);
         }
+        const steps = script?.steps ?? overviewTourSteps;
         const current = tourStepRef.current;
         const next = action === "start" ? 0
-          : action === "next" ? Math.min((current ?? -1) + 1, tourSteps.length - 1)
+          : action === "next" ? Math.min((current ?? -1) + 1, steps.length - 1)
             : action === "back" ? Math.max((current ?? 1) - 1, 0)
               : (current ?? 0);
         tourStepRef.current = next;
         setTourStep(next);
-        await navigate(tourSteps[next].surface);
+        await navigate(steps[next].surface);
+        document.querySelector(".aria-tour-highlight")
+          ?.classList.remove("aria-tour-highlight");
+        const target = document.querySelector<HTMLElement>(
+          `[data-aria-target="${steps[next].target}"]`,
+        );
+        target?.classList.add("aria-tour-highlight");
+        target?.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto" : "smooth",
+          block: "center",
+        });
       },
       draftProposal: async (title, content, rationale) => {
         const proposal = await api<Proposal>("/api/v1/proposals", {
@@ -345,15 +397,36 @@ export default function Page() {
         await refresh();
         return proposal.id;
       },
+      startRedesignSession: async (repository, intent) => {
+        await navigate("handoff");
+        return handoffControllerRef.current?.startSession(repository, intent)
+          ?? {ok: false, message: "Handoff Builder is still loading.", surface: "handoff"};
+      },
+      prepareRedesignHandoff: async () => {
+        await navigate("handoff");
+        return handoffControllerRef.current?.prepare()
+          ?? {ok: false, message: "Handoff Builder is still loading.", surface: "handoff"};
+      },
+      selectHandoffCapability: async (capabilityRef) => {
+        await navigate("handoff");
+        return handoffControllerRef.current?.selectCapability(capabilityRef)
+          ?? {ok: false, message: "Handoff Builder is still loading.", surface: "handoff"};
+      },
+      editOpenPlan: async (operation, index, text, destination) => {
+        await navigate("handoff");
+        return handoffControllerRef.current?.editPlan(
+          operation, index, text, destination,
+        ) ?? {ok: false, message: "Handoff Builder is still loading.", surface: "handoff"};
+      },
+      openHandoffPacket: async () => {
+        await navigate("handoff");
+        return handoffControllerRef.current?.openPacket()
+          ?? {ok: false, message: "There is no visible handoff packet.", surface: "handoff"};
+      },
       publishHandoff: async () => {
-        if (!activeHandoffId) return null;
-        const published = await api<Handoff>(
-          `/api/v1/handoffs/${activeHandoffId}/publish`, {method: "POST"},
-        );
-        setSurface("handoff");
-        window.dispatchEvent(new CustomEvent("aria:handoff-published", {detail: published}));
-        await refresh();
-        return published.id;
+        await navigate("handoff");
+        return handoffControllerRef.current?.publish()
+          ?? {ok: false, message: "There is no draft handoff ready to publish.", surface: "handoff"};
       },
     });
   }, [activeHandoffId, activeSession, evidenceIds, graph.nodes, refresh, sessions, timeline]);
@@ -417,11 +490,27 @@ export default function Page() {
           sessionId={activeSession} onCreateSession={createSession}
           onEvidence={(ids) => {setEvidenceIds(ids); if (ids[0]) void openEvidence(ids[0]);}}
           onRefresh={refresh}
+          onPrepareRedesign={async (suggestion) => {
+            setSurface("handoff");
+            await afterPaint();
+            await handoffControllerRef.current?.startSession(
+              String(
+                suggestion.repository_identity.repository
+                ?? suggestion.repository_identity.requested
+                ?? "Command Center"
+              ),
+              suggestion.original_intent,
+            );
+          }}
         />}
         {surface === "handoff" && <HandoffBuilder
           capabilities={capabilities} handoffs={handoffs}
           activeId={activeHandoffId} onActive={setActiveHandoffId}
           onRefresh={refresh}
+          onController={(controller) => { handoffControllerRef.current = controller; }}
+          onStartTour={() => void voiceCommand({
+            name: "start_guided_tour", arguments: {mode: "redesign"},
+          })}
         />}
         {surface === "capabilities" && <CapabilityLibrary items={capabilities} />}
         {surface === "recall" && <RecallSurface onEvidence={(hit) => {
@@ -445,8 +534,11 @@ export default function Page() {
       <InfiniteDock items={surfaces} activeId={surface} onSelect={setSurface} />
       {tourStep !== null && <GuidedTour
         step={tourStep}
+        steps={tourScript?.steps ?? overviewTourSteps}
+        degraded={Boolean(tourScript?.degraded)}
         onBack={() => void voiceCommand({name: "tour_back", arguments: {}})}
         onNext={() => void voiceCommand({name: "tour_next", arguments: {}})}
+        onRepeat={() => void voiceCommand({name: "tour_repeat", arguments: {}})}
         onStop={() => void voiceCommand({name: "tour_stop", arguments: {}})}
       />}
       {palette && <CommandPalette onSelect={(id) => {setSurface(id); setPalette(false);}}
@@ -598,10 +690,11 @@ function SurfaceTitle({eyebrow, title, note}: {eyebrow: string; title: string; n
 }
 
 function AriaSurface({
-  sessionId, onCreateSession, onEvidence, onRefresh,
+  sessionId, onCreateSession, onEvidence, onRefresh, onPrepareRedesign,
 }: {
   sessionId: string; onCreateSession: () => Promise<void>;
   onEvidence: (ids: string[]) => void; onRefresh: () => Promise<void>;
+  onPrepareRedesign: (suggestion: RedesignSuggestion) => Promise<void>;
 }) {
   const [message, setMessage] = useState("");
   const [deep, setDeep] = useState(false);
@@ -612,6 +705,8 @@ function AriaSurface({
   const [trace, setTrace] = useState<Trace | null>(null);
   const [packet, setPacket] = useState<ContextPack | null>(null);
   const [architectureBrief, setArchitectureBrief] = useState<ArchitectureBrief | null>(null);
+  const [redesignSuggestion, setRedesignSuggestion] =
+    useState<RedesignSuggestion | null>(null);
   const [resolveError, setResolveError] = useState("");
 
   useEffect(() => {
@@ -701,6 +796,9 @@ function AriaSurface({
           setArchitectureBrief(next);
           onEvidence(next.sources.map((source) => source.id));
         }
+        if (type === "redesign_suggestion") {
+          setRedesignSuggestion(data as unknown as RedesignSuggestion);
+        }
         if (type === "render") setRender(data as RenderBlock);
         if (type === "proposal") setProposal(data as unknown as Proposal);
         if (type === "answer") setItems((old) => [...old, {
@@ -749,6 +847,21 @@ function AriaSurface({
       </article>)}
       {architectureBrief && <ArchitectureBriefCard
         brief={architectureBrief} onEvidence={(id) => onEvidence([id])} />}
+      {redesignSuggestion && <article className="redesign-suggestion">
+        <header><span><Workflow /> REDESIGN WORKFLOW</span>
+          <b>{redesignSuggestion.degraded ? "DEGRADED" : "EVIDENCE READY"}</b></header>
+        <h3>{redesignSuggestion.primary_capability.name}</h3>
+        <p>Taste is pinned at v{redesignSuggestion.primary_capability.version}
+          {" · "}{redesignSuggestion.primary_capability.content_hash.slice(0, 12)}</p>
+        <div className="suggestion-receipts">
+          {redesignSuggestion.selection_reasons.map((reason) =>
+            <code key={reason}>{reason}</code>)}
+          {redesignSuggestion.evidence_ids.map((id) => <code key={id}>{id}</code>)}
+        </div>
+        <button onClick={() => void onPrepareRedesign(redesignSuggestion)}>
+          <Workflow /> {redesignSuggestion.action.label}
+        </button>
+      </article>}
       {packet && <ContextPacketCard packet={packet} onEvidence={(id) => onEvidence([id])} />}
       {render && <article className="render-block">
         <div><span><GitBranch /> RENDERED ARCHITECTURE</span><small>Evidence-bound</small></div>
@@ -837,10 +950,12 @@ async function imagePayload(file: File): Promise<string> {
 }
 
 function HandoffBuilder({
-  capabilities, handoffs, activeId, onActive, onRefresh,
+  capabilities, handoffs, activeId, onActive, onRefresh, onController, onStartTour,
 }: {
   capabilities: Capability[]; handoffs: Handoff[]; activeId: string;
   onActive: (id: string) => void; onRefresh: () => Promise<void>;
+  onController: (controller: HandoffController) => void;
+  onStartTour: () => void;
 }) {
   const [repository, setRepository] = useState("Command Center");
   const [intent, setIntent] = useState("Redesign the Command Center interface shown in this screenshot.");
@@ -855,6 +970,7 @@ function HandoffBuilder({
   const [planText, setPlanText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [packetOpen, setPacketOpen] = useState(false);
 
   useEffect(() => {
     const current = handoffs.find((item) => item.id === activeId)
@@ -891,10 +1007,13 @@ function HandoffBuilder({
     setError("");
   }
 
-  async function prepare() {
+  async function prepare(): Promise<HandoffControllerResult> {
     if (!file || !intent.trim()) {
-      setError("Add a screenshot and describe the desired change.");
-      return;
+      const message = !file
+        ? "Upload or paste a screenshot first; voice cannot upload files."
+        : "Describe the desired redesign before preparing the handoff.";
+      setError(message);
+      return {ok: false, message, surface: "handoff"};
     }
     setBusy(true); setError("");
     try {
@@ -929,38 +1048,204 @@ function HandoffBuilder({
       setPlanText(created.open_plan.join("\n"));
       onActive(created.id);
       await onRefresh();
+      return {
+        ok: true,
+        message: `Prepared draft ${created.id}. ${created.planning_receipt.degraded
+          ? `Sol degraded: ${created.planning_receipt.degraded_reasons.join(", ")}.`
+          : `Sol planned with ${created.planning_receipt.model}.`} Taste and all receipts are visible.`,
+        surface: "handoff",
+      };
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not prepare the handoff.");
+      const message = reason instanceof Error
+        ? reason.message : "Could not prepare the handoff.";
+      setError(message);
+      return {ok: false, message, surface: "handoff"};
     } finally { setBusy(false); }
   }
 
-  async function savePlan() {
-    if (!draft || draft.status !== "draft") return;
+  async function persistPlan(
+    nextPlan: string[],
+    capabilityRef = selectedRef,
+  ): Promise<HandoffControllerResult> {
+    if (!draft) {
+      return {ok: false, message: "Prepare a draft handoff first.", surface: "handoff"};
+    }
+    if (draft.status !== "draft") {
+      return {
+        ok: false,
+        message: "The visible handoff is published and immutable. Create a new version to revise it.",
+        surface: "handoff",
+      };
+    }
     setBusy(true); setError("");
     try {
       const updated = await api<Handoff>(`/api/v1/handoffs/${draft.id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          capability_refs: selectedRef ? [selectedRef] : draft.capability_refs,
-          open_plan: planText.split("\n").map((line) => line.trim()).filter(Boolean),
+          capability_refs: capabilityRef ? [capabilityRef] : draft.capability_refs,
+          open_plan: nextPlan,
         }),
       });
       setDraft(updated);
+      setPlanText(updated.open_plan.join("\n"));
       await onRefresh();
+      return {
+        ok: true,
+        message: `Saved ${updated.open_plan.length} visible Open Plan steps for ${updated.id}.`,
+        surface: "handoff",
+        handoff: updated,
+      };
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not save the Open Plan.");
+      const message = reason instanceof Error
+        ? reason.message : "Could not save the Open Plan.";
+      setError(message);
+      return {ok: false, message, surface: "handoff"};
     } finally { setBusy(false); }
   }
 
-  async function publish() {
-    if (!draft || draft.status !== "draft") return;
-    await savePlan();
-    const published = await api<Handoff>(
-      `/api/v1/handoffs/${draft.id}/publish`, {method: "POST"},
+  async function savePlan(): Promise<HandoffControllerResult> {
+    return persistPlan(
+      planText.split("\n").map((line) => line.trim()).filter(Boolean),
     );
-    setDraft(published);
-    await onRefresh();
   }
+
+  async function startSession(
+    nextRepository: string,
+    nextIntent: string,
+  ): Promise<HandoffControllerResult> {
+    setRepository(nextRepository.trim() || "Command Center");
+    setIntent(nextIntent.trim());
+    setDraft(null);
+    setAnalysis(null);
+    setRecommendations([]);
+    setSelectedRef("");
+    setPlanText("");
+    setPacketOpen(false);
+    setError("");
+    await afterPaint();
+    return {
+      ok: true,
+      message: "Opened Handoff Builder. Upload or paste the redesign screenshot, then ask me to prepare the handoff.",
+      surface: "handoff",
+    };
+  }
+
+  async function selectCapability(
+    capabilityRef: string,
+  ): Promise<HandoffControllerResult> {
+    const visible = (
+      recommendations.length
+        ? recommendations.map((item) => item.capability)
+        : capabilities.slice(0, 3)
+    ).find((item) => `${item.stable_id}@${item.version}` === capabilityRef);
+    if (!visible || !["verified", "workspace"].includes(visible.trust_status)) {
+      return {
+        ok: false,
+        message: `Capability ${capabilityRef} is not a currently visible trusted recommendation.`,
+        surface: "handoff",
+      };
+    }
+    setSelectedRef(capabilityRef);
+    if (!draft) {
+      return {
+        ok: true,
+        message: `Selected visible capability ${capabilityRef}.`,
+        surface: "handoff",
+      };
+    }
+    return persistPlan(
+      planText.split("\n").map((line) => line.trim()).filter(Boolean),
+      capabilityRef,
+    );
+  }
+
+  async function editPlan(
+    operation: "append" | "replace" | "remove" | "reorder",
+    index: number,
+    text?: string,
+    destination?: number,
+  ): Promise<HandoffControllerResult> {
+    if (!draft) {
+      return {ok: false, message: "Prepare a draft handoff first.", surface: "handoff"};
+    }
+    if (draft.status !== "draft") {
+      return {
+        ok: false,
+        message: "The visible handoff is published and immutable.",
+        surface: "handoff",
+      };
+    }
+    try {
+      const current = planText.split("\n").map((line) => line.trim()).filter(Boolean);
+      const next = editOpenPlan(current, operation, index, text, destination);
+      setPlanText(next.join("\n"));
+      return persistPlan(next);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "The plan edit is invalid.";
+      setError(message);
+      return {ok: false, message, surface: "handoff"};
+    }
+  }
+
+  async function openPacket(): Promise<HandoffControllerResult> {
+    if (!draft) {
+      return {ok: false, message: "Prepare a draft handoff first.", surface: "handoff"};
+    }
+    setPacketOpen(true);
+    await afterPaint();
+    document.querySelector<HTMLElement>("[data-aria-target='receipts']")
+      ?.scrollIntoView({behavior: "smooth", block: "center"});
+    return {
+      ok: true,
+      message: `Opened packet ${draft.id}: ${draft.evidence_sources.length} evidence receipts, ${draft.safe_edit_points.length} safe points, ${draft.risks.length} risks, planning model ${draft.planning_receipt.model}.`,
+      surface: "handoff",
+      handoff: draft,
+    };
+  }
+
+  async function publish(): Promise<HandoffControllerResult> {
+    if (!draft || draft.status !== "draft") {
+      return {
+        ok: false,
+        message: draft?.status === "published"
+          ? "The visible handoff is already published."
+          : "There is no draft handoff ready to publish.",
+        surface: "handoff",
+      };
+    }
+    const saved = await savePlan();
+    if (!saved.ok) return saved;
+    try {
+      const published = await api<Handoff>(
+        `/api/v1/handoffs/${draft.id}/publish`, {method: "POST"},
+      );
+      setDraft(published);
+      setPacketOpen(true);
+      window.dispatchEvent(new CustomEvent("aria:handoff-published", {detail: published}));
+      await onRefresh();
+      return {
+        ok: true,
+        message: `Published handoff ${published.id}. The exact Codex command is visible and the packet is now immutable.`,
+        surface: "handoff",
+        handoff: published,
+      };
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Could not publish the handoff.";
+      setError(message);
+      return {ok: false, message, surface: "handoff"};
+    }
+  }
+
+  useEffect(() => {
+    onController({
+      startSession,
+      prepare,
+      selectCapability,
+      editPlan,
+      openPacket,
+      publish,
+    });
+  });
 
   const draftArchitecture = draft?.architecture as Partial<ArchitectureBrief> | undefined;
   const snapshotReceipt = draftArchitecture?.snapshot_receipt;
@@ -972,13 +1257,16 @@ function HandoffBuilder({
   }}>
     <SurfaceTitle eyebrow="Prepare for Codex" title="Handoff Builder"
       note="GPT-5.6 Sol · bounded packet · voice-publishable" />
+    <button className="redesign-tour-trigger" onClick={onStartTour}>
+      <CircleHelp /> Start evidence-aware redesign tour
+    </button>
     <div className="handoff-grid" data-aria-target="content">
       <section className="handoff-input">
         <label>Repository<input value={repository}
           onChange={(event) => setRepository(event.target.value)} /></label>
         <label>Desired change<textarea value={intent}
           onChange={(event) => setIntent(event.target.value)} /></label>
-        <label className="screenshot-drop">
+        <label className="screenshot-drop" data-aria-target="screenshot">
           <input type="file" accept="image/png,image/jpeg,image/webp"
             onChange={(event) => event.target.files?.[0] && chooseFile(event.target.files[0])} />
           {preview ? <img src={preview} alt="Screenshot preview" /> : <>
@@ -1002,7 +1290,7 @@ function HandoffBuilder({
             <span>{analysis.width}×{analysis.height} · not retained</span></footer>}
         </article>
 
-        <article className="workflow-choice">
+        <article className="workflow-choice" data-aria-target="recommendation">
           <header><span>02</span><div><small>RECOMMENDED WORKFLOW</small>
             <strong>One primary capability, visible alternatives</strong></div></header>
           {(recommendations.length ? recommendations : capabilities.slice(0, 3).map((capability) => ({
@@ -1011,7 +1299,7 @@ function HandoffBuilder({
             const ref = `${item.capability.stable_id}@${item.capability.version}`;
             return <button key={ref} className={selectedRef === ref ? "selected" : ""}
               disabled={Boolean(draft && draft.status !== "draft")}
-              onClick={() => setSelectedRef(ref)}>
+              onClick={() => void selectCapability(ref)}>
               <span>{index === 0 ? "PRIMARY" : "ALTERNATIVE"}</span>
               <strong>{item.capability.name}</strong>
               <small>v{item.capability.version} · {item.selection_reasons.join(" · ")}</small>
@@ -1019,7 +1307,7 @@ function HandoffBuilder({
           })}
         </article>
 
-        <article className="open-plan">
+        <article className="open-plan" data-aria-target="open-plan">
           <header><span>03</span><div><small>EDITABLE OPEN PLAN</small>
             <strong>Codex interviews before it edits</strong></div></header>
           <textarea value={planText} disabled={!draft || draft.status !== "draft"}
@@ -1028,7 +1316,8 @@ function HandoffBuilder({
           {draft?.status === "draft" && <button onClick={() => void savePlan()}>Save Open Plan</button>}
         </article>
 
-        {draft && <article className={`handoff-packet ${draft.status}`}>
+        {draft && <article className={`handoff-packet ${draft.status}`}
+          data-handoff-packet data-aria-target="receipts">
           <header><span>04</span><div><small>EXACT BOUNDED PACKET</small>
             <strong>{draft.id} · v{draft.version} · {draft.status}</strong></div></header>
           <dl>
@@ -1047,16 +1336,29 @@ function HandoffBuilder({
             <div><dt>Architecture state</dt><dd>{draftArchitecture?.degraded
               ? `degraded · ${(draftArchitecture.degraded_reasons ?? []).join(" · ")}`
               : "versioned and repository-scoped"}</dd></div>
+            <div><dt>Planning model</dt><dd>{draft.planning_receipt.model}</dd></div>
+            <div><dt>Planning state</dt><dd>{draft.planning_receipt.degraded
+              ? `degraded · ${draft.planning_receipt.degraded_reasons.join(" · ")}`
+              : "validated Sol plan"}</dd></div>
           </dl>
-          <div className="handoff-receipts">
+          <button className="packet-toggle" aria-expanded={packetOpen}
+            onClick={() => setPacketOpen((value) => !value)}>
+            {packetOpen ? "Hide exact receipts" : "Open exact packet and receipts"}
+          </button>
+          {packetOpen && <div className="handoff-receipts">
+            <code>{draft.planning_receipt.capability_reference.stable_id}
+              @{draft.planning_receipt.capability_reference.version}
+              {" · "}{draft.planning_receipt.capability_reference.content_hash}</code>
             {draft.evidence_sources.map((source) => <code key={source.id}>
               {source.id} · {source.selection_reasons.join(" · ") || "bounded selection"}
             </code>)}
-          </div>
+          </div>}
           <code className="codex-command">{draft.codex_command}</code>
           {draft.status === "draft" ? <button className="approve-handoff"
+            data-aria-target="publication"
             onClick={() => void publish()}><Check /> Approve this handoff</button>
-            : <p className="published-receipt"><Check /> Published and immutable. Codex can load it now.</p>}
+            : <p className="published-receipt" data-aria-target="publication">
+              <Check /> Published and immutable. Codex can load it now.</p>}
         </article>}
       </section>
     </div>
@@ -1341,22 +1643,30 @@ function CommandPalette({onSelect, onClose}: {
 }
 
 function GuidedTour({
-  step, onBack, onNext, onStop,
+  step, steps, degraded, onBack, onNext, onRepeat, onStop,
 }: {
-  step: number; onBack: () => void; onNext: () => void; onStop: () => void;
+  step: number; steps: TourStep[]; degraded: boolean;
+  onBack: () => void; onNext: () => void; onRepeat: () => void; onStop: () => void;
 }) {
-  const current = tourSteps[step];
+  const current = steps[step];
   return <aside className="guided-tour" role="dialog" aria-labelledby="guided-tour-title">
     <header>
-      <span>ARIA GUIDED TOUR</span>
+      <span>ARIA GUIDED TOUR {degraded ? "· OFFLINE SCRIPT" : ""}</span>
       <button className="icon-button" aria-label="Stop guided tour" onClick={onStop}><X /></button>
     </header>
-    <small>STEP {step + 1} OF {tourSteps.length}</small>
-    <h2 id="guided-tour-title">{current.title}</h2>
-    <p>{current.body}</p>
+    <small>STEP {step + 1} OF {steps.length} · {current.id}</small>
+    <h2 id="guided-tour-title">{current.action}</h2>
+    <p>{current.narration}</p>
+    {current.evidence_ids.length > 0 && <div className="tour-receipts">
+      {current.evidence_ids.map((id) => <code key={id}>{id}</code>)}
+    </div>}
+    {current.pause_reason && <p className="tour-pause">
+      <strong>Pause:</strong> {current.pause_reason}
+    </p>}
     <footer>
       <button className="secondary" onClick={onBack} disabled={step === 0}>Back</button>
-      {step < tourSteps.length - 1
+      <button className="secondary" onClick={onRepeat}>Repeat</button>
+      {step < steps.length - 1
         ? <button onClick={onNext}>Next</button>
         : <button onClick={onStop}>Finish tour</button>}
     </footer>

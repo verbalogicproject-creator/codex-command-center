@@ -10,13 +10,13 @@ ai_card:
   status: implemented
   owner_area: task handoff
   main_files: [services/memory/aria_memory/toolbox.py, apps/web/app/page.tsx]
-  public_interfaces: [Handoff, HandoffPacket, "load_handoff"]
-  provides: [draft publication revocation and activation semantics, immutable architecture pinning]
+  public_interfaces: [Handoff, HandoffPacket, PlanningReceipt, "load_handoff"]
+  provides: [draft publication revocation and activation semantics, immutable architecture pinning, Sol Open Plan receipts]
   depends_on: [command-center.architecture-awareness, command-center.capability-authoring]
   safe_edit_points: [draft edits, new immutable lineage versions, per-client activation audit]
   risk_areas: [editing published packets, repository mismatch, mutable evidence receipts]
   graph_rag_entities: [Handoff, HandoffPacket, HandoffActivation]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 A handoff is a reusable, inspectable task artifact. It is separate from durable
@@ -33,7 +33,15 @@ draft ──publish──► published ──revoke──► revoked
 The builder compiles repository identity, original intent, screenshot metadata
 and findings, exact capability versions, an Open Plan, declared architecture,
 ranked evidence receipts, safe edit points, risks, available tool references,
-token estimate, omitted-candidate count, and degraded-state metadata.
+token estimate, omitted-candidate count, degraded-state metadata, and a
+persisted `command-center-planning-receipt-v1`.
+
+Sol receives only original intent, labelled screenshot findings plus
+hash/dimensions, exact Taste instructions, the bounded ArchitectureBrief,
+evidence IDs, safe edit points, and risks. Its result must validate as 1–12
+non-empty steps of at most 500 characters. With no BYOK credential or on model
+or validation failure, the builder uses the deterministic Taste plan and
+records the reason. Raw screenshot bytes never enter planning.
 
 The declared architecture member is the complete bounded
 `command-center-architecture-brief-v1` selected when the draft is created. Its
@@ -50,8 +58,8 @@ trusted version. The packet preview is the data Codex will receive.
 
 ## Publication
 
-Publication requires the explicit browser action or voice phrase **Approve this
-handoff**. Voice may perform it because publication only exposes bounded
+Publication requires the explicit browser action or exact voice phrase
+**Approve this handoff.** Voice may perform it because publication only exposes bounded
 context. Voice still cannot edit code, install tools, deploy, perform external
 actions, or confirm durable memory.
 
@@ -73,6 +81,8 @@ The returned packet includes:
 
 - exact workflow instructions, versions, hashes, and provenance;
 - approved Open Plan;
+- planning model, exact capability receipt, architecture snapshot, evidence
+  IDs, generation time, and degradation reasons;
 - pinned architecture snapshot and source revision;
 - screenshot observations marked `classification=inference`;
 - declared architecture;

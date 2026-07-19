@@ -272,6 +272,21 @@ export type Handoff = {
   screenshot?: ScreenshotAnalysis | null;
   capability_refs: string[];
   open_plan: string[];
+  planning_receipt: {
+    schema_version: "command-center-planning-receipt-v1";
+    model: string;
+    capability_reference: {
+      stable_id?: string;
+      version?: number;
+      content_hash?: string;
+      provenance?: string;
+    };
+    architecture_snapshot: Record<string, unknown>;
+    evidence_ids: string[];
+    generated_at: string;
+    degraded: boolean;
+    degraded_reasons: string[];
+  };
   architecture: Partial<ArchitectureBrief> & Record<string, unknown>;
   evidence_sources: (ContextSource | ArchitectureSource)[];
   safe_edit_points: string[];
@@ -286,4 +301,56 @@ export type Handoff = {
   published_at?: string | null;
   revoked_at?: string | null;
   codex_command: string;
+};
+
+export type RedesignSuggestion = {
+  schema_version: "command-center-redesign-suggestion-v1";
+  repository_identity: Record<string, unknown>;
+  primary_capability: {
+    stable_id: string;
+    version: number;
+    content_hash: string;
+    name: string;
+    trust_status: string;
+    provenance: string;
+  };
+  alternatives: {
+    stable_id: string;
+    version: number;
+    content_hash: string;
+    name: string;
+    selection_reasons: string[];
+  }[];
+  selection_reasons: string[];
+  architecture_snapshot: Record<string, unknown>;
+  evidence_ids: string[];
+  degraded: boolean;
+  degraded_reasons: string[];
+  original_intent: string;
+  action: {
+    id: "prepare-in-handoff-builder";
+    label: "Prepare in Handoff Builder";
+    surface: "handoff";
+  };
+};
+
+export type TourStep = {
+  id: string;
+  surface: "aria" | "handoff" | "capabilities" | "recall" | "graph" | "timeline" | "audit";
+  target: string;
+  evidence_ids: string[];
+  narration: string;
+  action: string;
+  pause_reason?: string | null;
+};
+
+export type TourScript = {
+  schema_version: "command-center-tour-script-v1";
+  mode: "overview" | "redesign";
+  model: string;
+  handoff_id?: string | null;
+  steps: TourStep[];
+  generated_at: string;
+  degraded: boolean;
+  degraded_reasons: string[];
 };

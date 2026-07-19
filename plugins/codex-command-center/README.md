@@ -29,8 +29,11 @@ workspace token with user-only permissions under `~/.command-center/`. Direct
 remote clients may set `COMMAND_CENTER_URL` and `COMMAND_CENTER_TOKEN` instead;
 neither value belongs in a repository file.
 
-Version 0.4 uses `python3` explicitly for MCP, hooks, and helpers so Codex does
-not depend on an optional `python` alias. User-owned OpenAI credentials remain
+Version 0.5 recognizes the exact generated command and requires Codex to
+visibly call `load_handoff`; the hook never loads it secretly or substitutes
+`build_task_pack`. Its health helper checks version compatibility, all ten
+tools, authentication, architecture, and handoff availability. It retains
+v0.4's explicit `python3` launchers. User-owned OpenAI credentials remain
 inside the Command Center browser/API session and never enter this plugin.
 
 The installed plugin defaults to the stdio adapter and honors the caller's
@@ -42,8 +45,9 @@ Architecture sync reads only Markdown paths declared by
 writing, `status` sends hashes without document bodies, and `sync` prints the
 repository, document count, bytes, and revision before asking for explicit
 upload confirmation. Session hooks never invoke `sync`. SessionStart performs a
-hash-only drift check and loads a boot brief; UserPromptSubmit loads a
-task-ranked brief and durable project context from the same server contract.
+hash-only drift check and loads a boot brief. UserPromptSubmit emits the
+visible-load directive for the exact generated command and otherwise loads
+task-ranked context.
 Unknown repositories remain visibly degraded and never fall back to another
 repository's evidence.
 

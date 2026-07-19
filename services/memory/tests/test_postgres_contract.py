@@ -50,6 +50,12 @@ def test_postgres_v5_schema_covers_versioned_architecture_contract():
     assert "WHERE status='active'" in migration
 
 
+def test_postgres_v6_adds_persisted_handoff_planning_receipt():
+    migration = POSTGRES_APP_MIGRATIONS[6]
+    assert "ALTER TABLE handoffs" in migration
+    assert "planning_receipt_json TEXT NOT NULL" in migration
+
+
 def test_postgres_adapter_translates_portable_placeholders():
     assert CompatConnection._sql(
         "SELECT * FROM handoffs WHERE id=? AND status=?"

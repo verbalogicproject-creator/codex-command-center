@@ -36,32 +36,21 @@ ai_card:
    activation receipts.
 9. Shared full architecture awareness for Aria and Codex: versioned snapshots,
    bounded ArchitectureBrief, explicit sync/health, immutable handoff receipts,
-   and Codex Command Center v0.4.
+   and Codex Command Center v0.5.
 10. SQLite and real PostgreSQL behavioral verification, including restart and
     historical architecture evidence.
 
-## Next: cloud promotion and evidence-aware narration
+11. Deterministic redesign suggestions, persisted Sol planning receipts,
+    controller-backed voice drafting, evidence-aware Luna fallback, and exact
+    visible Codex handoff activation.
+
+## Next: cloud promotion and submission
 
 The immediate promotion phase is to push the reviewed repository, build the
 root image on a Docker-capable laptop or Cloud Build, create least-privilege GCP
 resources in the verified project, pass staging database/MCP/mobile/voice
 smokes, and promote the same image digest for the competition demo.
 
-The initial tour can now operate the interface and explain its seven surfaces.
-The next increment lets GPT‑5.6 Luna prepare a bounded, evidence-aware tour
-script while Terra remains the fast text path, Sol remains deep
-evidence-bound synthesis, and `gpt-realtime-2.1` handles low-latency audio and
-turn-taking:
-
-1. explain declared documents versus durable memory;
-2. ask the user to pose a cross-project question;
-3. narrate why each retrieval stage lights up;
-4. open the exact injected packet;
-5. walk through a pending proposal and the human confirmation boundary.
-
-This increment should call the existing context-pack, graph, evidence, proposal,
-and audit interfaces. Voice must not introduce a second retrieval or write path.
-
-Before public submission, complete the HTTPS mobile smoke test, document the
-demo’s audio-retention statement, and validate tour narration against exact
-evidence IDs.
+Overview and redesign tours now operate live surfaces with bounded receipts and
+explicit pauses. Remaining work is external production promotion, clean Codex
+reinstall validation, dogfood capture, video, and submission.

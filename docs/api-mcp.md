@@ -10,7 +10,7 @@ ai_card:
   status: implemented
   owner_area: API and MCP
   main_files: [services/memory/aria_memory/app.py, services/memory/aria_memory/mcp_app.py, services/memory/aria_memory/workspaces.py, services/memory/aria_memory/mcp.py, plugins/codex-command-center/scripts/mcp_server.py]
-  public_interfaces: ["/api/v1", "POST /mcp", "command-center-task-pack-v2"]
+  public_interfaces: ["/api/v1", "POST /mcp", "command-center-task-pack-v2", "command-center-tour-script-v1"]
   provides: [authenticated REST route inventory, MCP tool contract, transport parity reference]
   depends_on: [command-center.architecture-awareness, command-center.security-privacy, command-center.byok]
   safe_edit_points: [additive authenticated routes, shared MCP tool definitions]
@@ -32,6 +32,7 @@ browser cookie or `X-Command-Center-Token`.
 | Capabilities | `GET/POST /api/v1/capabilities`, `GET /capabilities/{id}`, `POST /capabilities/recommend` |
 | Screenshots | `POST /api/v1/screenshots/analyze` |
 | Handoffs | `GET/POST /api/v1/handoffs`, `GET/PATCH /handoffs/{id}`, `POST /handoffs/{id}/publish`, `/revoke`, `/versions`, `POST /handoffs/load` |
+| Tours | `POST /api/v1/tours/script` |
 | Architecture | `POST /api/v1/architecture/lint`, `/sync`, `/check`, `/brief`; `GET /architecture/health` |
 | Context | `POST /api/v1/recall`, `/documents/recall`, `/context/pack` |
 | Evidence | `GET /documents/{id}`, `/memories/{table}/{id}`, `/graph`, `/timeline` |
@@ -129,3 +130,8 @@ token accounting, omissions, degraded reasons, and a trace ID.
 The architecture evidence prefixes are `adoc_`, `asec_`, `aedge_`, and
 `aissue_`. Published handoffs retain these exact IDs even when their snapshot
 becomes historical.
+
+`command-center-tour-script-v1` contains a mode, model receipt, optional
+handoff ID, 1–12 stable steps, generation time, and degradation reasons. Every
+step includes a stable ID, target surface and region, bounded evidence IDs,
+plain-text narration, action, and optional pause reason.

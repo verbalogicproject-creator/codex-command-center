@@ -16,7 +16,7 @@ PLUGIN_SCRIPTS = (
 sys.path.insert(0, str(PLUGIN_SCRIPTS))
 
 from client import CommandCenterClient  # noqa: E402
-from hook import context_output  # noqa: E402
+from hook import context_output, handoff_directive  # noqa: E402
 from mcp_server import TOOLS, tool_schema, walk  # noqa: E402
 import architecture as plugin_architecture  # noqa: E402
 from aria_memory.mcp import TOOL_DEFINITIONS, tool_schema as http_tool_schema  # noqa: E402
@@ -183,7 +183,7 @@ def test_project_mcp_launcher_bootstraps_from_nested_directory():
     )
     response = json.loads(process.stdout)
     assert response["result"]["serverInfo"]["name"] == "codex-command-center"
-    assert response["result"]["serverInfo"]["version"] == "0.4.0"
+    assert response["result"]["serverInfo"]["version"] == "0.5.0"
 
 
 def test_plugin_defaults_to_one_stdio_transport_and_home_token_storage():
@@ -203,7 +203,7 @@ def test_plugin_defaults_to_one_stdio_transport_and_home_token_storage():
     manifest = json.loads(
         (plugin / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
     )
-    assert manifest["version"] == "0.4.0"
+    assert manifest["version"].split("+", 1)[0] == "0.5.0"
     assert manifest["license"] == "Apache-2.0"
 
     hook_commands = [
@@ -216,6 +216,23 @@ def test_plugin_defaults_to_one_stdio_transport_and_home_token_storage():
     ]
     assert hook_commands
     assert all(command.startswith("python3 ") for command in hook_commands)
+
+
+def test_exact_handoff_prompt_requires_visible_load_without_secret_fetch():
+    prompt = (
+        "/plan Load Command Center handoff hoff_abc123 "
+        "and interview me before editing."
+    )
+    directive = handoff_directive(prompt, "command-center", "codex-session")
+    assert directive is not None
+    assert "`load_handoff`" in directive
+    assert '"handoff_id":"hoff_abc123"' in directive
+    assert '"repository":"command-center"' in directive
+    assert "Do not secretly load" in directive
+    assert "`build_task_pack`" in directive
+    assert "activation ID" in directive
+    assert "Do not edit files" in directive
+    assert handoff_directive("Please load hoff_abc123", "command-center", None) is None
 
 
 def test_architecture_helper_discovers_manifest_from_nested_checkout():

@@ -9,9 +9,9 @@ ai_card:
   audience: [user, engineer, ai_agent, evaluator]
   status: implemented
   owner_area: Aria interface
-  main_files: [apps/web/components/AriaVoice.tsx, apps/web/lib/aria/commands.ts, services/memory/aria_memory/agent.py]
-  public_interfaces: ["/api/v1/realtime/token", "/api/v1/chat/stream", "architecture_brief SSE event"]
-  provides: [voice navigation guide, screenshot planning workflow, voice approval boundaries]
+  main_files: [apps/web/components/AriaVoice.tsx, apps/web/lib/aria/commands.ts, apps/web/lib/handoff-controller.ts, services/memory/aria_memory/agent.py]
+  public_interfaces: ["/api/v1/realtime/token", "/api/v1/chat/stream", "command-center-redesign-suggestion-v1", "command-center-tour-script-v1"]
+  provides: [voice navigation guide, controller-backed redesign workflow, evidence-aware Luna tour, voice approval boundaries]
   depends_on: [command-center.architecture-awareness, command-center.handoffs, command-center.byok]
   safe_edit_points: [typed browser command router, narration after visible UI completion]
   risk_areas: [voice implying external authority, exposing standard API keys]
@@ -59,11 +59,16 @@ operating system’s reduced-motion preference.
 | `run_recall` | Opens Recall and executes a query |
 | `set_deep_synthesis` | Enables or disables GPT-5.6 Sol in text Aria |
 | `open_context_packet` | Expands the latest bounded packet |
-| `start_guided_tour` and tour controls | Drives the five-step visual tour |
+| `start_redesign_session` | Opens and prefills Handoff Builder |
+| `prepare_redesign_handoff` | Analyzes the uploaded screenshot and creates the visible draft |
+| `select_handoff_capability` | Selects a currently visible trusted exact reference |
+| `edit_open_plan` | Bounded append, replace, remove, or reorder on the reversible draft |
+| `open_handoff_packet` | Expands the packet and returns its receipt summary |
+| `start_guided_tour` and tour controls | Drives overview or evidence-aware redesign mode |
 | `draft_memory_proposal` | Creates a persisted `pending` proposal |
 
 There is intentionally no `confirm_memory_write` voice command. Handoff
-publication is allowed only for the explicit phrase **Approve this handoff** and
+publication is allowed only for the exact phrase **Approve this handoff.** and
 only exposes the already visible bounded packet. It does not authorize code,
 installation, deployment, or another external action.
 
@@ -106,6 +111,10 @@ The browser displays repository, snapshot, revision, coverage, receipts,
 interfaces, safe edit points, risks, omissions, and degraded reasons beside the
 separately labelled durable ContextPack. Sol receives both bounded objects.
 Voice may explain or navigate this state but cannot run architecture sync.
+For frontend redesign intent, text Aria also emits
+`command-center-redesign-suggestion-v1`: repository identity, exact Taste
+version/hash, alternatives, selection reasons, architecture snapshot, evidence
+IDs, degradation state, and a **Prepare in Handoff Builder** action.
 
 This follows OpenAI’s current guidance to use WebRTC for browser Realtime
 sessions, keep transport separate from business logic, and return function
@@ -125,8 +134,16 @@ outputs before asking the model to continue:
 4. Sessions versus durable chronology.
 5. The human approval and audit boundary.
 
-The same Back, Next, and Stop actions are available as buttons. The tour does
-not require voice and remains useful when Realtime is unavailable.
+Redesign mode comes from `POST /api/v1/tours/script`. Luna uses
+`ARIA_TOUR_MODEL=gpt-5.6-luna`, `store:false`, the user's BYOK credential, and
+bounded receipts—never raw screenshot bytes. The validated seven-step script
+covers the problem, non-retention boundary, Taste choice, receipts, editable
+plan/interview boundary, publication, and Codex activation edge.
+
+Back, Next, Repeat, and Stop are available as 44-pixel button targets. Starting
+a tour minimizes without disconnecting voice, restores focus when stopped,
+respects reduced motion, and falls back to a deterministic evidence-bound
+script without BYOK or Realtime.
 
 ## Troubleshooting
 
@@ -170,7 +187,7 @@ Manual mobile smoke test:
 4. Say “open evidence fact cc zero seven,” then “close evidence.”
 5. Say “open the graph and fit active context.”
 6. Draft a proposal and verify it remains pending until a browser tap.
-7. Prepare a draft, say “Approve this handoff,” and verify the exact Codex
+7. Prepare a draft, say “Approve this handoff.” and verify the exact Codex
    command appears while durable memory remains unchanged.
 8. Interrupt Aria while she is speaking, then stop the session and verify the
    browser microphone indicator turns off.

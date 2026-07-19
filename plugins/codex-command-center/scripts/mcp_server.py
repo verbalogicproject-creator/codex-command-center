@@ -120,7 +120,7 @@ def main() -> None:
                 respond(identifier, {
                     "protocolVersion": "2025-06-18",
                     "capabilities": {"tools": {"listChanged": False}},
-                    "serverInfo": {"name": "codex-command-center", "version": "0.4.0"},
+                    "serverInfo": {"name": "codex-command-center", "version": "0.5.0"},
                     "instructions": (
                         "Load published handoffs before repository edits. Show injected "
                         "capability versions and evidence IDs, then interview the user. "

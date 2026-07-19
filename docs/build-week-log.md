@@ -132,3 +132,19 @@ MIT-licensed `Claude-ToolBox-Curriculum` sibling project.
 - Verified the Termux Google Cloud SDK, authenticated project, required API
   enablement, and `me-west1` service compatibility. Cloud Build remains the
   container gate because this Android environment has no local Docker engine.
+
+## 2026-07-19 — Taste workflow, voice tour, and plugin v0.5
+
+- Added deterministic `command-center-redesign-suggestion-v1` SSE events with
+  exact Taste version/hash, alternatives, architecture and evidence receipts.
+- Added migration 6 and `command-center-planning-receipt-v1`; Sol receives only
+  screenshot metadata/findings after analysis and falls back to a validated
+  deterministic Taste Open Plan.
+- Extracted the typed Handoff Controller used by buttons and Realtime voice.
+  Voice can prepare and revise the visible draft but only the exact phrase
+  **Approve this handoff.** may publish it.
+- Added `command-center-tour-script-v1` with optional BYOK Luna narration,
+  stable evidence-bound steps, explicit pauses, and deterministic fallback.
+- Advanced Codex Command Center to v0.5.0. The exact generated `/plan` command
+  now injects a directive requiring a visible `load_handoff` call and never
+  secretly loads or substitutes an ordinary task pack.

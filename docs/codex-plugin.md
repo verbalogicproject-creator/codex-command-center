@@ -10,7 +10,7 @@ ai_card:
   status: implemented
   owner_area: Codex integration
   main_files: [plugins/codex-command-center, .codex/config.toml]
-  public_interfaces: [Codex Command Center v0.4, SessionStart, UserPromptSubmit, "POST /mcp"]
+  public_interfaces: [Codex Command Center v0.5, SessionStart, UserPromptSubmit, "POST /mcp"]
   provides: [plugin installation and pairing, shared architecture hook contract, troubleshooting]
   depends_on: [command-center.architecture-awareness, command-center.api-mcp]
   safe_edit_points: [cache-busted local plugin updates, human-readable receipt rendering]
@@ -73,7 +73,7 @@ Workspace tokens use `~/.command-center/` by default and never a checkout path.
 
 ## Architecture awareness
 
-Version 0.4 discovers `.command-center/architecture.yaml` from nested working
+Version 0.5 discovers `.command-center/architecture.yaml` from nested working
 directories. The paired helper exposes:
 
 ```sh
@@ -110,6 +110,12 @@ Codex should:
 5. label screenshot findings as inferences;
 6. state safe edit points, risks, omissions, and degraded state;
 7. ask the first interview question before any file edit.
+8. wait for explicit design-direction confirmation and implementation-plan
+   approval before editing.
+
+The 0.5 `UserPromptSubmit` hook recognizes only that exact generated command.
+It does not load the handoff or substitute `build_task_pack`; it injects a
+concise directive requiring Codex to make the visible `load_handoff` MCP call.
 
 A repository mismatch is a hard failure. Create the handoff for the correct
 repository instead of weakening verification.
@@ -137,7 +143,7 @@ external-action, or memory-confirmation tool.
 | Hook | Model-visible or stored result |
 |---|---|
 | `SessionStart` | Hash-only drift check plus bounded boot brief |
-| `UserPromptSubmit` | `command-center-task-pack-v2` task brief and durable context |
+| `UserPromptSubmit` | Exact handoff command: visible-load directive; other prompts: task brief |
 | `PostToolUse` | Sanitized telemetry only |
 | `Stop` | Sanitized completion telemetry; optional pending proposal |
 
@@ -156,9 +162,10 @@ every turn. When enabled, it still creates only a pending proposal.
 The former public name was `command-center-memory`. Remove it, install
 `codex-command-center`, pair again, and start a new thread. The MCP server name
 changes to `codex-command-center`; `build_context_pack` becomes
-`build_task_pack`. Version 0.4 standardizes Linux, macOS, and Termux launchers
-on `python3`, preventing Codex startup from failing when no optional `python`
-alias is installed. It retains v0.3's removal of the old unfiltered context
+`build_task_pack`. Version 0.5 adds exact handoff detection, visible-load
+enforcement, and health checks for API/MCP/plugin compatibility, all ten tools,
+architecture, authentication, and handoff availability. It retains v0.4's
+Linux, macOS, and Termux `python3` launchers and v0.3's removal of the unfiltered
 fallback. Durable workspace data is not deleted. See
 [MIGRATION.md](../plugins/codex-command-center/MIGRATION.md).
 
