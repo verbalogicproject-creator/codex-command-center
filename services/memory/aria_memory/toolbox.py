@@ -23,6 +23,166 @@ from .store import uid
 
 INITIAL_CAPABILITIES: tuple[dict[str, Any], ...] = (
     {
+        "stable_id": "taste-frontend-redesign-interview",
+        "name": "Taste-guided frontend redesign interview",
+        "kind": "workflow",
+        "description": (
+            "Audit an existing interface, infer its design language, and conduct "
+            "an evidence-bound redesign interview before proposing repository changes."
+        ),
+        "triggers": [
+            "taste", "screenshot", "frontend redesign", "visual redesign",
+            "design system", "design audit", "design dials", "visual hierarchy",
+            "typography", "spacing", "motion", "responsive",
+        ],
+        "instructions": """
+Purpose
+
+Turn a screenshot and redesign request into an informed interview and bounded
+implementation plan. Do not edit code merely because this workflow was loaded.
+The repository evidence and approved handoff remain authoritative; screenshot
+observations and aesthetic judgments are inferences.
+
+1. Establish the evidence boundary
+
+- State the repository identity, architecture snapshot, capability version, and
+  cited evidence IDs received in the handoff.
+- Summarize declared framework, styling system, component boundaries, safe edit
+  points, risks, responsive rules, accessibility behavior, and interactions that
+  must be preserved.
+- Label every screenshot observation as an inference until repository evidence
+  confirms it.
+- If architecture is stale, missing, mismatched, or degraded, expose that state
+  and interview before planning around the gap. Never fall back to another
+  repository.
+
+2. Read the design brief before choosing an aesthetic
+
+Infer the surface type, audience, desired outcome, reference signals, existing
+brand assets, and quiet constraints such as accessibility, regulation,
+performance, or mobile use. Classify the work as targeted evolution, structural
+redesign, or greenfield. For an existing application, preserve its information
+architecture and operating model unless the user explicitly approves a change.
+
+Give a concise design read, then propose initial values from 1 to 10 for:
+
+- DESIGN_VARIANCE: predictable/symmetric to expressive/asymmetric;
+- MOTION_INTENSITY: static/subtle to cinematic/physics-driven;
+- VISUAL_DENSITY: gallery-airy to cockpit-dense.
+
+These are interview proposals, not hidden defaults. Explain what repository and
+screenshot evidence informed them.
+
+3. Begin the redesign interview
+
+Ask one focused question at a time. Cover only unresolved decisions:
+
+- What should users notice or accomplish first?
+- Which current flows, navigation, copy, brand elements, and interactions must
+  remain recognizable?
+- Is the goal a careful evolution or a more structural visual overhaul?
+- Which reference products or moods are desired, and which are explicitly
+  unwanted?
+- What variance, motion, and density levels feel correct?
+- Which viewports, browsers, assistive technologies, and reduced-motion
+  expectations define acceptance?
+- What loading, empty, error, focus, hover, active, and offline/degraded states
+  must be designed?
+- What measurable acceptance criteria will determine success?
+
+Do not dump every question at once. Use each answer to narrow the next question.
+Do not proceed to implementation until the user confirms the design direction
+and accepts the bounded plan.
+
+4. Audit the existing interface before recommending changes
+
+Inspect cited components and declarations, then assess:
+
+- typography hierarchy, readable line length, weights, tracking, wrapping, and
+  numeric alignment;
+- palette consistency, contrast, accent discipline, shadows, surfaces, and
+  theme behavior;
+- grid, containment, spacing rhythm, optical alignment, mobile collapse, touch
+  targets, and horizontal overflow;
+- semantic structure, focus order, keyboard behavior, visible focus, labels,
+  alternative text, and reduced motion;
+- hover, pressed, loading, empty, error, disabled, and current-location states;
+- copy specificity, real data boundaries, dead links, metadata, legal links,
+  analytics contracts, and SEO-sensitive routes;
+- animation purpose, cleanup, performance, and whether transforms/opacity can
+  express it without layout thrashing.
+
+Separate findings into preserve, improve, retire, and unresolved. Do not impose
+marketing-page conventions on dashboards or dense product surfaces. When a
+declared design system exists, work within it rather than mixing systems or
+recreating official components.
+
+5. Form the design contract
+
+After the interview, produce an editable contract containing:
+
+- the confirmed design read and three dial values;
+- hierarchy and primary user journey;
+- existing tokens and components to preserve;
+- proposed typography, color, spacing, radius, elevation, icon, and motion
+  rules;
+- responsive behavior at 375, 768, 1024, and 1440 pixels;
+- accessibility and reduced-motion requirements;
+- component/state inventory;
+- approved safe edit points and explicitly excluded areas;
+- repository evidence supporting each material claim;
+- screenshot-derived inferences that still require validation;
+- risks, verification steps, and acceptance criteria.
+
+Prefer targeted changes in this order: typography and hierarchy, spacing and
+rhythm, color calibration, interaction states, motion, then structural
+recomposition. Never silently change routes, navigation labels, form field
+contracts, analytics identifiers, legal copy, brand marks, or durable data
+semantics.
+
+6. Anti-default and quality guardrails
+
+- Do not default to purple/blue AI gradients, a centered hero, three equal
+  feature cards, glassmorphism everywhere, generic placeholder copy, or motion
+  without purpose.
+- Use one coherent palette, accent strategy, radius system, icon family, and
+  theme model unless declared evidence requires otherwise.
+- Verify dependencies before proposing imports. Do not install packages or
+  change the framework without explicit approval.
+- Use semantic HTML and existing project conventions. Avoid fake product UI,
+  invented evidence, hand-drawn replacement icons, dead controls, and
+  placeholder implementation.
+- Preserve contrast, keyboard access, at least 44-pixel touch targets, viewport
+  stability, and reduced-motion fallbacks.
+- Treat performance as part of design: protect LCP, INP, CLS, DOM cost, image
+  sizing, and animation cleanup.
+
+7. Plan and handoff
+
+Produce the smallest coherent implementation phases. For every phase cite the
+architecture evidence, list safe edit points and risks, name affected states and
+viewports, and define verification. Show omitted alternatives and why the
+selected direction won. End by asking the next informed interview question;
+do not edit files until the user approves the plan.
+""".strip(),
+        "repositories": ["*"],
+        "required_tools": [
+            "load_handoff", "get_evidence", "walk_dependencies",
+            "build_task_pack",
+        ],
+        "trust_status": "verified",
+        "provenance": (
+            "Provider-neutral adaptation of Taste Skill v2 experimental "
+            "(design-taste-frontend) and redesign-existing-projects by Leonxlnx, "
+            "MIT License, reviewed for Command Center's evidence and approval "
+            "boundaries on 2026-07-19. Source: "
+            "https://github.com/Leonxlnx/taste-skill. Source instruction SHA-256: "
+            "aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89; "
+            "redesign instruction SHA-256: "
+            "98ad3e5b051bfb71b2795f7e8a6aa0d32b51ee095606c098a4b2822ac07926c9."
+        ),
+    },
+    {
         "stable_id": "frontend-redesign-interview",
         "name": "Frontend redesign interview",
         "kind": "workflow",
@@ -116,13 +276,11 @@ AVAILABLE_MCP_TOOLS = [
 class Toolbox:
     def __init__(
         self, db: Database, context: ContextCompiler, deep_model: str,
-        openai_api_key: str | None = None,
         architecture: ArchitectureCompiler | None = None,
     ):
         self.db = db
         self.context = context
         self.deep_model = deep_model
-        self.openai_api_key = openai_api_key
         self.architecture = architecture
         self.seed()
 
@@ -134,11 +292,28 @@ class Toolbox:
         ).hexdigest()
 
     def seed(self) -> None:
-        with self.db.connect() as conn:
-            if conn.execute("SELECT 1 FROM capabilities LIMIT 1").fetchone():
-                return
         for item in INITIAL_CAPABILITIES:
-            self.create_capability(CapabilityInput(**item), allow_verified=True)
+            capability = CapabilityInput(**item)
+            content_hash = self._hash(capability)
+
+            def already_seeded() -> bool:
+                with self.db.connect() as conn:
+                    return bool(conn.execute(
+                        """SELECT 1 FROM capabilities
+                        WHERE stable_id=? AND content_hash=? LIMIT 1""",
+                        (capability.stable_id, content_hash),
+                    ).fetchone())
+
+            if already_seeded():
+                continue
+            try:
+                self.create_capability(capability, allow_verified=True)
+            except Exception:
+                # Concurrent cold starts can both observe a missing built-in.
+                # The primary key serializes the insert; the losing process may
+                # continue only when the exact reviewed content now exists.
+                if not already_seeded():
+                    raise
 
     @staticmethod
     def _capability(row: Any) -> Capability:
@@ -270,7 +445,9 @@ class Toolbox:
         ranked.sort(key=lambda item: item.score, reverse=True)
         return CapabilityRecommendations(items=ranked[:request.limit])
 
-    def analyze_screenshot(self, request: ScreenshotAnalyzeRequest) -> ScreenshotAnalysis:
+    def analyze_screenshot(
+        self, request: ScreenshotAnalyzeRequest, api_key: str | None = None,
+    ) -> ScreenshotAnalysis:
         try:
             raw = base64.b64decode(request.image_base64, validate=True)
         except ValueError as exc:
@@ -297,7 +474,7 @@ class Toolbox:
             f"The requested outcome is: {request.user_request[:400]}",
         ]
         degraded = True
-        if self.openai_api_key:
+        if api_key:
             try:
                 from openai import OpenAI
 
@@ -306,7 +483,7 @@ class Toolbox:
                 image_url = "data:image/jpeg;base64," + base64.b64encode(
                     output.getvalue()
                 ).decode()
-                response = OpenAI(api_key=self.openai_api_key).responses.create(
+                response = OpenAI(api_key=api_key).responses.create(
                     model=self.deep_model,
                     input=[{
                         "role": "user",

@@ -36,7 +36,7 @@ ai_card:
    activation receipts.
 9. Shared full architecture awareness for Aria and Codex: versioned snapshots,
    bounded ArchitectureBrief, explicit sync/health, immutable handoff receipts,
-   and Codex Command Center v0.3.
+   and Codex Command Center v0.4.
 10. SQLite and real PostgreSQL behavioral verification, including restart and
     historical architecture evidence.
 

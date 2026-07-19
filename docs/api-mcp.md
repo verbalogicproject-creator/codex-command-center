@@ -9,14 +9,14 @@ ai_card:
   audience: [engineer, integrator, ai_agent]
   status: implemented
   owner_area: API and MCP
-  main_files: [services/memory/aria_memory/app.py, services/memory/aria_memory/mcp.py, plugins/codex-command-center/scripts/mcp_server.py]
+  main_files: [services/memory/aria_memory/app.py, services/memory/aria_memory/mcp_app.py, services/memory/aria_memory/workspaces.py, services/memory/aria_memory/mcp.py, plugins/codex-command-center/scripts/mcp_server.py]
   public_interfaces: ["/api/v1", "POST /mcp", "command-center-task-pack-v2"]
   provides: [authenticated REST route inventory, MCP tool contract, transport parity reference]
-  depends_on: [command-center.architecture-awareness, command-center.security-privacy]
+  depends_on: [command-center.architecture-awareness, command-center.security-privacy, command-center.byok]
   safe_edit_points: [additive authenticated routes, shared MCP tool definitions]
   risk_areas: [stdio and HTTP schema drift, exposing write confirmation to models]
   graph_rag_entities: [FastAPI, MCP, CommandCenterClient]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 FastAPI publishes the complete OpenAPI document at `/openapi.json` and an
@@ -28,6 +28,7 @@ browser cookie or `X-Command-Center-Token`.
 | Group | Routes |
 |---|---|
 | Auth | `POST /api/v1/auth/demo`, `/auth/pair/start`, `/auth/pair`, `/auth/token/revoke` |
+| Provider credentials | `POST/DELETE /api/v1/provider-credentials/openai`, `GET /provider-credentials/openai/status` |
 | Capabilities | `GET/POST /api/v1/capabilities`, `GET /capabilities/{id}`, `POST /capabilities/recommend` |
 | Screenshots | `POST /api/v1/screenshots/analyze` |
 | Handoffs | `GET/POST /api/v1/handoffs`, `GET/PATCH /handoffs/{id}`, `POST /handoffs/{id}/publish`, `/revoke`, `/versions`, `POST /handoffs/load` |
@@ -43,6 +44,20 @@ Validation failures use:
 ```json
 {"error":{"code":"validation_error","message":"...","retryable":false}}
 ```
+
+Provider credential responses never contain the credential or its prefix:
+
+```json
+{
+  "provider": "openai",
+  "configured": true,
+  "expires_at": "2026-07-19T12:00:00Z",
+  "persistence": "encrypted_browser_session"
+}
+```
+
+The credential cookie is not an MCP authentication mechanism. Remote MCP
+continues to use only the revocable Command Center workspace token.
 
 ## Remote MCP
 

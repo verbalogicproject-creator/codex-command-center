@@ -56,6 +56,13 @@ export type Session = {
   turn_count: number;
 };
 
+export type ProviderCredentialStatus = {
+  provider: "openai";
+  configured: boolean;
+  expires_at?: string | null;
+  persistence: "encrypted_browser_session";
+};
+
 export type Proposal = {
   id: string;
   session_id?: string | null;

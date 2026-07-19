@@ -6,6 +6,9 @@ from pathlib import Path
 
 from PIL import Image
 
+from aria_memory.db import Database
+from aria_memory.toolbox import Toolbox
+
 ROOT = Path(__file__).resolve().parents[3]
 ARCHITECTURE_FIXTURE = (
     ROOT / "fixtures" / "demo" / "architecture" / "frontmatter-component.md"
@@ -21,6 +24,7 @@ def _png() -> str:
 def test_capabilities_are_seeded_versioned_and_trust_filtered(client):
     seeded = client.get("/api/v1/capabilities").json()["items"]
     assert {item["stable_id"] for item in seeded} >= {
+        "taste-frontend-redesign-interview",
         "frontend-redesign-interview",
         "mobile-accessibility-review",
         "graph-canvas-integration",
@@ -53,6 +57,99 @@ def test_capabilities_are_seeded_versioned_and_trust_filtered(client):
     })
     trusted = client.get("/api/v1/capabilities").json()["items"]
     assert "unsafe-review" not in {item["stable_id"] for item in trusted}
+
+
+def test_taste_capability_is_verified_recommended_and_injected(client):
+    capability = client.get(
+        "/api/v1/capabilities/taste-frontend-redesign-interview"
+    ).json()
+    assert capability["trust_status"] == "verified"
+    assert capability["kind"] == "workflow"
+    assert "Leonxlnx" in capability["provenance"]
+    assert "aa194351b246" in capability["provenance"]
+    assert "DESIGN_VARIANCE" in capability["instructions"]
+    assert "one focused question at a time" in capability["instructions"]
+
+    recommended = client.post("/api/v1/capabilities/recommend", json={
+        "request": (
+            "Use Taste and a screenshot to interview me about a frontend "
+            "redesign, design dials, typography, motion, and visual hierarchy."
+        ),
+        "repository": "Command Center",
+        "screenshot_findings": [
+            "The current interface may have weak visual hierarchy.",
+        ],
+    }).json()["items"]
+    assert recommended[0]["capability"]["stable_id"] == (
+        "taste-frontend-redesign-interview"
+    )
+
+    handoff = client.post("/api/v1/handoffs", json={
+        "repository": "Command Center",
+        "original_request": "Redesign the Command Center from this screenshot.",
+        "capability_refs": [
+            f"taste-frontend-redesign-interview@{capability['version']}",
+        ],
+        "open_plan": [
+            "Load the pinned architecture and screenshot inferences.",
+            "Interview before editing.",
+        ],
+        "token_budget": 3_000,
+    }).json()
+    assert client.post(
+        f"/api/v1/handoffs/{handoff['id']}/publish"
+    ).status_code == 200
+    loaded = client.post("/api/v1/handoffs/load", json={
+        "handoff_id": handoff["id"],
+        "repository": "Command Center",
+        "client_name": "Codex",
+        "session_id": "taste-redesign-session",
+    }).json()
+    workflow = loaded["workflow_instructions"][0]
+    assert workflow["capability_id"] == "taste-frontend-redesign-interview"
+    assert workflow["version"] == capability["version"]
+    assert workflow["content_hash"] == capability["content_hash"]
+    assert "Do not edit code merely because this workflow was loaded" in (
+        workflow["instructions"]
+    )
+
+    through_mcp = client.post("/mcp", json={
+        "jsonrpc": "2.0",
+        "id": 19,
+        "method": "tools/call",
+        "params": {
+            "name": "get_capability",
+            "arguments": {
+                "capability_id": "taste-frontend-redesign-interview",
+                "version": capability["version"],
+            },
+        },
+    }).json()["result"]["structuredContent"]
+    assert through_mcp["content_hash"] == capability["content_hash"]
+
+
+def test_new_verified_builtins_seed_existing_workspaces_idempotently(tmp_path):
+    database = Database(tmp_path / "capability-upgrade.db")
+    first = Toolbox(database, None, "offline")  # type: ignore[arg-type]
+    assert first.get_capability("frontend-redesign-interview") is not None
+    with database.transaction() as connection:
+        connection.execute(
+            "DELETE FROM capabilities WHERE stable_id=?",
+            ("taste-frontend-redesign-interview",),
+        )
+    assert first.get_capability("taste-frontend-redesign-interview") is None
+
+    second = Toolbox(database, None, "offline")  # type: ignore[arg-type]
+    seeded = second.get_capability("taste-frontend-redesign-interview")
+    assert seeded is not None
+    assert seeded.version == 1
+    Toolbox(database, None, "offline")  # type: ignore[arg-type]
+    with database.connect() as connection:
+        versions = connection.execute(
+            "SELECT COUNT(*) FROM capabilities WHERE stable_id=?",
+            ("taste-frontend-redesign-interview",),
+        ).fetchone()[0]
+    assert versions == 1
 
 
 def test_screenshot_is_validated_resized_and_not_retained(client):

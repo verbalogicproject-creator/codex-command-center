@@ -111,9 +111,9 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
 
 
 def create_provider(settings: Settings) -> EmbeddingProvider:
-    if settings.embedding_provider == "openai" and settings.openai_api_key:
+    if settings.embedding_provider == "openai" and settings.embedding_api_key:
         return OpenAIEmbeddingProvider(
-            settings.openai_api_key, settings.embedding_model,
+            settings.embedding_api_key, settings.embedding_model,
             settings.embedding_dimensions,
         )
     return HashEmbeddingProvider(settings.embedding_dimensions)

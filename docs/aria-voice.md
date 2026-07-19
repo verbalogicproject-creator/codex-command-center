@@ -12,11 +12,11 @@ ai_card:
   main_files: [apps/web/components/AriaVoice.tsx, apps/web/lib/aria/commands.ts, services/memory/aria_memory/agent.py]
   public_interfaces: ["/api/v1/realtime/token", "/api/v1/chat/stream", "architecture_brief SSE event"]
   provides: [voice navigation guide, screenshot planning workflow, voice approval boundaries]
-  depends_on: [command-center.architecture-awareness, command-center.handoffs]
+  depends_on: [command-center.architecture-awareness, command-center.handoffs, command-center.byok]
   safe_edit_points: [typed browser command router, narration after visible UI completion]
   risk_areas: [voice implying external authority, exposing standard API keys]
   graph_rag_entities: [Aria, OpenAI Realtime, GPT-5.6 Sol]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 Aria voice is an optional control layer for the existing Command Center
@@ -26,8 +26,9 @@ provider, tests, or a visible browser control.
 
 ## Start voice
 
-1. Configure `OPENAI_API_KEY` on the server. Never expose it through a
-   `NEXT_PUBLIC_` variable.
+1. Sign in and select **Connect OpenAI**. Paste your own API key into the
+   password field. The backend returns only an encrypted, HttpOnly,
+   browser-session envelope.
 2. Set optional `ARIA_REALTIME_MODEL` and `ARIA_REALTIME_VOICE` values. The
    defaults are `gpt-realtime-2.1` and `marin`.
 3. Open Command Center through HTTPS or `localhost`. Browsers require a secure
@@ -88,9 +89,10 @@ draft_memory_proposal ──► pending proposal ──► explicit browser tap
                                              durable memory
 ```
 
-The authenticated backend mints a short-lived Realtime client secret with a
-ten-minute maximum lifetime. The standard API key stays on the server. The
-browser uses the ephemeral secret only to establish the WebRTC call. A stable,
+The authenticated backend decrypts the workspace-bound BYOK envelope only long
+enough to mint a short-lived Realtime client secret with a ten-minute maximum
+lifetime. The standard API key is never returned to JavaScript. The browser
+uses the ephemeral secret only to establish the WebRTC call. A stable,
 privacy-preserving hash of the isolated workspace ID is sent as the OpenAI
 safety identifier.
 
@@ -128,10 +130,11 @@ not require voice and remains useful when Realtime is unavailable.
 
 ## Troubleshooting
 
-**Aria says an API key is required.**
+**Aria says a provider credential is required.**
 
-Set `OPENAI_API_KEY` in the server or Cloud Run secret environment. Reloading
-the frontend is not enough because the token endpoint runs in FastAPI.
+Select **Connect OpenAI** in the Command Center header and provide your own API
+key. If the session expired, reconnect it. Do not place the key in a repository,
+URL, `NEXT_PUBLIC_` variable, or Cloud Run environment variable.
 
 **The browser does not ask for microphone access.**
 

@@ -32,7 +32,7 @@ ai_card:
 - [ ] Confirm a proposal, reload, and inspect its audit entry.
 - [ ] Expand the injected context packet and open both a document and memory source.
 - [ ] Verify an attempted conflicting merge leaves a visible MUD refusal.
-- [x] Run `PYTHONPATH=services/memory python scripts/eval.py` and retain the
+- [x] Run `PYTHONPATH=services/memory python3 scripts/eval.py` and retain the
   falsification trace in `docs/eval-report.md`.
 - [x] Validate all ten Codex plugin MCP tools and four hooks; verify browser
   pairing creates a pending-only proposal.
@@ -43,7 +43,8 @@ ai_card:
 - [ ] Authenticate a second browser workspace and verify isolation.
 - [ ] Restart the Cloud Run revision and verify published handoffs remain
   available through Cloud SQL.
-- [ ] Run a live OpenAI retrieval/agent smoke test with explicit cost limits.
+- [ ] Connect a disposable user-owned test key through BYOK and run a live
+  Sol/Aria smoke test with explicit cost limits; verify no operator key exists.
 - [ ] On the HTTPS deployment, start Aria voice and verify navigation, scrolling,
   recall, graph focus, barge-in, transcript state, and microphone shutdown.
 - [ ] Draft a proposal by voice and verify there is no voice confirmation tool

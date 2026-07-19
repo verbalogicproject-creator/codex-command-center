@@ -132,9 +132,9 @@ The fleet declaration slots are:
 Architecture upload is never a model or hook side effect.
 
 ```sh
-python plugins/codex-command-center/scripts/architecture.py lint .
-python plugins/codex-command-center/scripts/architecture.py status .
-python plugins/codex-command-center/scripts/architecture.py sync .
+python3 plugins/codex-command-center/scripts/architecture.py lint .
+python3 plugins/codex-command-center/scripts/architecture.py status .
+python3 plugins/codex-command-center/scripts/architecture.py sync .
 ```
 
 - `lint` sends document bodies for stateless validation but does not persist.
@@ -188,7 +188,7 @@ into the draft. Publication makes it immutable. `load_handoff` verifies the
 active repository by registered ID, name, or alias and records a separate
 activation. A later sync affects new task packs but not the published packet.
 
-Codex Command Center v0.3 uses:
+Codex Command Center v0.4 uses:
 
 - SessionStart: local hash-only check plus boot ArchitectureBrief;
 - UserPromptSubmit: `command-center-task-pack-v2`, containing the task brief

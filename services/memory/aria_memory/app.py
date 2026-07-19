@@ -4,12 +4,9 @@ import hashlib
 import hmac
 import json
 import logging
-import re
-import secrets
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Annotated
 
 import httpx
@@ -19,9 +16,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from .agent import Aria
 from .architecture import (
-    ArchitectureCompiler,
     ArchitectureStore,
     build_architecture_health,
     parse_architecture_document,
@@ -39,10 +34,11 @@ from .architecture.models import (
     ArchitectureSyncResponse,
 )
 from .config import ROOT, Settings
-from .context import ContextCompiler
-from .db import Database
-from .documents import DeclaredDocumentStore
-from .embeddings import EmbeddingStore, create_provider
+from .credentials import (
+    OPENAI_CREDENTIAL_COOKIE,
+    ProviderCredential,
+    ProviderCredentialVault,
+)
 from .models import (
     AuditResponse, AuthResponse, Capability, CapabilityInput, CapabilityList,
     CapabilityRecommendationRequest, CapabilityRecommendations,
@@ -52,150 +48,15 @@ from .models import (
     Handoff, HandoffDraftRequest, HandoffList, HandoffLoadRequest, HandoffPacket,
     HandoffUpdateRequest, HookEventResponse, PairAuthRequest, PairStartResponse,
     Proposal, ProposalCreate, ScreenshotAnalysis, ScreenshotAnalyzeRequest,
+    ProviderCredentialSetRequest, ProviderCredentialStatus,
     ProposalList, RecallRequest, RecallResponse, Session,
     SessionCreate, SessionList, StatusResponse, SyncResponse, TimelineResponse,
     TurnList,
 )
 from .mcp import handle_rpc
-from .retrieval import Retriever
-from .store import AppStore
-from .toolbox import Toolbox
+from .workspaces import Workspace, Workspaces
 
 COOKIE_NAME = "cc3_workspace"
-
-
-class Workspace:
-    def __init__(self, workspace_id: str, db: Database, settings: Settings):
-        self.id = workspace_id
-        self.db = db
-        provider = create_provider(settings)
-        self.embeddings = EmbeddingStore(db, provider)
-        self.documents = DeclaredDocumentStore(db, provider)
-        self.documents.ingest_tree(settings.document_seed_path, ROOT)
-        self.architecture = ArchitectureStore(db)
-        self.architecture_compiler = ArchitectureCompiler(self.architecture)
-        self.store = AppStore(db)
-        self.retriever = Retriever(db, self.embeddings)
-        self.context = ContextCompiler(settings, self.retriever, self.documents)
-        self.toolbox = Toolbox(
-            db, self.context, settings.aria_deep_model, settings.openai_api_key,
-            self.architecture_compiler,
-        )
-        self.aria = Aria(
-            settings, db, self.store, self.retriever, self.context,
-            self.architecture_compiler,
-        )
-
-
-class Workspaces:
-    def __init__(self, settings: Settings):
-        self.settings = settings
-        self.items: dict[str, Workspace] = {}
-        if settings.cloud and not settings.database_url:
-            raise RuntimeError(
-                "Cloud mode requires DATABASE_URL; instance-local SQLite is not durable"
-            )
-        base = Path("/tmp/command-center-v3") if settings.cloud else settings.data_dir
-        self.directory = base / "workspaces"
-        self.directory.mkdir(parents=True, exist_ok=True)
-
-    def get(self, workspace_id: str) -> Workspace:
-        if workspace_id not in self.items:
-            if self.settings.database_url:
-                from .postgres import PostgresDatabase
-
-                db = PostgresDatabase(
-                    self.settings.database_url, workspace_id, self.settings.seed_path,
-                )
-            else:
-                db = Database(
-                    self.directory / f"{workspace_id}.db", self.settings.seed_path,
-                )
-            workspace = Workspace(workspace_id, db, self.settings)
-            if workspace.embeddings.status().pending:
-                workspace.embeddings.sync()
-            self.items[workspace_id] = workspace
-        return self.items[workspace_id]
-
-    def create_pair_code(self, workspace_id: str) -> str:
-        from .models import utc_now
-
-        code = f"{workspace_id}.{secrets.token_hex(8).upper()}"
-        expires = (
-            datetime.now(UTC) + timedelta(minutes=5)
-        ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        with self.get(workspace_id).db.transaction() as conn:
-            conn.execute(
-                "DELETE FROM pair_codes WHERE expires_at<=? OR consumed_at IS NOT NULL",
-                (utc_now(),),
-            )
-            conn.execute(
-                "INSERT INTO pair_codes VALUES(?,?,?,NULL)",
-                (self.token_hash(code), utc_now(), expires),
-            )
-        return code
-
-    def consume_pair_code(self, code: str) -> str | None:
-        from .models import utc_now
-
-        workspace_id, marker, _ = code.partition(".")
-        if not marker or not workspace_id.startswith("ws_"):
-            return None
-        workspace = self.get(workspace_id)
-        digest, now = self.token_hash(code), utc_now()
-        with workspace.db.transaction() as conn:
-            found = conn.execute(
-                """SELECT 1 FROM pair_codes WHERE code_hash=?
-                AND consumed_at IS NULL AND expires_at>?""", (digest, now),
-            ).fetchone()
-            if not found:
-                return None
-            conn.execute(
-                "UPDATE pair_codes SET consumed_at=? WHERE code_hash=?",
-                (now, digest),
-            )
-        return workspace_id
-
-    @staticmethod
-    def token_hash(token: str) -> str:
-        return hashlib.sha256(token.encode()).hexdigest()
-
-    def create_workspace_token(
-        self, workspace_id: str, label: str = "paired client",
-    ) -> tuple[str, str]:
-        from .models import utc_now
-
-        token_id = f"tok_{uuid.uuid4().hex[:16]}"
-        token = f"ccw_{workspace_id}." + secrets.token_urlsafe(32)
-        with self.get(workspace_id).db.transaction() as conn:
-            conn.execute(
-                "INSERT INTO workspace_tokens VALUES(?,?,?,?,NULL)",
-                (token_id, self.token_hash(token), label, utc_now()),
-            )
-        return token_id, token
-
-    def resolve_workspace_token(self, token: str | None) -> str | None:
-        if not token:
-            return None
-        digest = self.token_hash(token)
-        encoded_workspace = token.split(".", 1)[0].removeprefix("ccw_")
-        workspace_ids = (
-            {encoded_workspace}
-            if re.fullmatch(r"ws_[0-9a-f]{16}", encoded_workspace)
-            else set(self.items)
-        )
-        if not self.settings.database_url and not workspace_ids:
-            workspace_ids.update(path.stem for path in self.directory.glob("ws_*.db"))
-        for workspace_id in workspace_ids:
-            workspace = self.get(workspace_id)
-            with workspace.db.connect() as conn:
-                found = conn.execute(
-                    """SELECT 1 FROM workspace_tokens
-                    WHERE token_hash=? AND revoked_at IS NULL""", (digest,),
-                ).fetchone()
-            if found:
-                return workspace_id
-        return None
 
 
 def sign(workspace_id: str, secret: str) -> str:
@@ -212,7 +73,18 @@ def verify(value: str | None, secret: str) -> str | None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
+    if settings.cloud and not settings.provider_credential_secret:
+        raise RuntimeError(
+            "Cloud API mode requires a dedicated PROVIDER_CREDENTIAL_SECRET"
+        )
+    if settings.cloud and settings.cookie_secret == (
+        "local-development-secret-change-before-deploy"
+    ):
+        raise RuntimeError("Cloud API mode requires a production COOKIE_SECRET")
     workspaces = Workspaces(settings)
+    credential_vault = ProviderCredentialVault(
+        settings.credential_secret, settings.provider_credential_ttl_seconds,
+    )
     app = FastAPI(
         title="Command Center v3", version="0.1.0",
         responses={401: {"model": ErrorResponse}, 429: {"model": ErrorResponse}},
@@ -227,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
     app.state.settings = settings
     app.state.workspaces = workspaces
+    app.state.credential_vault = credential_vault
 
     @app.middleware("http")
     async def structured_request_log(request: Request, call_next):
@@ -255,6 +128,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not workspace_id:
             raise HTTPException(401, detail={"code": "unauthorized", "message": "Sign in required"})
         return workspaces.get(workspace_id)
+
+    def openai_credential(
+        workspace: Workspace = Depends(current_workspace),
+        credential_token: Annotated[
+            str | None, Cookie(alias=OPENAI_CREDENTIAL_COOKIE)
+        ] = None,
+    ) -> ProviderCredential | None:
+        return credential_vault.open(credential_token, workspace.id)
 
     def limited(workspace: Workspace, category: str, maximum: int) -> None:
         cutoff = (
@@ -331,6 +212,67 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             workspace_token=workspace_token, token_id=token_id,
         )
 
+    @app.post(
+        "/api/v1/provider-credentials/openai",
+        response_model=ProviderCredentialStatus,
+    )
+    def set_openai_credential(
+        body: ProviderCredentialSetRequest,
+        response: Response,
+        workspace: Workspace = Depends(current_workspace),
+    ) -> ProviderCredentialStatus:
+        api_key = body.api_key.get_secret_value()
+        if api_key.strip() != api_key or any(character.isspace() for character in api_key):
+            raise HTTPException(422, detail={
+                "code": "invalid_provider_credential",
+                "message": "The OpenAI API key cannot contain whitespace.",
+            })
+        token, credential = credential_vault.seal(workspace.id, api_key)
+        response.set_cookie(
+            OPENAI_CREDENTIAL_COOKIE,
+            token,
+            httponly=True,
+            secure=settings.cloud,
+            samesite="lax",
+            path="/api/v1",
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return ProviderCredentialStatus(
+            configured=True, expires_at=credential.expires_at,
+        )
+
+    @app.get(
+        "/api/v1/provider-credentials/openai/status",
+        response_model=ProviderCredentialStatus,
+    )
+    def openai_credential_status(
+        response: Response,
+        credential: ProviderCredential | None = Depends(openai_credential),
+    ) -> ProviderCredentialStatus:
+        response.headers["Cache-Control"] = "no-store"
+        return ProviderCredentialStatus(
+            configured=credential is not None,
+            expires_at=credential.expires_at if credential else None,
+        )
+
+    @app.delete(
+        "/api/v1/provider-credentials/openai",
+        response_model=ProviderCredentialStatus,
+    )
+    def clear_openai_credential(
+        response: Response,
+        _: Workspace = Depends(current_workspace),
+    ) -> ProviderCredentialStatus:
+        response.delete_cookie(
+            OPENAI_CREDENTIAL_COOKIE,
+            httponly=True,
+            secure=settings.cloud,
+            samesite="lax",
+            path="/api/v1",
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return ProviderCredentialStatus(configured=False)
+
     @app.get("/api/v1/capabilities", response_model=CapabilityList)
     def capabilities(
         query: str = "", kind: str | None = None, repository: str | None = None,
@@ -371,10 +313,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def analyze_screenshot(
         body: ScreenshotAnalyzeRequest,
         workspace: Workspace = Depends(current_workspace),
+        credential: ProviderCredential | None = Depends(openai_credential),
     ) -> ScreenshotAnalysis:
         limited(workspace, "screenshot", 40)
         try:
-            return workspace.toolbox.analyze_screenshot(body)
+            return workspace.toolbox.analyze_screenshot(
+                body, credential.api_key if credential else None,
+            )
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
 
@@ -487,7 +432,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         })
 
     @app.get("/api/v1/status", response_model=StatusResponse)
-    def status(workspace: Workspace = Depends(current_workspace)) -> StatusResponse:
+    def status(
+        workspace: Workspace = Depends(current_workspace),
+        credential: ProviderCredential | None = Depends(openai_credential),
+    ) -> StatusResponse:
         embedding = workspace.embeddings.status()
         with workspace.db.connect() as conn:
             pending = conn.execute(
@@ -498,9 +446,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             sessions=workspace.db.count("sessions"),
             proposals_pending=pending, embeddings=embedding,
             aria_model=settings.aria_model, deep_model=settings.aria_deep_model,
+            provider_credential_configured=credential is not None,
             degraded=(
                 embedding.degraded or workspace.documents.degraded
-                or not bool(settings.openai_api_key)
+                or credential is None
             ),
         )
 
@@ -663,12 +612,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/v1/realtime/token")
     async def realtime_token(
         workspace: Workspace = Depends(current_workspace),
+        credential: ProviderCredential | None = Depends(openai_credential),
     ):
         """Mint a short-lived browser token without exposing the standard API key."""
-        if not settings.openai_api_key:
-            raise HTTPException(503, detail={
-                "code": "voice_unavailable",
-                "message": "Aria voice needs an OpenAI API key on the server.",
+        if not credential:
+            raise HTTPException(428, detail={
+                "code": "provider_credential_required",
+                "message": "Connect your OpenAI API key to start Aria voice.",
             })
         limited(workspace, "voice", settings.max_voice_sessions)
         safety_id = hashlib.sha256(workspace.id.encode()).hexdigest()[:64]
@@ -701,7 +651,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 upstream = await client.post(
                     "https://api.openai.com/v1/realtime/client_secrets",
                     headers={
-                        "Authorization": f"Bearer {settings.openai_api_key}",
+                        "Authorization": f"Bearer {credential.api_key}",
                         "Content-Type": "application/json",
                         "OpenAI-Safety-Identifier": safety_id,
                     },
@@ -713,6 +663,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "message": "Could not reach the realtime voice service.",
                 "retryable": True,
             }) from exc
+        if upstream.status_code in {401, 403}:
+            raise HTTPException(401, detail={
+                "code": "provider_credential_rejected",
+                "message": "OpenAI rejected the connected API key.",
+                "retryable": False,
+            })
         if upstream.status_code != 200:
             raise HTTPException(502, detail={
                 "code": "voice_session_failed",
@@ -931,14 +887,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/chat/stream")
     async def chat(body: ChatRequest,
-                   workspace: Workspace = Depends(current_workspace)):
+                   workspace: Workspace = Depends(current_workspace),
+                   credential: ProviderCredential | None = Depends(openai_credential)):
         if not workspace.store.session_exists(body.session_id):
             raise HTTPException(404, "session not found")
         limited(workspace, "aria", settings.max_aria_turns)
 
         async def event_stream():
             try:
-                for event in await workspace.aria.run(body):
+                for event in await workspace.aria.run(
+                    body, credential.api_key if credential else None,
+                ):
                     yield f"event: {event['type']}\ndata: {json.dumps(event['data'])}\n\n"
             except Exception as exc:
                 error = {"code": "chat_failed", "message": str(exc), "retryable": False}

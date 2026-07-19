@@ -1,6 +1,6 @@
 [mcp_servers.codex-command-center]
 command = "sh"
-args = ["-c", "root=\"$(git rev-parse --show-toplevel)\"; exec python \"$root/plugins/codex-command-center/scripts/mcp_server.py\""]
+args = ["-c", "root=\"$(git rev-parse --show-toplevel)\"; exec python3 \"$root/plugins/codex-command-center/scripts/mcp_server.py\""]
 enabled = true
 required = true
 startup_timeout_sec = 15

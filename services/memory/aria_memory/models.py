@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class ErrorDetail(BaseModel):
@@ -34,6 +34,17 @@ class PairAuthRequest(BaseModel):
 class PairStartResponse(BaseModel):
     code: str
     expires_in_seconds: int
+
+
+class ProviderCredentialSetRequest(BaseModel):
+    api_key: SecretStr = Field(min_length=20, max_length=512)
+
+
+class ProviderCredentialStatus(BaseModel):
+    provider: Literal["openai"] = "openai"
+    configured: bool
+    expires_at: str | None = None
+    persistence: Literal["encrypted_browser_session"] = "encrypted_browser_session"
 
 
 CapabilityKind = Literal[
@@ -304,6 +315,7 @@ class StatusResponse(BaseModel):
     embeddings: EmbeddingStatus
     aria_model: str
     deep_model: str
+    provider_credential_configured: bool = False
     degraded: bool
 
 

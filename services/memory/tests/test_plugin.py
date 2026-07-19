@@ -191,6 +191,7 @@ def test_plugin_defaults_to_one_stdio_transport_and_home_token_storage():
     assert list(mcp["mcpServers"]) == ["codex-command-center"]
     server = mcp["mcpServers"]["codex-command-center"]
     assert server["type"] == "stdio"
+    assert server["command"] == "python3"
     assert "env" not in server
 
     hooks = json.loads((ROOT / ".codex" / "hooks.json").read_text(encoding="utf-8"))
@@ -201,8 +202,19 @@ def test_plugin_defaults_to_one_stdio_transport_and_home_token_storage():
     manifest = json.loads(
         (plugin / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
     )
-    assert manifest["version"] == "0.3.0"
+    assert manifest["version"] == "0.4.0"
     assert manifest["license"] == "Apache-2.0"
+
+    hook_commands = [
+        item["command"]
+        for event in json.loads(
+            (plugin / "hooks" / "hooks.json").read_text(encoding="utf-8")
+        )["hooks"].values()
+        for matcher in event
+        for item in matcher["hooks"]
+    ]
+    assert hook_commands
+    assert all(command.startswith("python3 ") for command in hook_commands)
 
 
 def test_architecture_helper_discovers_manifest_from_nested_checkout():

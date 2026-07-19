@@ -30,8 +30,16 @@ class Settings:
     cookie_secret: str = field(default_factory=lambda: os.getenv(
         "COOKIE_SECRET", "local-development-secret-change-before-deploy"
     ))
-    openai_api_key: str | None = field(
-        default_factory=lambda: os.getenv("OPENAI_API_KEY")
+    provider_credential_secret: str | None = field(
+        default_factory=lambda: os.getenv("PROVIDER_CREDENTIAL_SECRET")
+    )
+    provider_credential_ttl_seconds: int = field(
+        default_factory=lambda: int(os.getenv(
+            "PROVIDER_CREDENTIAL_TTL_SECONDS", "3600"
+        ))
+    )
+    embedding_api_key: str | None = field(
+        default_factory=lambda: os.getenv("EMBEDDING_API_KEY")
     )
     aria_model: str = field(
         default_factory=lambda: os.getenv("ARIA_MODEL", "gpt-5.6-terra")
@@ -67,3 +75,7 @@ class Settings:
     @property
     def cloud(self) -> bool:
         return self.app_env == "cloud"
+
+    @property
+    def credential_secret(self) -> str:
+        return self.provider_credential_secret or self.cookie_secret

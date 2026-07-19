@@ -90,7 +90,7 @@ def main() -> None:
         }
 
         settings = Settings(
-            data_dir=Path(directory), openai_api_key=None, embedding_provider="hash",
+            data_dir=Path(directory), embedding_api_key=None, embedding_provider="hash",
         )
         compiler = ContextCompiler(settings, retriever, documents)
         full_corpus_tokens = sum(

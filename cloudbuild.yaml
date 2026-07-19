@@ -19,7 +19,7 @@ steps:
       - --timeout=120
       - --allow-unauthenticated
       - --set-env-vars=APP_ENV=cloud
-      - --set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest,DEMO_ACCESS_CODE=DEMO_ACCESS_CODE:latest,COOKIE_SECRET=COOKIE_SECRET:latest,DATABASE_URL=COMMAND_CENTER_DATABASE_URL:latest
+      - --set-secrets=PROVIDER_CREDENTIAL_SECRET=PROVIDER_CREDENTIAL_SECRET:latest,DEMO_ACCESS_CODE=DEMO_ACCESS_CODE:latest,COOKIE_SECRET=COOKIE_SECRET:latest,DATABASE_URL=COMMAND_CENTER_DATABASE_URL:latest
 substitutions:
   _REGION: us-central1
   _REPOSITORY: command-center

@@ -79,7 +79,7 @@ dimensions:
   mismatch, and unresolved relationships. The plugin bundle validates and the
   full Python suite passed 79 tests at that boundary.
 - 2026-07-18: Phases 4 and 5 completed. One bounded ArchitectureBrief now feeds
-  Aria SSE, handoffs, HTTP/stdio MCP, and Codex Command Center v0.3. Published
+  Aria SSE, handoffs, HTTP/stdio MCP, and Codex Command Center v0.4. Published
   handoffs retain their original snapshot and evidence after a later sync.
   Registered aliases pass the repository guard; unknown repositories never
   trigger unfiltered fallback. The plugin uses hash-only SessionStart checks,

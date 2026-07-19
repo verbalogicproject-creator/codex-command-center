@@ -94,7 +94,7 @@ createdb -h 127.0.0.1 -p 5433 -U postgres command_center_test
 On Termux, the pure-Python psycopg wheel can live in a temporary target:
 
 ```sh
-python -m pip install \
+python3 -m pip install \
   --target "$PREFIX/tmp/command-center-psycopg" \
   'psycopg>=3.2,<4'
 ```

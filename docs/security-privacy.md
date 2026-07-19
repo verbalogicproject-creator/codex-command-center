@@ -12,11 +12,11 @@ ai_card:
   main_files: [services/memory/aria_memory/app.py, services/memory/aria_memory/store.py, plugins/codex-command-center/scripts/client.py]
   public_interfaces: [browser confirmation, workspace token, pending memory proposal]
   provides: [authentication data classes approval matrix and threat checks]
-  depends_on: [command-center.architecture-awareness, command-center.handoffs]
+  depends_on: [command-center.architecture-awareness, command-center.handoffs, command-center.byok]
   safe_edit_points: [additive restrictive validation, hashed token storage]
   risk_areas: [secret leakage, cross-repository context, model-confirmed durable writes]
   graph_rag_entities: [WorkspaceToken, PendingProposal, ApprovalBoundary]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 ## Authentication
@@ -46,11 +46,16 @@ logs. Revocation sets a timestamp and immediately prevents token authentication.
 | Hook telemetry | Separate bounded telemetry table |
 | Pairing code | Client sees it once; server stores hash, expiry, and consumption |
 | Workspace token | Client filesystem; server stores hash only |
+| User OpenAI API key | Authenticated encrypted browser-session cookie; never database storage |
+| Realtime client secret | Browser memory for one short-lived voice connection |
 
 OpenAI Responses requests use bounded selected evidence, a stable hashed safety
 identifier, and `store: false` in the Aria agent path. Screenshot analysis sends
-the validated, resized image only when an API key is configured. Failure falls
-back to visibly degraded local findings.
+the validated, resized image only when that workspace has an active BYOK
+credential. Failure falls back to visibly degraded local findings. The
+encrypted credential cookie is bound to one workspace, scoped to `/api/v1`,
+authenticated against tampering, cryptographically expired, unreadable by
+browser JavaScript, and removable immediately.
 
 ## Approval matrix
 
@@ -97,5 +102,8 @@ proposal-draft switch. Run `scripts/security-scan.sh` before release.
 - later syncs do not change evidence pinned by a published handoff;
 - revoked handoffs cannot load;
 - unsupported screenshot MIME or corrupt bytes return 422;
+- provider credentials cannot cross workspaces, survive cryptographic expiry,
+  appear in API responses, or enter SQLite/PostgreSQL;
+- a configured administrative embedding key cannot fund public Aria or voice;
 - arbitrary hook detail is dropped;
 - Codex cannot confirm a memory write.

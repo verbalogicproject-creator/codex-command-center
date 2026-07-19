@@ -23,14 +23,23 @@ def test_status_reports_seed_and_embeddings(client):
     assert body["degraded"] is True  # no live OpenAI key
 
 
-def test_voice_token_requires_server_key(client):
+def test_voice_token_requires_user_owned_session_credential(client):
     result = client.post("/api/v1/realtime/token")
-    assert result.status_code == 503
-    assert result.json()["error"]["code"] == "voice_unavailable"
+    assert result.status_code == 428
+    assert result.json()["error"]["code"] == "provider_credential_required"
 
 
-def test_voice_token_uses_short_lived_server_minted_secret(settings, monkeypatch):
-    configured = settings.__class__(**{**settings.__dict__, "openai_api_key": "server-secret"})
+def test_operator_key_is_not_used_for_public_voice(settings):
+    configured = settings.__class__(**{
+        **settings.__dict__, "embedding_api_key": "operator-key-must-not-be-used",
+    })
+    client = TestClient(create_app(configured))
+    client.post("/api/v1/auth/demo", json={"code": "test-code"})
+    result = client.post("/api/v1/realtime/token")
+    assert result.status_code == 428
+
+
+def test_voice_token_uses_byok_to_mint_short_lived_secret(settings, monkeypatch):
     captured = {}
 
     class Upstream:
@@ -55,13 +64,19 @@ def test_voice_token_uses_short_lived_server_minted_secret(settings, monkeypatch
             return Upstream()
 
     monkeypatch.setattr("aria_memory.app.httpx.AsyncClient", FakeAsyncClient)
-    client = TestClient(create_app(configured))
+    client = TestClient(create_app(settings))
     client.post("/api/v1/auth/demo", json={"code": "test-code"})
+    connected = client.post("/api/v1/provider-credentials/openai", json={
+        "api_key": "test-user-owned-test-credential",
+    })
+    assert connected.status_code == 200
     result = client.post("/api/v1/realtime/token")
     assert result.status_code == 200
     assert result.json()["value"] == "ek_test"
     assert captured["url"].endswith("/realtime/client_secrets")
-    assert captured["headers"]["Authorization"] == "Bearer server-secret"
+    assert captured["headers"]["Authorization"] == (
+        "Bearer test-user-owned-test-credential"
+    )
     assert captured["json"]["expires_after"]["seconds"] == 600
     assert "confirm" not in captured["json"]["session"].get("tools", [])
 

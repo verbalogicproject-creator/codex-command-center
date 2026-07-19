@@ -30,3 +30,16 @@ well-known-route, cold-start smoke-test, and deployment-checklist patterns were
 adapted from the author's MIT-licensed `Claude-ToolBox-Curriculum` sibling
 project. No upstream credentials, deployment state, or proprietary content is
 included.
+
+## Taste Skill
+
+The `taste-frontend-redesign-interview` capability is a bounded,
+provider-neutral adaptation of `design-taste-frontend` v2 experimental and
+`redesign-existing-projects` from
+[`Leonxlnx/taste-skill`](https://github.com/Leonxlnx/taste-skill).
+
+Taste Skill is Copyright (c) 2026 Leonxlnx and is used under the MIT License.
+The retained terms are in
+[`services/memory/TASTE_SKILL_LICENSE`](services/memory/TASTE_SKILL_LICENSE).
+Command Center stores reviewed instructions and provenance only; it does not
+dynamically install or distribute the source project's scripts.

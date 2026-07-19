@@ -13,6 +13,9 @@ New handoff tools are `search_capabilities`, `recommend_capabilities`,
 `get_capability`, and `load_handoff`.
 
 Version 0.3 adds the shared `command-center-architecture-brief-v1` contract.
+Version 0.4 changes MCP, hook, and helper launchers from the optional `python`
+alias to `python3`, fixing Linux installations where Codex otherwise receives a
+broken pipe during required MCP startup.
 SessionStart now checks local hashes without uploading documents and injects a
 boot brief. UserPromptSubmit uses `command-center-task-pack-v2`. The previous
 unfiltered context fallback was removed: a checkout must match a registered

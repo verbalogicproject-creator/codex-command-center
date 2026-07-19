@@ -5,13 +5,14 @@ import {
 } from "react";
 import {
   Activity, Archive, BrainCircuit, Boxes, Check, CircleHelp, Clock3, Command,
-  GitBranch, Menu, Link2, MessageSquareText, Plus, Search, Send, ShieldCheck,
+  GitBranch, KeyRound, Menu, Link2, MessageSquareText, Plus, Search, Send, ShieldCheck,
   Sparkles, Upload, Workflow, X,
 } from "lucide-react";
 import {api, apiUrl, readSSE} from "@/lib/api";
 import type {
   ArchitectureBrief, Audit, Capability, ContextPack, DeclaredDocument, GraphData,
-  Handoff, Memory, Proposal, RecallHit, ScreenshotAnalysis, Session, Trace,
+  Handoff, Memory, Proposal, ProviderCredentialStatus, RecallHit,
+  ScreenshotAnalysis, Session, Trace,
 } from "@/lib/types";
 import {MemoryGraph} from "@/components/MemoryGraph";
 import {InfiniteDock} from "@/components/InfiniteDock";
@@ -77,6 +78,9 @@ export default function Page() {
   const [railOpen, setRailOpen] = useState(false);
   const [pairCode, setPairCode] = useState("");
   const [pairError, setPairError] = useState("");
+  const [credentialPanel, setCredentialPanel] = useState(false);
+  const [providerCredential, setProviderCredential] =
+    useState<ProviderCredentialStatus | null>(null);
   const [tourStep, setTourStep] = useState<number | null>(null);
   const tourStepRef = useRef<number | null>(null);
 
@@ -84,13 +88,17 @@ export default function Page() {
     try {
       await api("/api/v1/status");
       setAuthenticated(true);
-      const [sessionData, timeData, auditData, graphData, capabilityData, handoffData] = await Promise.all([
+      const [
+        sessionData, timeData, auditData, graphData, capabilityData, handoffData,
+        credentialData,
+      ] = await Promise.all([
         api<{items: Session[]}>("/api/v1/sessions"),
         api<{items: Memory[]}>("/api/v1/timeline?limit=120"),
         api<{items: Audit[]}>("/api/v1/audit"),
         api<GraphData>("/api/v1/graph"),
         api<{items: Capability[]}>("/api/v1/capabilities"),
         api<{items: Handoff[]}>("/api/v1/handoffs"),
+        api<ProviderCredentialStatus>("/api/v1/provider-credentials/openai/status"),
       ]);
       setSessions(sessionData.items);
       setTimeline(timeData.items);
@@ -98,6 +106,7 @@ export default function Page() {
       setGraph(graphData);
       setCapabilities(capabilityData.items);
       setHandoffs(handoffData.items);
+      setProviderCredential(credentialData);
       const activeDraft = handoffData.items.find((item) => item.status === "draft");
       if (activeDraft) setActiveHandoffId(activeDraft.id);
       if (!activeSession && sessionData.items[0]) setActiveSession(sessionData.items[0].id);
@@ -365,6 +374,14 @@ export default function Page() {
         <button className="pair-trigger" onClick={() => void startPairing()}>
           <Link2 size={14} /><span>Pair Codex</span>
         </button>
+        <button
+          className={`credential-trigger ${providerCredential?.configured ? "connected" : ""}`}
+          onClick={() => setCredentialPanel(true)}
+          aria-label={providerCredential?.configured ? "Manage OpenAI key" : "Connect OpenAI key"}
+        >
+          <KeyRound size={14} />
+          <span>{providerCredential?.configured ? "OpenAI ready" : "Connect OpenAI"}</span>
+        </button>
         <button className="tour-trigger" onClick={() =>
           void voiceCommand({name: "start_guided_tour", arguments: {}})
         }>
@@ -445,6 +462,11 @@ export default function Page() {
           <small>Set it as COMMAND_CENTER_PAIR_CODE before the plugin’s first call.</small>
         </>}
       </aside>}
+      {credentialPanel && <ProviderCredentialPanel
+        status={providerCredential}
+        onStatus={setProviderCredential}
+        onClose={() => setCredentialPanel(false)}
+      />}
     </main>
   );
 }
@@ -478,6 +500,96 @@ function Login({onSuccess}: {onSuccess: () => void}) {
       <small>Each demo browser receives an isolated workspace.</small>
     </section>
   </main>;
+}
+
+function ProviderCredentialPanel({
+  status, onStatus, onClose,
+}: {
+  status: ProviderCredentialStatus | null;
+  onStatus: (status: ProviderCredentialStatus) => void;
+  onClose: () => void;
+}) {
+  const [apiKey, setApiKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function connect(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api<ProviderCredentialStatus>(
+        "/api/v1/provider-credentials/openai",
+        {method: "POST", body: JSON.stringify({api_key: apiKey})},
+      );
+      setApiKey("");
+      onStatus(result);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not connect the key.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disconnect() {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api<ProviderCredentialStatus>(
+        "/api/v1/provider-credentials/openai", {method: "DELETE"},
+      );
+      setApiKey("");
+      onStatus(result);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not remove the key.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <aside className="credential-panel" aria-label="OpenAI credential">
+    <button className="icon-button" onClick={onClose} aria-label="Close credential panel">
+      <X />
+    </button>
+    <span><KeyRound /> BRING YOUR OWN KEY</span>
+    <h2>{status?.configured ? "OpenAI is connected" : "Connect OpenAI"}</h2>
+    <p>
+      Your key powers Sol and Aria for this workspace. It is encrypted in an
+      expiring browser-session cookie and is never saved to Command Center memory.
+    </p>
+    {status?.configured ? <>
+      <div className="credential-receipt">
+        <Check />
+        <div><strong>Session credential active</strong>
+          <small>{status.expires_at
+            ? `Cryptographic expiry: ${new Date(status.expires_at).toLocaleString()}`
+            : "Expires with this browser session"}</small></div>
+      </div>
+      <button className="credential-remove" disabled={busy} onClick={() => void disconnect()}>
+        Remove key now
+      </button>
+    </> : <form onSubmit={connect}>
+      <label>OpenAI API key
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(event) => setApiKey(event.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="sk-…"
+          minLength={20}
+          maxLength={512}
+          required
+          autoFocus
+        />
+      </label>
+      <button type="submit" disabled={busy || apiKey.length < 20}>
+        {busy ? "Connecting…" : "Connect for this session"}
+      </button>
+    </form>}
+    {error && <p className="form-error">{error}</p>}
+    <small>The key never enters handoffs, MCP packets, repositories, logs, SQLite, or PostgreSQL.</small>
+  </aside>;
 }
 
 function SurfaceTitle({eyebrow, title, note}: {eyebrow: string; title: string; note: string}) {

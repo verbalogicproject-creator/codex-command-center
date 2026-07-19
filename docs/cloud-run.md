@@ -16,20 +16,25 @@ ai_card:
   safe_edit_points: [Cloud Build substitutions, Secret Manager bindings, bounded scaling]
   risk_areas: [deploying without PostgreSQL, leaking secrets, unverified project identity]
   graph_rag_entities: [Cloud Run, Cloud SQL, Secret Manager, Cloud Build]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
-The deployment target is one combined static web, REST API, and stateless
-Streamable HTTP MCP service on Cloud Run. Google Cloud is only the hosting
-layer; Command Center does not expose GCP administration tools.
+The proven baseline is one combined static web, REST API, and stateless
+Streamable HTTP MCP service. The production target now separates web, API, and
+MCP into three Cloud Run services while retaining shared handlers and one Cloud
+SQL data plane. See the
+[three-service deployment topology](deployment-topology.md). Google Cloud is
+only the hosting layer; Command Center does not expose GCP administration tools.
+The initial shared region is `me-west1` (Tel Aviv).
 
 ## Resources
 
 - Artifact Registry repository for immutable images;
-- Cloud Run service `codex-command-center`;
+- Cloud Run services `command-center-web`, `command-center-api`, and
+  `command-center-mcp`;
 - Cloud SQL PostgreSQL instance for mutable hosted workspaces;
-- Secret Manager versions for `OPENAI_API_KEY`, `DEMO_ACCESS_CODE`,
-  `COOKIE_SECRET`, `DATABASE_URL`, and signing credentials;
+- Secret Manager versions for production access policy, `COOKIE_SECRET`,
+  BYOK-envelope encryption, `DATABASE_URL`, and signing credentials;
 - least-privilege runtime service account;
 - Cloud Build service account with build, push, deploy, service-account-user,
   and secret-binding permissions;
@@ -42,18 +47,24 @@ SQLite as durable production storage. The service refuses to start in
 ## Build
 
 Submit from repository root so both Node and Python build stages see their
-required files:
+required files. The three-service build creates immutable web, API, and MCP
+images but performs no deployment or database migration:
 
 ```sh
-gcloud builds submit --config cloudbuild.yaml \
-  --substitutions=_REGION=us-central1,_REPOSITORY=command-center,\
-_CLOUD_SQL_INSTANCE="$PROJECT_ID:us-central1:command-center",\
-_RUNTIME_SERVICE_ACCOUNT="command-center-runtime@$PROJECT_ID.iam.gserviceaccount.com"
+gcloud builds submit --config cloudbuild.three-service.yaml \
+  --substitutions=_REGION=me-west1,_REPOSITORY=command-center,\
+_IMAGE_TAG="$(git rev-parse HEAD)"
 ```
 
-The container reads Cloud Run’s `PORT`, binds `0.0.0.0`, serves the static export
-and API from one origin, and keeps MCP requests independent of process-local
-session state. Min instances may remain zero.
+The combined `cloudbuild.yaml` remains a rollback-path declaration and is not
+the primary production build. Every container reads Cloud Run’s `PORT` and
+binds `0.0.0.0`; MCP requests remain independent of process-local session
+state. Min instances may remain zero.
+
+`deploy/artifact-cleanup-policy.json` deletes untagged image versions after
+seven days while retaining the ten most recent versions of every package. Apply
+it in dry-run mode first; cleanup is an asynchronous Artifact Registry policy,
+not a release-time delete command.
 
 ## Secrets and identity
 
@@ -64,8 +75,9 @@ Grant the runtime identity only:
 - permission to write Cloud Logging.
 
 Do not grant project Editor, Owner, deployment, build, or general storage roles
-to the runtime. Never bake `.env`, tokens, pairing codes, databases, or service
-account keys into the image.
+to the runtime. Never bake `.env`, tokens, pairing codes, databases, user model
+keys, or service-account keys into the image. Public production uses the
+[BYOK model-key contract](byok.md), not the operator's personal OpenAI key.
 
 ## Database contract
 
@@ -124,7 +136,7 @@ alerts for:
 - MCP initialize/call failures;
 - Cloud SQL connection exhaustion;
 - repeated auth failures;
-- daily OpenAI quota/cost;
+- repeated sanitized provider-authentication failures;
 - monthly project budget threshold.
 
 ## Rollback

@@ -54,8 +54,8 @@ Select **Pair Codex** in the browser and run:
 
 ```sh
 export COMMAND_CENTER_URL=http://127.0.0.1:8000
-python plugins/codex-command-center/scripts/pair.py THE-CODE
-python plugins/codex-command-center/scripts/health.py
+python3 plugins/codex-command-center/scripts/pair.py THE-CODE
+python3 plugins/codex-command-center/scripts/health.py
 ```
 
 The one-time code expires in five minutes. The helper exchanges it for a
@@ -71,9 +71,9 @@ developing this repository.
 From any directory inside the checkout:
 
 ```sh
-python plugins/codex-command-center/scripts/architecture.py lint .
-python plugins/codex-command-center/scripts/architecture.py status .
-python plugins/codex-command-center/scripts/architecture.py sync .
+python3 plugins/codex-command-center/scripts/architecture.py lint .
+python3 plugins/codex-command-center/scripts/architecture.py status .
+python3 plugins/codex-command-center/scripts/architecture.py sync .
 ```
 
 `lint` is stateless. `status` sends only source paths and hashes. `sync` shows
@@ -102,7 +102,7 @@ pytest
 npm --prefix apps/web run typecheck
 npm --prefix apps/web run test
 npm --prefix apps/web run build
-python ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
+python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
   plugins/codex-command-center
 ```
 

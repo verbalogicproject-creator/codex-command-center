@@ -21,9 +21,9 @@ portable to other compatible clients without changing the visible demo story.
 - Persistent, versioned capability library with six kinds, repository scope,
   tool references, trust filtering, provenance, content hashes, and activation
   counts.
-- Five built-ins: frontend redesign interview, mobile accessibility review,
-  graph-canvas integration, evidence-bound coding plan, and safe deployment
-  preparation.
+- Six built-ins: Taste-guided frontend redesign interview, lightweight frontend
+  redesign interview, mobile accessibility review, graph-canvas integration,
+  evidence-bound coding plan, and safe deployment preparation.
 - Screenshot validation, MIME sniffing, in-memory resize, SHA-256 receipts,
   optional Responses API multimodal analysis, inference labels, and zero raw
   image retention.
@@ -35,7 +35,7 @@ portable to other compatible clients without changing the visible demo story.
   pending-memory tools.
 - One-time browser pairing exchanged for revocable workspace tokens; only token
   hashes are stored server-side.
-- **Codex Command Center v0.3** plugin with remote/local MCP config, hash-only
+- **Codex Command Center v0.4** plugin with remote/local MCP config, hash-only
   SessionStart drift checks, boot/task architecture briefs, four hooks,
   sanitized telemetry, pending Stop proposals, pairing and architecture
   helpers, repository isolation, and migration from `command-center-memory`.
@@ -65,10 +65,10 @@ Pair the plugin:
 
 ```sh
 export COMMAND_CENTER_URL=http://127.0.0.1:8000
-python plugins/codex-command-center/scripts/pair.py THE-BROWSER-CODE
-python plugins/codex-command-center/scripts/health.py
-python plugins/codex-command-center/scripts/architecture.py lint .
-python plugins/codex-command-center/scripts/architecture.py sync .
+python3 plugins/codex-command-center/scripts/pair.py THE-BROWSER-CODE
+python3 plugins/codex-command-center/scripts/health.py
+python3 plugins/codex-command-center/scripts/architecture.py lint .
+python3 plugins/codex-command-center/scripts/architecture.py sync .
 ```
 
 `sync` displays the bounded Markdown corpus and asks for confirmation. Session
@@ -80,20 +80,22 @@ Then run the generated command in Codex:
 /plan Load Command Center handoff <ID> and interview me before editing.
 ```
 
-Without an OpenAI key, all local workflows remain usable and model-dependent
-results are explicitly marked degraded. Raw screenshots are still validated,
-hashed, and discarded.
+Without a connected user-owned OpenAI key, all retrieval, capability, handoff,
+and MCP workflows remain usable; Aria and screenshot analysis explicitly mark
+local fallback results degraded. Raw screenshots are still validated, hashed,
+and discarded. **Connect OpenAI** creates only an encrypted, expiring,
+workspace-bound browser-session credential.
 
 ## Verify
 
 ```sh
 pytest
-PYTHONPATH=services/memory python scripts/eval.py
+PYTHONPATH=services/memory python3 scripts/eval.py
 npm --prefix apps/web run typecheck
 npm --prefix apps/web run test
 npm --prefix apps/web run build
 scripts/security-scan.sh
-python ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
+python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
   plugins/codex-command-center
 ```
 
@@ -103,6 +105,7 @@ python ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
 - [Complete user manual](docs/user-guide.md)
 - [Aria voice and screenshot guide](docs/aria-voice.md)
 - [Capability authoring manual](docs/capability-authoring.md)
+- [Taste-guided redesign capability](docs/capability-authoring.md#taste-guided-redesign)
 - [Handoff lifecycle reference](docs/handoffs.md)
 - [Codex plugin installation, migration, and pairing](docs/codex-plugin.md)
 - [REST and MCP schemas](docs/api-mcp.md)
@@ -112,7 +115,9 @@ python ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
 - [Evidence graph canvas](docs/graph-canvas.md)
 - [PostgreSQL verification under Ubuntu PRoot](docs/postgresql-proot.md)
 - [Security, privacy, and approvals](docs/security-privacy.md)
+- [Bring your own model key](docs/byok.md)
 - [Cloud Run deployment](docs/cloud-run.md)
+- [Three-service deployment topology](docs/deployment-topology.md)
 - [Deployment and submission checklist](docs/deployment-checklist.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Reproducible evaluation](docs/eval-report.md)

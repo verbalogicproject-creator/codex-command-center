@@ -26,7 +26,8 @@ hostname (`localhost` versus `127.0.0.1` changes cookie scope), then sign in
 again.
 
 **Screenshot analysis is degraded.** The builder still validates and hashes the
-image and creates local inference labels. Configure `OPENAI_API_KEY` to enable
+image and creates local inference labels. Select **Connect OpenAI** and provide
+your own API key to enable
 Sol multimodal analysis. Confirm the configured deep model supports image input.
 
 **Upload returns 422.** Use PNG, JPEG, or WebP under 10 MB and at least 32×32
@@ -127,6 +128,6 @@ npm --prefix apps/web run typecheck
 npm --prefix apps/web run test
 npm --prefix apps/web run build
 scripts/security-scan.sh
-python ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
+python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
   plugins/codex-command-center
 ```

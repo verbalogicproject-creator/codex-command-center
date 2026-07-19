@@ -10,13 +10,13 @@ ai_card:
   status: implemented
   owner_area: Codex integration
   main_files: [plugins/codex-command-center, .codex/config.toml]
-  public_interfaces: [Codex Command Center v0.3, SessionStart, UserPromptSubmit, "POST /mcp"]
+  public_interfaces: [Codex Command Center v0.4, SessionStart, UserPromptSubmit, "POST /mcp"]
   provides: [plugin installation and pairing, shared architecture hook contract, troubleshooting]
   depends_on: [command-center.architecture-awareness, command-center.api-mcp]
   safe_edit_points: [cache-busted local plugin updates, human-readable receipt rendering]
   risk_areas: [repository-local tokens, unfiltered context fallback, duplicate MCP transports]
   graph_rag_entities: [Codex Command Center, CommandCenterClient, ArchitectureBrief]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 The installable [Codex Command Center plugin](../plugins/codex-command-center)
@@ -44,8 +44,8 @@ skill installation.
 
    ```sh
    export COMMAND_CENTER_URL=https://<command-center-host>
-   python plugins/codex-command-center/scripts/pair.py THE-ONE-TIME-CODE
-   python plugins/codex-command-center/scripts/health.py
+   python3 plugins/codex-command-center/scripts/pair.py THE-ONE-TIME-CODE
+   python3 plugins/codex-command-center/scripts/health.py
    ```
 
 The code expires in five minutes and is consumed once. The server returns a
@@ -73,14 +73,14 @@ Workspace tokens use `~/.command-center/` by default and never a checkout path.
 
 ## Architecture awareness
 
-Version 0.3 discovers `.command-center/architecture.yaml` from nested working
+Version 0.4 discovers `.command-center/architecture.yaml` from nested working
 directories. The paired helper exposes:
 
 ```sh
-python plugins/codex-command-center/scripts/architecture.py lint .
-python plugins/codex-command-center/scripts/architecture.py status .
-python plugins/codex-command-center/scripts/architecture.py sync .
-python plugins/codex-command-center/scripts/architecture.py scaffold \
+python3 plugins/codex-command-center/scripts/architecture.py lint .
+python3 plugins/codex-command-center/scripts/architecture.py status .
+python3 plugins/codex-command-center/scripts/architecture.py sync .
+python3 plugins/codex-command-center/scripts/architecture.py scaffold \
   docs/new-component.md \
   --id command-center.new-component \
   --title "New Component" \
@@ -156,20 +156,22 @@ every turn. When enabled, it still creates only a pending proposal.
 The former public name was `command-center-memory`. Remove it, install
 `codex-command-center`, pair again, and start a new thread. The MCP server name
 changes to `codex-command-center`; `build_context_pack` becomes
-`build_task_pack`. Version 0.3 also removes the old unfiltered context fallback.
-Durable workspace data is not deleted. See
+`build_task_pack`. Version 0.4 standardizes Linux, macOS, and Termux launchers
+on `python3`, preventing Codex startup from failing when no optional `python`
+alias is installed. It retains v0.3's removal of the old unfiltered context
+fallback. Durable workspace data is not deleted. See
 [MIGRATION.md](../plugins/codex-command-center/MIGRATION.md).
 
 ## Validate and smoke test
 
 ```sh
-python ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
+python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
   plugins/codex-command-center
 
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' |
-python plugins/codex-command-center/scripts/mcp_server.py
+python3 plugins/codex-command-center/scripts/mcp_server.py
 ```
 
 For failures, use the [troubleshooting manual](troubleshooting.md).

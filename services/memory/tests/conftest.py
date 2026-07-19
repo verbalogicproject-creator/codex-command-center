@@ -14,7 +14,7 @@ def settings(tmp_path: Path) -> Settings:
         seed_path=ROOT / "fixtures" / "demo" / "memories.json",
         demo_access_code="test-code",
         cookie_secret="test-secret-with-sufficient-entropy",
-        openai_api_key=None,
+        embedding_api_key=None,
         embedding_provider="hash",
         max_aria_turns=20,
         max_direct_recalls=100,
@@ -27,4 +27,3 @@ def client(settings: Settings) -> TestClient:
     response = result.post("/api/v1/auth/demo", json={"code": "test-code"})
     assert response.status_code == 200
     return result
-

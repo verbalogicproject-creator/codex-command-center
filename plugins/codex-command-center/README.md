@@ -18,16 +18,20 @@ Start Command Center, select **Pair Codex** in the browser, and set the displaye
 one-time value with the pairing helper:
 
 ```sh
-python "${PLUGIN_ROOT}/scripts/pair.py" <CODE> --url https://<host>
-python "${PLUGIN_ROOT}/scripts/health.py"
-python "${PLUGIN_ROOT}/scripts/architecture.py" lint .
-python "${PLUGIN_ROOT}/scripts/architecture.py" sync .
+python3 "${PLUGIN_ROOT}/scripts/pair.py" <CODE> --url https://<host>
+python3 "${PLUGIN_ROOT}/scripts/health.py"
+python3 "${PLUGIN_ROOT}/scripts/architecture.py" lint .
+python3 "${PLUGIN_ROOT}/scripts/architecture.py" sync .
 ```
 
 The helper joins that browser’s isolated workspace and stores its revocable
 workspace token with user-only permissions under `~/.command-center/`. Direct
 remote clients may set `COMMAND_CENTER_URL` and `COMMAND_CENTER_TOKEN` instead;
 neither value belongs in a repository file.
+
+Version 0.4 uses `python3` explicitly for MCP, hooks, and helpers so Codex does
+not depend on an optional `python` alias. User-owned OpenAI credentials remain
+inside the Command Center browser/API session and never enter this plugin.
 
 The installed plugin defaults to the stdio adapter and honors the caller's
 `COMMAND_CENTER_URL`. A direct-HTTP configuration template is provided at

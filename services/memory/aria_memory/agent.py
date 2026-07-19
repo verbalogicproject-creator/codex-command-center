@@ -125,7 +125,9 @@ class Aria:
             return {"proposal": proposal.model_dump()}
         raise ValueError(f"unknown tool {name}")
 
-    async def run(self, request: ChatRequest) -> list[dict[str, Any]]:
+    async def run(
+        self, request: ChatRequest, api_key: str | None = None,
+    ) -> list[dict[str, Any]]:
         self.store.add_turn(request.session_id, "user", request.message)
         packet = self.context.build(ContextPackRequest(
             prompt=request.message, token_budget=2_000, memory_limit=8, document_limit=6,
@@ -154,12 +156,12 @@ class Aria:
                 "type": "architecture_brief",
                 "data": architecture_brief.model_dump(mode="json"),
             })
-        if not self.settings.openai_api_key:
+        if not api_key:
             events.extend(self._fallback(request))
         else:
             try:
                 events.extend(await asyncio.to_thread(
-                    self._openai_run, request, packet, architecture_brief,
+                    self._openai_run, request, packet, api_key, architecture_brief,
                 ))
             except Exception as exc:
                 events.append({"type": "status", "data": {
@@ -282,11 +284,12 @@ class Aria:
         self,
         request: ChatRequest,
         packet: ContextPack,
+        api_key: str,
         architecture_brief: ArchitectureBrief | None = None,
     ) -> list[dict[str, Any]]:
         from openai import OpenAI
 
-        client = OpenAI(api_key=self.settings.openai_api_key)
+        client = OpenAI(api_key=api_key)
         history = self.store.recent_turns(request.session_id, 10)
         input_items: list[Any] = [
             {"role": item["role"], "content": item["content"]} for item in history

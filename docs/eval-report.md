@@ -34,14 +34,14 @@ ordinary queries wrote zero document embeddings. Coverage was 100%.
 
 These numbers are a reproducible engineering smoke evaluation, not a production
 quality claim. A live OpenAI comparison is intentionally not fabricated because
-no API credential was supplied. With `OPENAI_API_KEY` and
+no API credential was supplied. With an active user-owned BYOK session and
 `EMBEDDING_PROVIDER=openai`, use the same labelled fixture and record API calls,
 latency and cost separately before submission.
 
 Reproduce:
 
 ```sh
-PYTHONPATH=services/memory python scripts/eval.py
+PYTHONPATH=services/memory python3 scripts/eval.py
 ```
 
 ## Declared-document mode comparison

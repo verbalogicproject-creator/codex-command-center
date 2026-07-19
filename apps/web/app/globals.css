@@ -60,6 +60,10 @@ body::before {
 .command-trigger span { font-size: 12px; }
 .pair-trigger { height: 34px; display: flex; align-items: center; gap: 7px; border: 1px solid #334048; border-radius: 8px; background: #151b1f; color: var(--cyan); padding: 0 10px; cursor: pointer; }
 .pair-trigger span { font-size: 10px; color: #b9c4c8; }
+.credential-trigger { height: 34px; display: flex; align-items: center; gap: 7px; border: 1px solid #4b3b23; border-radius: 8px; background: #19160f; color: var(--amber); padding: 0 10px; cursor: pointer; }
+.credential-trigger span { font-size: 10px; color: #d5c7ad; }
+.credential-trigger.connected { border-color: #28513d; background: #101914; color: var(--green); }
+.credential-trigger.connected span { color: #b9d1c3; }
 .tour-trigger { height: 34px; display: flex; align-items: center; gap: 7px; border: 1px solid #43395f; border-radius: 8px; background: #181522; color: var(--violet); padding: 0 10px; cursor: pointer; }
 .tour-trigger span { font-size: 10px; color: #c4bed4; }
 kbd {
@@ -418,6 +422,25 @@ kbd {
 .pair-panel p { color: #b4bec2; font-size: 11px; line-height: 1.55; }
 .pair-panel > code { display: block; margin: 13px 0; padding: 12px; text-align: center; border: 1px dashed #47717b; border-radius: 7px; color: var(--ink); font: 500 22px var(--mono); letter-spacing: .15em; background: #0b1113; }
 .pair-panel > small { display: block; color: var(--muted); font: 8px/1.5 var(--mono); }
+.credential-panel { position: fixed; z-index: 95; top: 78px; right: 16px; width: min(390px, calc(100vw - 28px)); border: 1px solid #514328; border-radius: 12px; background: #17150f; box-shadow: 0 24px 70px #000; padding: 20px; }
+.credential-panel > button.icon-button { position: absolute; top: 10px; right: 8px; }
+.credential-panel > span { display: flex; align-items: center; gap: 7px; font: 9px var(--mono); color: var(--amber); letter-spacing: .12em; }
+.credential-panel > span svg { width: 14px; }
+.credential-panel h2 { margin: 18px 0 8px; font-size: 19px; }
+.credential-panel p { color: #c4bda9; font-size: 11px; line-height: 1.6; }
+.credential-panel form { display: grid; gap: 12px; margin: 17px 0 13px; }
+.credential-panel label { display: grid; gap: 7px; color: #c9c1ae; font-size: 10px; }
+.credential-panel input { width: 100%; border: 1px solid #534831; border-radius: 7px; background: #0f0e0b; color: var(--ink); padding: 11px; font: 11px var(--mono); outline: none; }
+.credential-panel input:focus { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(225,168,76,.12); }
+.credential-panel form button, .credential-remove { border: 1px solid #715224; border-radius: 7px; background: var(--amber); color: #17110a; padding: 10px 12px; font-weight: 700; font-size: 11px; cursor: pointer; }
+.credential-panel button:disabled { opacity: .45; cursor: default; }
+.credential-panel > small { display: block; color: var(--muted); font: 8px/1.55 var(--mono); }
+.credential-receipt { margin: 16px 0 12px; display: flex; align-items: center; gap: 10px; border: 1px solid #28513d; border-radius: 8px; background: #101914; padding: 12px; }
+.credential-receipt > svg { width: 17px; color: var(--green); }
+.credential-receipt div { display: grid; gap: 4px; }
+.credential-receipt strong { font-size: 11px; color: #bdd8c8; }
+.credential-receipt small { font: 8px var(--mono); color: var(--muted); }
+.credential-remove { width: 100%; margin-bottom: 13px; border-color: #603939; background: #211212; color: #e2a0a0; }
 
 .voice-orb {
   position: fixed; z-index: 72; right: 20px; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
@@ -506,8 +529,9 @@ kbd {
   .shell { display: grid; grid-template: 58px minmax(0,1fr) calc(62px + env(safe-area-inset-bottom, 0px)) / 1fr; height: 100vh; }
   .topbar { grid-row: 1; padding: 0 13px; }
   .mobile-only { display: grid; }
-  .brand span, .command-trigger, .system-state, .pair-trigger span, .tour-trigger span { display: none; }
+  .brand span, .command-trigger, .system-state, .pair-trigger span, .credential-trigger span, .tour-trigger span { display: none; }
   .pair-trigger { margin-left: auto; width: 34px; justify-content: center; padding: 0; }
+  .credential-trigger { width: 34px; justify-content: center; padding: 0; }
   .tour-trigger { width: 34px; justify-content: center; padding: 0; }
   .rail-scrim { display: block; position: fixed; z-index: 24; inset: 58px 0 calc(62px + env(safe-area-inset-bottom, 0px)); border: 0; background: rgba(0,0,0,.58); backdrop-filter: blur(2px); }
   .session-rail { position: fixed; inset: 58px auto calc(62px + env(safe-area-inset-bottom, 0px)) 0; width: min(300px, 86vw); transform: translateX(-102%); transition: transform .22s; box-shadow: 25px 0 70px #000; z-index: 25; }

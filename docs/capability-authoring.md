@@ -16,7 +16,7 @@ ai_card:
   safe_edit_points: [new immutable capability versions, workspace-trusted instructions]
   risk_areas: [embedding executable code, weakening trust filtering]
   graph_rag_entities: [Capability, CapabilityLibrary]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 Capabilities are versioned, provider-neutral instructions. They are not
@@ -100,6 +100,51 @@ Search through REST `GET /api/v1/capabilities` or MCP
 `POST /api/v1/capabilities/recommend` or MCP
 `recommend_capabilities`. Load an exact version with `get_capability`.
 
-The five built-ins are frontend redesign interview, mobile accessibility
-review, graph-canvas integration, evidence-bound coding plan, and safe
-deployment preparation.
+The six built-ins are Taste-guided frontend redesign interview, lightweight
+frontend redesign interview, mobile accessibility review, graph-canvas
+integration, evidence-bound coding plan, and safe deployment preparation.
+
+## Taste-guided redesign
+
+`taste-frontend-redesign-interview` is the primary workflow for an existing
+frontend plus screenshot. It is a bounded, reviewed adaptation of Taste Skill
+v2 experimental and `redesign-existing-projects`, not a dynamic installation of
+the upstream skill collection.
+
+The workflow makes Codex:
+
+1. show the exact repository, snapshot, capability version, content hash, and
+   evidence receipts;
+2. distinguish screenshot inferences from declared repository facts;
+3. classify targeted evolution, structural redesign, or greenfield work;
+4. propose and interview around `DESIGN_VARIANCE`, `MOTION_INTENSITY`, and
+   `VISUAL_DENSITY`;
+5. audit existing typography, palette, layout, responsive behavior,
+   accessibility, states, content, performance, and preservation boundaries;
+6. produce an editable design contract and evidence-cited implementation plan;
+7. ask the next focused question instead of editing immediately.
+
+The capability deliberately does not impose marketing-page patterns on dense
+application surfaces. Declared architecture and the existing design system take
+precedence. Routes, navigation labels, form contracts, analytics identifiers,
+legal copy, brand marks, and durable data semantics never change silently.
+
+The retained upstream MIT terms are in
+[`services/memory/TASTE_SKILL_LICENSE`](../services/memory/TASTE_SKILL_LICENSE).
+The capability provenance records the upstream project, author, review date,
+and SHA-256 hashes of both adapted instruction sources.
+
+Built-in seeding is content-addressed. Starting a workspace checks every
+reviewed built-in independently and inserts a new immutable version only when
+that exact `(stable_id, content_hash)` is absent. Existing workspaces therefore
+receive new built-ins without duplicating them on every restart.
+
+Verify the selection and injection chain:
+
+```sh
+PYTHONPATH=services/memory pytest -q \
+  services/memory/tests/test_toolbox.py
+```
+
+The contract test proves recommendation, exact-version handoff pinning, MCP
+`get_capability`, and idempotent seeding into an already populated workspace.

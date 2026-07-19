@@ -16,7 +16,7 @@ ai_card:
   safe_edit_points: [append-only dated entries with evidence]
   risk_areas: [overclaiming unverified deployment or model behavior]
   graph_rag_entities: [Build Week, Command Center]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 ## 2026-07-18
@@ -106,6 +106,29 @@ project/secrets, a narrated video, and the `/feedback` session ID.
   through Aria's compiler and Codex's `build_task_pack` path.
 
 The Cloud Run/MCP deployment patterns are credited to the author's
-MIT-licensed `Claude-ToolBox-Curriculum` sibling project. The local environment
-has no Docker engine or `gcloud` binary, so container and deployed handshakes
-remain laptop or Cloud Build gates.
+MIT-licensed `Claude-ToolBox-Curriculum` sibling project.
+
+## 2026-07-19 — portable toolbox and deployment preparation
+
+- Added the verified Taste-guided frontend redesign interview capability,
+  including exact MIT provenance, content hashes, triggering situations,
+  content-addressed built-in seeding, recommendation, handoff version pinning,
+  and Codex MCP injection.
+- Added the BYOK boundary: workspace-bound authenticated encryption, one-hour
+  cryptographic expiry, an HttpOnly `/api/v1` browser-session cookie, immediate
+  deletion, request-scoped Sol/Aria routing, Realtime client-secret minting,
+  and no global public model key fallback.
+- Added the visible **Connect OpenAI** receipt and removal flow. Retrieval,
+  capabilities, handoffs, and MCP remain usable without a model credential.
+- Split the web, API, and MCP container definitions. The MCP-only application
+  now imports a shared workspace data plane rather than initializing browser or
+  BYOK routes as a side effect.
+- Added the three-image Cloud Build manifest and dry-run-first Artifact
+  Registry cleanup policy. No Cloud SQL instance or Cloud Run workload was
+  created during this preparation phase.
+- Upgraded **Codex Command Center** to v0.4.0 and standardized MCP, hook, and
+  helper launchers on `python3`, directly addressing Linux startup failures
+  caused by a missing optional `python` alias.
+- Verified the Termux Google Cloud SDK, authenticated project, required API
+  enablement, and `me-west1` service compatibility. Cloud Build remains the
+  container gate because this Android environment has no local Docker engine.
