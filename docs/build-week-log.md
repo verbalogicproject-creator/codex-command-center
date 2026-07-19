@@ -184,3 +184,9 @@ MIT-licensed `Claude-ToolBox-Curriculum` sibling project.
 - Verified SQLite and real PostgreSQL 18 migration behavior, multimodal success
   and deterministic fallback, handoff persistence/publication/MCP loading,
   plugin directives, frontend types/tests/build, retrieval, and security.
+- Deployed the reconciled `237dce3141753312552f75b0442113670a02e005`
+  images after migration execution `command-center-db-migrate-x25kn`. The live
+  current/reference proof published handoff `hoff_4733da7e599f4537`, loaded it
+  through MCP as activation `activate_9f6eb6fb95b54770`, verified the
+  three-question interview boundary and raw-image non-retention, then revoked
+  the short-lived proof token.

@@ -88,11 +88,12 @@ Handoffs are separate from memory. A draft pins exact capability versions, an
 architecture snapshot, exact document/section versions, and selected durable
 evidence. Application migration 6 adds the persisted planning receipt: model,
 capability reference, architecture snapshot, evidence IDs, generation time,
-degradation state, and reasons. Publication records an immutable packet; editing a published packet
-creates another lineage version. A later architecture sync changes new task
-packs but not an existing published handoff. Revocation prevents new loads
-without destroying the record. Every successful client load records a separate
-activation receipt.
+degradation state, and reasons. Migration 7 adds the role-labelled visual
+comparison receipt without retaining raw screenshot bytes. Publication records
+an immutable packet; editing a published packet creates another lineage
+version. A later architecture sync changes new task packs but not an existing
+published handoff. Revocation prevents new loads without destroying the
+record. Every successful client load records a separate activation receipt.
 
 Screenshot bytes exist only long enough to validate detected MIME, enforce size
 and dimension limits, resize the analysis copy, compute the hash, and optionally
