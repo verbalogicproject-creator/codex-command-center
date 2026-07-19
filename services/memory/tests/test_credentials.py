@@ -14,6 +14,8 @@ def test_credential_envelope_is_encrypted_bound_and_expiring():
     assert vault.open(token, "ws_second", now=1_500) is None
     assert vault.open(token, "ws_first", now=1_601) is None
     assert vault.open(token + "tampered", "ws_first", now=1_500) is None
+    assert vault.open(token.rstrip("="), "ws_first", now=1_500) is None
+    assert vault.open(token + "=", "ws_first", now=1_500) is None
 
 
 def test_credential_cannot_be_opened_with_another_deployment_secret():

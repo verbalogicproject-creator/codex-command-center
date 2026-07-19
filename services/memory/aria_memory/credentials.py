@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import json
 import time
@@ -64,11 +65,20 @@ class ProviderCredentialVault:
             return None
         current_time = int(time.time()) if now is None else now
         try:
+            encoded = token.encode("ascii")
+            decoded = base64.b64decode(
+                encoded, altchars=b"-_", validate=True,
+            )
+            if base64.urlsafe_b64encode(decoded) != encoded:
+                return None
             raw = self.fernet.decrypt_at_time(
-                token.encode(), ttl=self.ttl_seconds, current_time=current_time,
+                encoded, ttl=self.ttl_seconds, current_time=current_time,
             )
             payload = json.loads(raw)
-        except (InvalidToken, ValueError, TypeError, json.JSONDecodeError):
+        except (
+            InvalidToken, ValueError, TypeError, UnicodeEncodeError,
+            binascii.Error, json.JSONDecodeError,
+        ):
             return None
         if (
             payload.get("version") != 1
