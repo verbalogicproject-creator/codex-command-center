@@ -32,9 +32,9 @@ remain open.
 | Project number | `67134152472` |
 | Shared region | `me-west1` |
 | Billing | enabled |
-| Release image commit | `9729ec3fb411ffba53e34c8578375bd5967544f0` |
+| Release image commit | `a4f67df8b9b88f353dbb14486033b357f53284c5` |
 | Release branch | `termux/taste-byok-deployment` |
-| Cloud Build | `29f3f94a-0447-4a68-b80b-d8aed347d92a` |
+| Cloud Build | `3466c6a0-d53d-4984-814c-8f3fbef65eb9` |
 | Monthly budget | ₪153, approximately USD 50 at the 2026-07-17 representative rate |
 
 The project ID intentionally ends in `centet`; do not “correct” it in commands.
@@ -54,9 +54,9 @@ release commit. The deployed digests are:
 
 | Service | Digest |
 |---|---|
-| web | `sha256:95d4be2955272696e087bfc125d6808319492ae32c249cf6791309f694e7e2e3` |
-| API | `sha256:0f8905d4494be93bcba7fc78784c9bed9560b59aff27ef6b5c9569fec205c585` |
-| MCP | `sha256:c5fdfb7dfea5bfe59abfa69d272e52bf0a48eb8dcb80247295a2b88ccddca77d` |
+| web | `sha256:cae5efe71ca102a6ec21f74b7d88e0c90bcf0e9f983ef030f2099d7980e4f95f` |
+| API | `sha256:2f8d0e5cc0ca07b0a5ddef78042e83f3f95707b37c4989862e1eba351c680030` |
+| MCP | `sha256:b9607feba85b5765bd7b5ec0af877a6761c8cbb099d8f5c13a701e2bf9831e9c` |
 
 `deploy/artifact-cleanup-policy.json` remains attached with dry-run enabled:
 
@@ -80,10 +80,10 @@ Review the cleanup audit before enabling deletion.
 | Resource | Verified state |
 |---|---|
 | `command-center-postgres` | PostgreSQL 16, `db-f1-micro`, zonal `me-west1`, 10 GB SSD, backups on, storage growth off, connector-only, deletion protection on |
-| `command-center-db-migrate` | app-role migration 6 job; final execution `command-center-db-migrate-2bpcf` succeeded |
-| `command-center-api` | revision `command-center-api-00004-pxh`, 100% traffic |
-| `command-center-mcp` | revision `command-center-mcp-00004-mv4`, 100% traffic |
-| `command-center-web` | revision `command-center-web-00003-7mp`, 100% traffic |
+| `command-center-db-migrate` | app-role migration 6 job; final execution `command-center-db-migrate-vxbwf` succeeded |
+| `command-center-api` | revision `command-center-api-00005-q89`, 100% traffic |
+| `command-center-mcp` | revision `command-center-mcp-00005-p6n`, 100% traffic |
+| `command-center-web` | revision `command-center-web-00004-lz7`, 100% traffic |
 
 Judge URL:
 `https://command-center-web-67134152472.me-west1.run.app`.
@@ -103,6 +103,11 @@ runtime accessor.
 
 - same-origin login sets a Secure, HttpOnly, SameSite=Lax cookie;
 - unauthenticated API and MCP calls return 401;
+- GitHub Actions run `29679958610` passed Python 3.12, Node 22, backend and
+  web tests, retrieval evaluation, production build, and the security scan;
+- production accepts a canonical encrypted BYOK envelope and rejects the same
+  envelope with appended noncanonical data; the synthetic credential was
+  deleted immediately after this regression check;
 - API and MCP expose identical ten-tool schemas;
 - all ten MCP tools were called through the hosted service;
 - Taste version 1 is the primary redesign recommendation with content hash
