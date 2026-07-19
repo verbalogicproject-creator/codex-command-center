@@ -118,6 +118,7 @@ python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
 - [Bring your own model key](docs/byok.md)
 - [Cloud Run deployment](docs/cloud-run.md)
 - [Three-service deployment topology](docs/deployment-topology.md)
+- [Current deployment state and continuation receipt](docs/deployment-state.md)
 - [Deployment and submission checklist](docs/deployment-checklist.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Reproducible evaluation](docs/eval-report.md)
