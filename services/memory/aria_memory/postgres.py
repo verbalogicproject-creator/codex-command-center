@@ -239,7 +239,10 @@ class CompatConnection:
 
     @staticmethod
     def _sql(query: str) -> str:
-        return query.replace("?", "%s")
+        # psycopg parses percent signs client-side even when they occur inside
+        # SQL string literals. Portable queries use ``?`` parameters, so first
+        # escape every literal percent and only then translate placeholders.
+        return query.replace("%", "%%").replace("?", "%s")
 
     def execute(self, query: str, params: Any = ()):
         return self.raw.execute(self._sql(query), params)

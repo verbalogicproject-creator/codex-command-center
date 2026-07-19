@@ -25,6 +25,7 @@ FIXTURE = (
 )
 def test_postgres_snapshot_activation_restart_and_historical_evidence():
     from aria_memory.postgres import PostgresDatabase
+    from aria_memory.toolbox import Toolbox
 
     url = os.environ["COMMAND_CENTER_TEST_DATABASE_URL"]
     workspace_id = f"ws_{uuid.uuid4().hex[:16]}"
@@ -84,6 +85,13 @@ def test_postgres_snapshot_activation_restart_and_historical_evidence():
             brief.degraded_reasons
         )
         assert brief.token_estimate <= brief.token_budget
+
+        toolbox = Toolbox(db, None, "unused")  # type: ignore[arg-type]
+        capabilities = toolbox.list_capabilities(repository="Command Center")
+        assert capabilities[0].activation_count == 0
+        assert "taste-frontend-redesign-interview" in {
+            item.stable_id for item in capabilities
+        }
     finally:
         raw = db._raw(search_path=False)
         try:

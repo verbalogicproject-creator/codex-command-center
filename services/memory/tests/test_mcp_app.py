@@ -31,6 +31,10 @@ def test_mcp_only_app_authentication_scope_and_protocol(settings):
         "status": "ok",
         "service": "codex-command-center-mcp",
     }
+    assert client.get("/health").json() == {
+        "status": "ok",
+        "service": "codex-command-center-mcp",
+    }
     unauthorized = client.post("/mcp", json={
         "jsonrpc": "2.0",
         "id": 1,

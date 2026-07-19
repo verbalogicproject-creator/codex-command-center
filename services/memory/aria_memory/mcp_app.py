@@ -64,6 +64,7 @@ def create_mcp_app(settings: Settings | None = None) -> FastAPI:
             })
         return workspaces.get(workspace_id)
 
+    @app.get("/health")
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok", "service": "codex-command-center-mcp"}

@@ -60,6 +60,9 @@ def test_postgres_adapter_translates_portable_placeholders():
     assert CompatConnection._sql(
         "SELECT * FROM handoffs WHERE id=? AND status=?"
     ) == "SELECT * FROM handoffs WHERE id=%s AND status=%s"
+    assert CompatConnection._sql(
+        "SELECT 1 WHERE payload LIKE '%' || ? || '%'"
+    ) == "SELECT 1 WHERE payload LIKE '%%' || %s || '%%'"
 
 
 def test_postgres_workspace_schema_identifier_is_strict():
