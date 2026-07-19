@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from aria_memory.app import create_app
@@ -116,3 +121,26 @@ def test_mcp_cloud_surface_does_not_require_browser_byok_secret(settings):
 
     client = TestClient(create_mcp_app(cloud))
     assert client.get("/healthz").status_code == 200
+
+
+def test_mcp_cloud_import_does_not_initialize_browser_api(tmp_path):
+    env = os.environ.copy()
+    env.update({
+        "APP_ENV": "cloud",
+        "DATABASE_URL": "postgresql://unused-until-authenticated",
+        "DATA_DIR": str(tmp_path),
+        "PYTHONPATH": os.pathsep.join(filter(None, (
+            str(Path(__file__).resolve().parents[1]),
+            env.get("PYTHONPATH"),
+        ))),
+    })
+    env.pop("COOKIE_SECRET", None)
+    env.pop("PROVIDER_CREDENTIAL_SECRET", None)
+    result = subprocess.run(
+        [sys.executable, "-c", "import aria_memory.mcp_app"],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr

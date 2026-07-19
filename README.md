@@ -125,6 +125,7 @@ python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
 - [Three-service deployment topology](docs/deployment-topology.md)
 - [Current deployment state and continuation receipt](docs/deployment-state.md)
 - [Deployment and submission checklist](docs/deployment-checklist.md)
+- [Devpost submission contract](docs/devpost-submission.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Reproducible evaluation](docs/eval-report.md)
 - [Build Week provenance](docs/build-week-log.md)
