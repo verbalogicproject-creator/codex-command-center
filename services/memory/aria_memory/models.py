@@ -202,7 +202,7 @@ class HandoffDraftRequest(BaseModel):
     visual_brief: VisualComparisonReceipt | None = None
     capability_refs: list[str] = []
     open_plan: list[str] = []
-    token_budget: int = Field(default=3_000, ge=512, le=8_000)
+    token_budget: int = Field(default=6_000, ge=512, le=8_000)
 
 
 class HandoffUpdateRequest(BaseModel):
