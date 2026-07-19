@@ -183,6 +183,7 @@ def test_project_mcp_launcher_bootstraps_from_nested_directory():
     )
     response = json.loads(process.stdout)
     assert response["result"]["serverInfo"]["name"] == "codex-command-center"
+    assert response["result"]["serverInfo"]["version"] == "0.4.0"
 
 
 def test_plugin_defaults_to_one_stdio_transport_and_home_token_storage():

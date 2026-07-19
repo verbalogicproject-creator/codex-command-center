@@ -50,6 +50,7 @@ def test_mcp_only_app_authentication_scope_and_protocol(settings):
     assert initialized.json()["result"]["serverInfo"]["name"] == (
         "codex-command-center"
     )
+    assert initialized.json()["result"]["serverInfo"]["version"] == "0.4.0"
 
     tools = client.post(
         "/mcp",

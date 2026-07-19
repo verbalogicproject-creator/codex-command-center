@@ -254,7 +254,7 @@ def handle_rpc(workspace: Any, message: dict[str, Any]) -> dict[str, Any] | None
             response["result"] = {
                 "protocolVersion": "2025-06-18",
                 "capabilities": {"tools": {"listChanged": False}},
-                "serverInfo": {"name": "codex-command-center", "version": "0.3.0"},
+                "serverInfo": {"name": "codex-command-center", "version": "0.4.0"},
                 "instructions": (
                     "Load published handoffs before repository edits. Show injected capability "
                     "versions and evidence IDs, then interview the user. Screenshot observations "

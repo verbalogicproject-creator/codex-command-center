@@ -2,6 +2,11 @@
 
 from .chunking import chunk_by_h2
 from .compiler import ArchitectureCompiler
+from .embeddings import (
+    ArchitectureEmbeddingStore,
+    ArchitectureEmbeddingSync,
+    canonical_section_surface,
+)
 from .health import build_architecture_health
 from .lint import ArchitectureLintReport, lint_architecture_document, scaffold_ai_card
 from .manifest import (
@@ -43,6 +48,8 @@ __all__ = [
     "ArchitectureCompiler",
     "ArchitectureDialect",
     "ArchitectureDocumentVersion",
+    "ArchitectureEmbeddingStore",
+    "ArchitectureEmbeddingSync",
     "ArchitectureEdge",
     "ArchitectureIssue",
     "ArchitectureInventory",
@@ -61,6 +68,7 @@ __all__ = [
     "MAX_DOCUMENT_BYTES",
     "REQUIRED_CARD_SLOTS",
     "build_architecture_health",
+    "canonical_section_surface",
     "chunk_by_h2",
     "find_repository_root",
     "lint_architecture_document",

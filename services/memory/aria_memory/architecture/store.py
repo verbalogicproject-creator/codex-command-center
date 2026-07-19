@@ -7,7 +7,9 @@ from collections import defaultdict
 from typing import Any, Iterable
 
 from ..db import Database
+from ..embeddings import EmbeddingProvider, HashEmbeddingProvider
 from ..models import utc_now
+from .embeddings import ArchitectureEmbeddingStore
 from .models import (
     ArchitectureDocumentVersion,
     ArchitectureEdge,
@@ -43,8 +45,15 @@ def _entity_id(kind: str, value: str) -> str:
 class ArchitectureStore:
     """Transactional versioned architecture snapshots over the workspace DB."""
 
-    def __init__(self, db: Database):
+    def __init__(
+        self,
+        db: Database,
+        provider: EmbeddingProvider | None = None,
+    ):
         self.db = db
+        self.embeddings = ArchitectureEmbeddingStore(
+            db, provider or HashEmbeddingProvider(),
+        )
 
     @staticmethod
     def _snapshot_from_row(row: Any) -> ArchitectureSnapshot:
@@ -576,6 +585,8 @@ class ArchitectureStore:
         )
         existing = self.get_snapshot(snapshot_id)
         if existing:
+            if existing.status == "active":
+                self.embeddings.sync(existing.id)
             return existing
 
         created_at = utc_now()
@@ -666,4 +677,6 @@ class ArchitectureStore:
         result = self.get_snapshot(snapshot_id)
         if result is None:  # pragma: no cover - transaction contract guard
             raise RuntimeError("architecture snapshot disappeared after activation")
+        if result.status == "active":
+            self.embeddings.sync(result.id)
         return result

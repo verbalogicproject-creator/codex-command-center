@@ -118,23 +118,7 @@ def build_architecture_health(
                     "local_hash": local_hash,
                 })
 
-    with store.db.connect() as conn:
-        section_count = int(conn.execute(
-            """SELECT COUNT(*) FROM architecture_sections s
-            JOIN architecture_document_versions d ON d.id=s.document_version_id
-            WHERE d.snapshot_id=?""",
-            (snapshot.id,),
-        ).fetchone()[0])
-        embedding_count = int(conn.execute(
-            """SELECT COUNT(*) FROM architecture_section_embeddings e
-            JOIN architecture_sections s ON s.id=e.section_id
-            JOIN architecture_document_versions d ON d.id=s.document_version_id
-            WHERE d.snapshot_id=?""",
-            (snapshot.id,),
-        ).fetchone()[0])
-    embedding_coverage = (
-        embedding_count / section_count if section_count else 0
-    )
+    _, _, embedding_coverage = store.embeddings.coverage(snapshot.id)
 
     degraded_reasons: list[str] = []
     if missing_cards:

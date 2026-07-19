@@ -82,6 +82,7 @@ def _score_document(
 def _score_section(
     section: ArchitectureStoredSection,
     request: ArchitectureBriefRequest,
+    dense_score: float | None = None,
 ) -> tuple[float, list[str]]:
     if request.mode == "boot":
         heading = section.heading.casefold()
@@ -90,11 +91,15 @@ def _score_section(
     query_terms = _terms(request.prompt)
     surface = f"{section.heading} {section.body}".casefold()
     matched = sorted(term for term in query_terms if term in surface)
-    return (
-        len(matched) * 1.5,
-        ["section matches: " + ", ".join(matched[:6])] if matched
-        else ["parent architecture context"],
+    score = len(matched) * 1.5
+    reasons = (
+        ["section matches: " + ", ".join(matched[:6])]
+        if matched else ["parent architecture context"]
     )
+    if dense_score is not None:
+        score += max(dense_score, 0.0) * 4.0
+        reasons.append(f"dense similarity: {dense_score:.4f}")
+    return score, reasons
 
 
 def _brief_document(item: ArchitectureDocumentVersion) -> ArchitectureBriefDocument:
@@ -216,19 +221,48 @@ class ArchitectureCompiler:
         sections = self.store.list_sections(snapshot.id)
         edges = self.store.list_edges(snapshot.id)
         issues = self.store.list_issues(snapshot.id)
-        document_scores = [
-            (*_score_document(document, request), document)
-            for document in document_versions
+        dense_scores: dict[str, float] = {}
+        dense_degraded = False
+        if request.mode == "task" and request.prompt and sections:
+            dense_scores, dense_degraded = self.store.embeddings.query(
+                snapshot.id, request.prompt,
+            )
+        all_section_scores = [
+            (
+                *_score_section(
+                    section, request, dense_scores.get(section.id),
+                ),
+                section,
+            )
+            for section in sections
         ]
+        strongest_section_by_document: dict[str, tuple[float, str]] = {}
+        for score, _, section in all_section_scores:
+            current = strongest_section_by_document.get(
+                section.document_version_id,
+            )
+            if current is None or score > current[0]:
+                strongest_section_by_document[section.document_version_id] = (
+                    score, section.heading,
+                )
+        document_scores = []
+        for document in document_versions:
+            score, reasons = _score_document(document, request)
+            section_signal = strongest_section_by_document.get(document.id)
+            if request.mode == "task" and section_signal:
+                score += section_signal[0] * 0.5
+                reasons.append(
+                    f"section evidence: {section_signal[1]}"
+                )
+            document_scores.append((score, reasons, document))
         document_scores.sort(
             key=lambda item: (-item[0], item[2].source_uri, item[2].id),
         )
         selected_documents = document_scores[:request.document_limit]
         selected_ids = {item[2].id for item in selected_documents}
         section_scores = [
-            (*_score_section(section, request), section)
-            for section in sections
-            if section.document_version_id in selected_ids
+            item for item in all_section_scores
+            if item[2].document_version_id in selected_ids
         ]
         section_scores.sort(
             key=lambda item: (-item[0], item[2].stable_id, item[2].id),
@@ -265,6 +299,8 @@ class ArchitectureCompiler:
         degraded_reasons = list(health.degraded_reasons)
         if sections and health.embedding_coverage < 1:
             degraded_reasons.append("dense_architecture_retrieval_unavailable")
+        elif dense_degraded:
+            degraded_reasons.append("dense_architecture_query_failed")
         total_candidates = len(document_scores) + len(section_scores)
         brief = ArchitectureBrief(
             mode=request.mode,

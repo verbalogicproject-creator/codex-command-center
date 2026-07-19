@@ -29,7 +29,7 @@ class Workspace:
         self.embeddings = EmbeddingStore(db, provider)
         self.documents = DeclaredDocumentStore(db, provider)
         self.documents.ingest_tree(settings.document_seed_path, ROOT)
-        self.architecture = ArchitectureStore(db)
+        self.architecture = ArchitectureStore(db, provider)
         self.architecture_compiler = ArchitectureCompiler(self.architecture)
         self.store = AppStore(db)
         self.retriever = Retriever(db, self.embeddings)

@@ -45,6 +45,7 @@ def test_postgres_snapshot_activation_restart_and_historical_evidence():
             manifest_hash="a" * 64,
         )
         first_document = store.list_document_versions(first.id)[0]
+        assert store.embeddings.coverage(first.id)[2] == 1
         second = store.activate(
             repository="Synthetic Architecture",
             repository_id="synthetic-architecture",
@@ -63,6 +64,7 @@ def test_postgres_snapshot_activation_restart_and_historical_evidence():
         assert first.id != second.id
         assert store.get_snapshot(first.id).status == "historical"
         assert store.get_document_version(first_document.id).body == first_document.body
+        assert store.embeddings.coverage(second.id)[2] == 1
 
         restarted_store = ArchitectureStore(PostgresDatabase(url, workspace_id))
         brief = ArchitectureCompiler(restarted_store).build(
@@ -77,6 +79,10 @@ def test_postgres_snapshot_activation_restart_and_historical_evidence():
         assert brief.snapshot_receipt["source_revision"] == "postgres-revision-two"
         assert brief.documents
         assert brief.sources
+        assert brief.health_summary["embedding_coverage"] == 1
+        assert "dense_architecture_retrieval_unavailable" not in (
+            brief.degraded_reasons
+        )
         assert brief.token_estimate <= brief.token_budget
     finally:
         raw = db._raw(search_path=False)

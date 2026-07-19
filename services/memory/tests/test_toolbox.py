@@ -347,6 +347,7 @@ def test_pairing_token_auth_mcp_and_revocation(settings):
     })
     assert initialized.status_code == 200
     assert initialized.json()["result"]["serverInfo"]["name"] == "codex-command-center"
+    assert initialized.json()["result"]["serverInfo"]["version"] == "0.4.0"
     tools = client.post("/mcp", headers=headers, json={
         "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {},
     }).json()["result"]["tools"]

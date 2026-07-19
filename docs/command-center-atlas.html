@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Codex Command Center — Interactive System Atlas</title>
+<meta name="description" content="Plan with Aria. Continue in Codex. Bring your toolbox everywhere. Interactive documentation for Codex Command Center — an OpenAI Build Week 2026 submission." />
+<style>
+  :root{
+    --bg:#fbfaff;
+    --surface:#ffffff;
+    --surface-2:#f6f4fd;
+    --surface-3:#efecfa;
+    --border:#eae6f6;
+    --border-strong:#ddd6ef;
+    --text:#1b1a2b;
+    --text-2:#403d55;
+    --muted:#6d6a83;
+    --muted-2:#8b889f;
+    --accent:#6d5efc;
+    --accent-2:#8a7bff;
+    --accent-soft:#efeaff;
+    /* semantic node/type pastels */
+    --actor:#5b7cfa;      --actor-soft:#e2e8ff;
+    --artifact:#ec4d9b;   --artifact-soft:#ffe1ef;
+    --service:#9a72f5;    --service-soft:#ece2ff;
+    --store:#12b886;      --store-soft:#d3f6e8;
+    --contract:#e8850c;   --contract-soft:#ffecce;
+    /* status */
+    --ok:#12b886; --ok-soft:#d6f6ea;
+    --plan:#e8850c; --plan-soft:#ffedcf;
+    --no:#e5484d; --no-soft:#ffe0e0;
+    --radius:16px; --radius-sm:10px;
+    --shadow:0 1px 2px rgba(24,22,54,.05), 0 10px 30px rgba(94,78,180,.07);
+    --shadow-sm:0 1px 2px rgba(24,22,54,.05), 0 4px 14px rgba(94,78,180,.06);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+    --nav-w:270px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:15.5px;line-height:1.62;letter-spacing:.01em;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,kbd{font-family:var(--mono);font-size:.86em}
+  h1,h2,h3,h4{line-height:1.22;letter-spacing:-.01em;color:var(--text)}
+  h2{font-size:1.5rem;margin:0 0 .35em}
+  h3{font-size:1.12rem;margin:1.6em 0 .5em}
+  h4{font-size:.98rem;margin:1.3em 0 .4em;color:var(--text-2)}
+  p{margin:.55em 0}
+  ::selection{background:#e5ddff}
+
+  /* ---------- layout ---------- */
+  .shell{display:flex;min-height:100vh;max-width:1440px;margin:0 auto}
+  .sidebar{
+    width:var(--nav-w);flex:0 0 var(--nav-w);position:sticky;top:0;height:100vh;
+    overflow-y:auto;padding:22px 16px 40px;border-right:1px solid var(--border);
+    background:linear-gradient(180deg,#ffffff, #fbfaff 40%);
+  }
+  .brandmark{display:flex;align-items:center;gap:10px;padding:4px 8px 16px}
+  .brandmark .dot{width:30px;height:30px;border-radius:9px;flex:0 0 30px;
+    background:conic-gradient(from 210deg,#8fb2ff,#c2a8ff,#ffb3d6,#8fb2ff);
+    box-shadow:0 4px 12px rgba(120,90,220,.28)}
+  .brandmark b{font-size:.98rem;letter-spacing:-.01em}
+  .brandmark span{display:block;font-size:.72rem;color:var(--muted);font-weight:500}
+  .search{position:relative;margin:0 4px 14px}
+  .search input{
+    width:100%;padding:9px 12px 9px 32px;border:1px solid var(--border-strong);
+    border-radius:10px;background:var(--surface);font-size:.86rem;color:var(--text);
+    outline:none;font-family:var(--sans);
+  }
+  .search input:focus{border-color:var(--accent-2);box-shadow:0 0 0 3px var(--accent-soft)}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted-2)}
+  nav.toc{display:flex;flex-direction:column;gap:1px}
+  nav.toc .grp{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--muted-2);font-weight:700;margin:14px 10px 5px}
+  nav.toc a{
+    display:flex;align-items:center;gap:9px;padding:6.5px 10px;border-radius:9px;
+    color:var(--text-2);font-size:.865rem;font-weight:500;
+  }
+  nav.toc a:hover{background:var(--surface-2);text-decoration:none}
+  nav.toc a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  nav.toc a .ic{width:7px;height:7px;border-radius:50%;flex:0 0 7px;background:currentColor;opacity:.5}
+  nav.toc a.hidden{display:none}
+
+  .main{flex:1 1 auto;min-width:0;padding:0 clamp(18px,4vw,54px) 90px}
+  section{scroll-margin-top:74px;padding-top:26px}
+  .lede{font-size:1.02rem;color:var(--text-2);max-width:70ch}
+
+  /* ---------- topbar (mobile) ---------- */
+  .topbar{display:none;position:sticky;top:0;z-index:40;align-items:center;gap:12px;
+    padding:11px 16px;background:rgba(251,250,255,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border)}
+  .topbar b{font-size:.92rem}
+  .menu-btn{appearance:none;border:1px solid var(--border-strong);background:var(--surface);
+    border-radius:9px;width:38px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--text)}
+  .scrim{display:none}
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative;margin:22px 0 8px;border-radius:24px;overflow:hidden;
+    padding:clamp(30px,5vw,58px) clamp(24px,4vw,52px);
+    background:
+      radial-gradient(120% 140% at 8% 8%, #d7e3ff 0%, transparent 46%),
+      radial-gradient(120% 130% at 92% 20%, #ffd9ec 0%, transparent 50%),
+      radial-gradient(140% 160% at 60% 108%, #e7dcff 0%, transparent 55%),
+      linear-gradient(120deg,#dce6ff, #ece0ff 45%, #ffe1ef);
+    border:1px solid #efe7ff;box-shadow:var(--shadow);
+  }
+  .hero .kicker{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;
+    letter-spacing:.05em;text-transform:uppercase;color:#6a4bd0;background:rgba(255,255,255,.6);
+    border:1px solid rgba(140,110,230,.25);padding:5px 11px;border-radius:999px}
+  .hero h1{font-size:clamp(1.9rem,4.6vw,3rem);margin:.4em 0 .2em;letter-spacing:-.025em}
+  .hero .tag{font-size:clamp(1rem,2.2vw,1.28rem);font-weight:600;color:#3a2f66;max-width:24ch}
+  .hero p.sub{font-size:1.02rem;color:#4a4266;max-width:64ch;margin:.7em 0 0}
+  .hero .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;
+    font-size:.88rem;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:var(--sans)}
+  .btn.primary{background:#312a5e;color:#fff}
+  .btn.primary:hover{background:#241f49;text-decoration:none}
+  .btn.ghost{background:rgba(255,255,255,.66);color:#38305f;border-color:rgba(120,95,215,.28)}
+  .btn.ghost:hover{background:#fff;text-decoration:none}
+
+  .statrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:22px 0 6px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 18px;box-shadow:var(--shadow-sm)}
+  .stat .n{font-size:1.5rem;font-weight:750;letter-spacing:-.02em;color:var(--accent)}
+  .stat .l{font-size:.78rem;color:var(--muted);margin-top:2px}
+
+  /* ---------- cards & grids ---------- */
+  .grid{display:grid;gap:16px}
+  .grid.two{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .grid.three{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 20px;box-shadow:var(--shadow-sm)}
+  .card h3{margin-top:0}
+  .card .ico{font-size:1.2rem;margin-bottom:6px}
+  .callout{border-radius:var(--radius);padding:14px 18px;background:var(--accent-soft);
+    border:1px solid #e2d9ff;color:#3f3663;font-size:.92rem}
+  .callout.warm{background:#fff3e6;border-color:#ffe0bd;color:#5b4325}
+  .callout b{color:inherit}
+  .quote{font-size:1.15rem;font-weight:600;color:#40376a;border-left:3px solid var(--accent);
+    padding:4px 0 4px 18px;margin:8px 0;max-width:60ch;line-height:1.5}
+
+  /* ---------- badges ---------- */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;font-weight:700;
+    padding:2.5px 9px;border-radius:999px;letter-spacing:.02em;vertical-align:middle}
+  .badge.ok{background:var(--ok-soft);color:#0a7a58}
+  .badge.plan{background:var(--plan-soft);color:#9a5a05}
+  .badge.no{background:var(--no-soft);color:#b02528}
+  .badge.k{background:var(--surface-3);color:var(--text-2)}
+
+  /* ---------- tables ---------- */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);margin:14px 0}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:.86rem}
+  thead th{background:var(--surface-2);text-align:left;font-weight:700;color:var(--text-2);
+    padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:.8rem;
+    text-transform:uppercase;letter-spacing:.04em}
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--surface-2)}
+  td code, .mono{font-family:var(--mono);font-size:.82rem;color:#4a3fb0;background:var(--accent-soft);
+    padding:1px 6px;border-radius:6px;white-space:nowrap}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+  .tbl-note{font-size:.78rem;color:var(--muted);margin:-4px 2px 0;padding:0 2px}
+
+  /* ---------- code block ---------- */
+  .code{position:relative;background:#1d1b30;color:#e6e2ff;border-radius:12px;
+    padding:15px 16px;overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.6;margin:12px 0}
+  .code .cm{color:#9a95c4}
+  .code .tk{color:#ffb3d6}
+  .code .st{color:#a5f3d0}
+  .copy{position:absolute;top:9px;right:9px;background:rgba(255,255,255,.09);color:#cfc9f0;
+    border:1px solid rgba(255,255,255,.14);border-radius:7px;font-size:.72rem;padding:4px 9px;cursor:pointer;font-family:var(--sans)}
+  .copy:hover{background:rgba(255,255,255,.18)}
+  .copy.done{color:#a5f3d0;border-color:#2f6b52}
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+  .tab{appearance:none;border:1px solid var(--border-strong);background:var(--surface);
+    padding:7px 14px;border-radius:999px;font-size:.82rem;font-weight:600;color:var(--text-2);cursor:pointer;font-family:var(--sans)}
+  .tab[aria-selected="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .tabpanel[hidden]{display:none}
+
+  /* ---------- details ---------- */
+  details{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);
+    margin:10px 0;box-shadow:var(--shadow-sm);overflow:hidden}
+  details>summary{cursor:pointer;padding:13px 18px;font-weight:600;font-size:.94rem;list-style:none;
+    display:flex;align-items:center;gap:9px}
+  details>summary::-webkit-details-marker{display:none}
+  details>summary::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted-2);
+    border-bottom:2px solid var(--muted-2);transform:rotate(-45deg);transition:transform .18s}
+  details[open]>summary::before{transform:rotate(45deg)}
+  details .body{padding:2px 18px 16px}
+
+  /* ---------- flow / demo timeline ---------- */
+  .flow{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:14px 0}
+  .flow .step{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;position:relative;box-shadow:var(--shadow-sm)}
+  .flow .step .k{font-size:.72rem;font-weight:700;color:var(--accent);letter-spacing:.03em}
+  .flow .step h4{margin:.25em 0 .3em;font-size:.96rem;color:var(--text)}
+  .flow .step p{font-size:.82rem;color:var(--muted);margin:0}
+
+  .timeline{position:relative;margin:16px 0 4px;padding-left:8px}
+  .tl{display:flex;gap:16px;padding:14px 0;border-top:1px dashed var(--border-strong)}
+  .tl:first-child{border-top:none}
+  .tl .clock{flex:0 0 74px;font-family:var(--mono);font-size:.78rem;font-weight:700;color:var(--accent);padding-top:2px}
+  .tl .c h4{margin:0 0 .25em;font-size:.98rem}
+  .tl .c p{margin:.2em 0;font-size:.88rem;color:var(--text-2)}
+  .tl .say{display:inline-block;background:#fff0f7;border:1px solid #ffd4e8;color:#a23274;
+    font-weight:600;border-radius:8px;padding:2px 9px;font-size:.82rem;margin-top:4px}
+
+  /* ---------- graph ---------- */
+  .graph-wrap{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;margin:14px 0}
+  .graph-stage{position:relative;background:
+      radial-gradient(120% 120% at 20% 0%, #f3efff 0%, transparent 55%),
+      radial-gradient(120% 120% at 100% 100%, #ffeef6 0%, transparent 55%),
+      var(--surface);
+    border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);
+    overflow:hidden;min-height:540px}
+  #ccgraph{display:block;width:100%;height:540px;touch-action:none;cursor:grab}
+  #ccgraph:active{cursor:grabbing}
+  .g-node-label{font-family:var(--sans);font-size:10px;font-weight:600;fill:#2c2942;
+    paint-order:stroke;stroke:#ffffff;stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+  .g-controls{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px}
+  .g-controls button{width:32px;height:32px;border-radius:8px;border:1px solid var(--border-strong);
+    background:rgba(255,255,255,.9);cursor:pointer;font-size:1rem;color:var(--text-2);display:grid;place-items:center}
+  .g-controls button:hover{background:#fff}
+  .g-filters{position:absolute;left:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;max-width:82%}
+  .g-filters .chip{font-size:.7rem;font-weight:700;padding:4px 9px;border-radius:999px;cursor:pointer;
+    border:1px solid transparent;user-select:none;background:rgba(255,255,255,.85)}
+  .g-filters .chip[data-on="false"]{opacity:.4}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow-sm);padding:18px 20px;align-self:start;position:sticky;top:16px}
+  .panel .ph{color:var(--muted-2);font-size:.9rem}
+  .panel .pt{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:999px;display:inline-block}
+  .panel h3{margin:.5em 0 .1em;font-size:1.16rem}
+  .panel .sub{color:var(--muted);font-size:.86rem;margin:0 0 10px}
+  .panel ul{margin:8px 0 0;padding-left:0;list-style:none}
+  .panel ul li{position:relative;padding:5px 0 5px 18px;font-size:.85rem;color:var(--text-2);border-top:1px solid var(--border)}
+  .panel ul li:before{content:"";position:absolute;left:2px;top:12px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .panel .src{margin-top:12px;font-size:.76rem;color:var(--muted-2)}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 0}
+  .legend .li{display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text-2)}
+  .legend .sw{width:12px;height:12px;border-radius:4px}
+
+  .footer{border-top:1px solid var(--border);margin-top:40px;padding-top:22px;color:var(--muted);font-size:.85rem}
+  .footer .repo{font-family:var(--mono);font-size:.8rem}
+
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:1040px){
+    .graph-wrap{grid-template-columns:1fr}
+    .panel{position:static}
+    .split{grid-template-columns:1fr}
+  }
+  @media (max-width:900px){
+    .sidebar{position:fixed;left:0;top:0;z-index:50;transform:translateX(-102%);transition:transform .24s ease;
+      box-shadow:0 10px 40px rgba(40,30,90,.22);width:280px}
+    body.nav-open .sidebar{transform:translateX(0)}
+    body.nav-open .scrim{display:block;position:fixed;inset:0;z-index:45;background:rgba(30,24,60,.34)}
+    .topbar{display:flex}
+    .main{padding-left:16px;padding-right:16px}
+    #ccgraph{height:480px}
+    .graph-stage{min-height:480px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="scrim" id="scrim"></div>
+<div class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="Open navigation">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <b>Codex Command Center</b>
+</div>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brandmark">
+      <div class="dot"></div>
+      <div><b>Command Center</b><span>Interactive System Atlas</span></div>
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="navSearch" type="search" placeholder="Filter sections…" aria-label="Filter sections" />
+    </div>
+    <nav class="toc" id="toc">
+      <div class="grp">Overview</div>
+      <a href="#promise" data-kw="promise pitch overview what tagline"><span class="ic"></span>The promise</a>
+      <a href="#graph" data-kw="architecture graph evidence map nodes flow interactive"><span class="ic"></span>Architecture &amp; evidence graph</a>
+      <a href="#loop" data-kw="core loop aria sol codex handoff how it works"><span class="ic"></span>The core loop</a>
+      <a href="#demo" data-kw="demo script three minute walkthrough video"><span class="ic"></span>The 3-minute demo</a>
+      <div class="grp">Mechanisms</div>
+      <a href="#capabilities" data-kw="capability library kinds trust built-ins versioned toolbox"><span class="ic"></span>Capability library</a>
+      <a href="#handoffs" data-kw="handoff lifecycle draft published immutable revoke activation"><span class="ic"></span>Handoff lifecycle</a>
+      <a href="#screenshots" data-kw="screenshot sol inference retention hash discipline"><span class="ic"></span>Screenshot discipline</a>
+      <a href="#context" data-kw="context compiler retrieval hybrid packet bounded declared"><span class="ic"></span>Context &amp; retrieval</a>
+      <a href="#voice" data-kw="aria voice realtime webrtc commands navigation"><span class="ic"></span>Aria voice</a>
+      <a href="#arch-aware" data-kw="architecture awareness snapshot brief implemented shipped migration versioned"><span class="ic"></span>Architecture awareness</a>
+      <div class="grp">Contracts &amp; safety</div>
+      <a href="#safety" data-kw="safety approval boundary matrix pending proposal confirm"><span class="ic"></span>Safety &amp; approvals</a>
+      <a href="#mcp" data-kw="mcp rest api tools routes contract endpoint jsonrpc"><span class="ic"></span>MCP &amp; REST contract</a>
+      <a href="#plugin" data-kw="codex plugin hooks pairing install migration transport"><span class="ic"></span>Codex plugin</a>
+      <div class="grp">Proof &amp; ops</div>
+      <a href="#eval" data-kw="evaluation eval numbers recall metrics benchmark proof"><span class="ic"></span>Evaluation &amp; proof</a>
+      <a href="#deploy" data-kw="cloud run deploy postgres secret manager stack"><span class="ic"></span>Stack &amp; deployment</a>
+      <a href="#receipts" data-kw="legend receipts declared derived inferred verified evidence class"><span class="ic"></span>Legend of receipts</a>
+      <a href="#provenance" data-kw="provenance license credit author mit build week"><span class="ic"></span>Provenance &amp; license</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <!-- ===================== PROMISE ===================== -->
+    <section id="promise">
+      <div class="hero">
+        <span class="kicker">⚡ OpenAI Build Week 2026 · submission</span>
+        <h1>Codex Command Center</h1>
+        <div class="tag">Plan with Aria. Continue in Codex. Bring your toolbox everywhere.</div>
+        <p class="sub">One provider-neutral cloud toolbox for coding sessions. Aria takes a repository, a screenshot, and a voice or text request. <b>GPT&#8209;5.6&nbsp;Sol</b> fuses screenshot inferences with <em>declared</em> repository evidence, recommends an exact versioned capability, and builds an editable Open Plan. After explicit publication, Codex loads the bounded handoff through MCP and begins an informed interview <em>before</em> editing.</p>
+        <div class="cta">
+          <a class="btn primary" href="#graph">Explore the architecture graph →</a>
+          <a class="btn ghost" href="#demo">Walk the 3-minute demo</a>
+        </div>
+      </div>
+
+      <div class="statrow">
+        <div class="stat"><div class="n">100%</div><div class="l">Recall@5, cached-hash hybrid (35-query eval)</div></div>
+        <div class="stat"><div class="n">34.1%</div><div class="l">Peak token reduction via one bounded packet</div></div>
+        <div class="stat"><div class="n">0</div><div class="l">Raw screenshots retained — hash &amp; findings only</div></div>
+        <div class="stat"><div class="n">10</div><div class="l">MCP tools · 9 read-only + 1 propose-only</div></div>
+        <div class="stat"><div class="n">6</div><div class="l">Verified provider-neutral built-in capabilities</div></div>
+        <div class="stat"><div class="n">v0.4</div><div class="l">BYOK · three-service split · shared arch awareness</div></div>
+      </div>
+
+      <p class="lede" style="margin-top:22px">Codex is the primary client and competition focus. The hosted MCP contract is portable to other compatible clients without changing the visible demo story. This atlas is one self-contained page: a judge-facing tour up top, a walkable demo, and a complete developer reference below — every claim grounded in the repository.</p>
+
+      <div class="grid three" style="margin-top:18px">
+        <div class="card"><div class="ico">🧭</div><h3>Inspectable by design</h3><p style="font-size:.9rem;color:var(--text-2);margin:0">Every injected packet shows its sources, selection reasons, safe-edit points, risks, omissions, token budget, and degraded state. Nothing is hidden.</p></div>
+        <div class="card"><div class="ico">🔏</div><h3>Declaration over inference</h3><p style="font-size:.9rem;color:var(--text-2);margin:0">Evidence is labelled <span class="mono">declared</span>, <span class="mono">derived</span>, <span class="mono">inferred</span>, or <span class="mono">verified</span>. A model guess never silently becomes a graph fact.</p></div>
+        <div class="card"><div class="ico">🖐️</div><h3>Human-gated writes</h3><p style="font-size:.9rem;color:var(--text-2);margin:0">Aria, Sol, and Codex can only create <em>pending</em> proposals. One authenticated browser tap is the sole path to durable memory.</p></div>
+      </div>
+    </section>
+
+    <!-- ===================== GRAPH ===================== -->
+    <section id="graph">
+      <h2>Architecture &amp; evidence graph</h2>
+      <p class="lede">The whole system as one interactive map — the same idea Command Center ships inside the product. <b>Click any node</b> to open its receipts: what it is, how it behaves, and which document specifies it. Drag to rearrange, scroll or use +/− to zoom.</p>
+
+      <div class="graph-wrap">
+        <div class="graph-stage">
+          <svg id="ccgraph" role="img" aria-label="Interactive architecture graph of Codex Command Center"></svg>
+          <div class="g-controls">
+            <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+            <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
+            <button id="zfit" title="Fit" aria-label="Fit graph">⤢</button>
+          </div>
+          <div class="g-filters" id="gfilters"></div>
+        </div>
+        <aside class="panel" id="gpanel">
+          <div class="ph">◀ Select a node to inspect its receipts.<br><br>The graph is colored by <b>component type</b>. Evidence itself carries a separate class — see the <a href="#receipts">legend of receipts</a>.</div>
+        </aside>
+      </div>
+
+      <div class="legend" id="glegend"></div>
+    </section>
+
+    <!-- ===================== CORE LOOP ===================== -->
+    <section id="loop">
+      <h2>The core loop</h2>
+      <p class="lede">One reviewed toolbox travels from voice-and-screenshot planning into a coding interview — without installing arbitrary skills or hiding context.</p>
+      <div class="flow">
+        <div class="step"><div class="k">01 · PLAN</div><h4>Aria receives the task</h4><p>Repository + screenshot + voice/text request in the browser workspace.</p></div>
+        <div class="step"><div class="k">02 · ANALYZE</div><h4>Sol fuses evidence</h4><p>GPT&#8209;5.6 Sol combines screenshot inferences with declared repository evidence.</p></div>
+        <div class="step"><div class="k">03 · RECOMMEND</div><h4>Exact capability + Open Plan</h4><p>A versioned capability is pinned; the Open Plan is editable line by line.</p></div>
+        <div class="step"><div class="k">04 · PUBLISH</div><h4>Immutable handoff</h4><p>“Approve this handoff” records a bounded, version-pinned packet.</p></div>
+        <div class="step"><div class="k">05 · CONTINUE</div><h4>Codex loads via MCP</h4><p><span class="mono">load_handoff</span> verifies the repository and returns the packet + activation receipt.</p></div>
+        <div class="step"><div class="k">06 · INTERVIEW</div><h4>Ask before editing</h4><p>Codex cites evidence IDs and asks the first informed question before any file edit.</p></div>
+      </div>
+      <div class="callout" style="margin-top:14px">The remote MCP endpoint and REST routes call the <b>same workspace handlers</b>. Streamable HTTP is stateless JSON-RPC; a parity stdio adapter preserves identical schemas and results for clients that cannot attach a remote token header.</div>
+    </section>
+
+    <!-- ===================== DEMO ===================== -->
+    <section id="demo">
+      <h2>The 3-minute demo, walkable</h2>
+      <p class="lede">The competition demo script, beat by beat. Narration in plain type; spoken commands highlighted.</p>
+      <div class="timeline">
+        <div class="tl"><div class="clock">0:00</div><div class="c"><h4>Promise</h4><p>Show the Codex plugin list with only <b>Codex Command Center</b> installed. “Today GPT&#8209;5.6, Aria, and Codex carry one inspectable redesign plan from voice and screenshot into a coding interview.”</p></div></div>
+        <div class="tl"><div class="clock">0:20</div><div class="c"><h4>Give Aria the task</h4><p>Open <b>Handoff Builder</b>, select the repository, paste the current interface screenshot, describe the change. Show raw-image retention is off; point to the <b>Screenshot-derived inferences</b> label.</p></div></div>
+        <div class="tl"><div class="clock">0:55</div><div class="c"><h4>Inspect the toolbox</h4><p>Show the primary <b>Frontend redesign interview</b> recommendation and its exact version; reveal alternatives; edit one Open Plan line. Open the exact bounded packet — architecture, evidence IDs, selection reasons, safe edit points, risks, omitted candidates, token estimate, degraded state.</p></div></div>
+        <div class="tl"><div class="clock">1:30</div><div class="c"><h4>Approve by voice</h4><p>Aria publishes and reads the exact command. Voice exposed bounded context only — it did not edit code, install a tool, deploy, or confirm memory.<br><span class="say">🎙 “Approve this handoff.”</span></p></div></div>
+        <div class="tl"><div class="clock">1:50</div><div class="c"><h4>Continue in Codex</h4><p>Run the generated command. Show the visible <span class="mono">load_handoff</span> call: capability ID, version, hash, provenance; approved Open Plan; screenshot inferences; repository identity; evidence receipts; safe edit points, risks; activation receipt.</p></div></div>
+        <div class="tl"><div class="clock">2:45</div><div class="c"><h4>Close on the question</h4><p>Codex asks the first redesign interview question — <em>before</em> editing. “One cloud Command Center carried a reviewed toolbox into Codex without installing arbitrary skills or hiding context.”</p></div></div>
+      </div>
+      <div class="code" data-copy>/plan Load Command Center handoff &lt;ID&gt; and interview me before editing.</div>
+    </section>
+
+    <!-- ===================== CAPABILITIES ===================== -->
+    <section id="capabilities">
+      <h2>Capability library <span class="badge ok">implemented</span></h2>
+      <p class="lede">A persistent, versioned library of <b>provider-neutral instructions</b> — not executable packages, never dynamically installed into a coding client. Only the exact selected version enters a handoff.</p>
+
+      <h3>Six kinds</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Kind</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td><code>workflow</code></td><td>Ordered interview and implementation behavior</td></tr>
+            <tr><td><code>skill</code></td><td>Specialized domain instructions</td></tr>
+            <tr><td><code>prompt_module</code></td><td>Reusable model-facing framing</td></tr>
+            <tr><td><code>policy</code></td><td>Approval, safety, or quality boundary</td></tr>
+            <tr><td><code>tool_reference</code></td><td>Describes a tool and when it is available</td></tr>
+            <tr><td><code>template</code></td><td>Reusable plan or review structure</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="split">
+        <div>
+          <h3>Trust filtering</h3>
+          <p style="font-size:.9rem;color:var(--text-2)">Only <b>verified</b> or workspace-<b>trusted</b> latest versions are recommended for new handoffs; an existing handoff keeps the exact version it pinned.</p>
+          <ul style="font-size:.9rem;color:var(--text-2);padding-left:18px">
+            <li><b>verified</b> — built-in or administrator-reviewed import</li>
+            <li><b>workspace</b> — authored in the current trusted workspace</li>
+            <li><b>untrusted</b> — stored but omitted from normal selection</li>
+            <li><b>retired</b> — preserved for old handoffs, not chosen for new</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Identity &amp; integrity</h3>
+          <p style="font-size:.9rem;color:var(--text-2)">Composite key <span class="mono">(stable_id, version)</span>. Re-authoring the same <span class="mono">stable_id</span> mints the next integer version. The server computes a canonical <b>SHA&#8209;256</b> content hash and records creation and verification times. Instructions are provider-neutral and contain no arbitrary executable payload.</p>
+        </div>
+      </div>
+
+      <h3>Six verified built-ins</h3>
+      <div class="grid two">
+        <div class="card"><b>Taste-guided frontend redesign interview</b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">The demo's primary screenshot-led recommendation — a provider-neutral, bounded adaptation of Taste Skill (vendored <span class="mono">TASTE_SKILL_LICENSE</span>).</p></div>
+        <div class="card"><b>Lightweight frontend redesign interview</b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">A leaner redesign path when full taste guidance isn't needed.</p></div>
+        <div class="card"><b>Mobile accessibility review</b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">Responsive and accessibility-focused alternative.</p></div>
+        <div class="card"><b>Graph-canvas integration</b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">Wiring evidence-graph surfaces into an app.</p></div>
+        <div class="card"><b>Evidence-bound coding plan</b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">Plans that cite exact evidence before editing.</p></div>
+        <div class="card"><b>Safe deployment preparation</b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">Bounded pre-deploy checklist behavior.</p></div>
+      </div>
+
+      <details>
+        <summary>Author a capability (JSON contract)</summary>
+        <div class="body">
+          <div class="code" data-copy>{
+  <span class="tk">"stable_id"</span>: <span class="st">"design-system-migration"</span>,
+  <span class="tk">"name"</span>: <span class="st">"Design system migration"</span>,
+  <span class="tk">"kind"</span>: <span class="st">"workflow"</span>,
+  <span class="tk">"description"</span>: <span class="st">"Plan a bounded component migration."</span>,
+  <span class="tk">"triggers"</span>: [<span class="st">"design system"</span>, <span class="st">"tokens"</span>, <span class="st">"component migration"</span>],
+  <span class="tk">"instructions"</span>: <span class="st">"Inspect cited components. Interview before editing..."</span>,
+  <span class="tk">"repositories"</span>: [<span class="st">"Command Center"</span>],
+  <span class="tk">"required_tools"</span>: [<span class="st">"get_evidence"</span>, <span class="st">"walk_dependencies"</span>],
+  <span class="tk">"trust_status"</span>: <span class="st">"workspace"</span>,
+  <span class="tk">"provenance"</span>: <span class="st">"Authored and reviewed by the frontend team."</span>
+}</div>
+          <p class="tbl-note">Use <code>*</code> in <code>repositories</code> for a portable capability. Required tools are references, not installation requests. Ordinary API authoring is downgraded to <code>workspace</code> trust.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ===================== HANDOFFS ===================== -->
+    <section id="handoffs">
+      <h2>Handoff lifecycle <span class="badge ok">implemented</span></h2>
+      <p class="lede">A handoff is a reusable, inspectable task artifact — separate from durable memory, containing no arbitrary executable code.</p>
+      <div class="code">draft ──publish──▶ published ──revoke──▶ revoked
+  │                    │
+  └── edit in place    └── edit request ──▶ new draft version</div>
+
+      <div class="grid two">
+        <div class="card">
+          <h3 style="margin-top:0">Draft</h3>
+          <p style="font-size:.88rem;color:var(--text-2);margin:0">Compiles repository identity, original intent, screenshot metadata &amp; findings, exact capability versions, an Open Plan, declared architecture, ranked evidence receipts, safe edit points, risks, tool references, token estimate, omitted-candidate count, and degraded-state metadata. The packet preview <em>is</em> the data Codex will receive.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Publication</h3>
+          <p style="font-size:.88rem;color:var(--text-2);margin:0">Requires the explicit browser action or voice phrase <b>“Approve this handoff.”</b> Published records are immutable — a direct patch returns <span class="mono">HTTP&nbsp;409</span>. Editing through the versions endpoint creates a new draft with the same lineage; previous versions stay inspectable.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Activation</h3>
+          <p style="font-size:.88rem;color:var(--text-2);margin:0"><span class="mono">load_handoff</span> fails unless the handoff is published and the repository matches case-insensitively. Every successful load records a distinct activation ID, client name, optional session ID, repository, evidence IDs, and timestamp. The packet carries <span class="mono">interview_required=true</span>.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Revocation</h3>
+          <p style="font-size:.88rem;color:var(--text-2);margin:0">Prevents new loads while keeping activation receipts and the record for audit. It does not delete memories, capabilities, repository documents, or prior client session data. The handoff ID is not a bearer secret — the paired token and repository verification still apply.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SCREENSHOTS ===================== -->
+    <section id="screenshots">
+      <h2>Screenshot discipline <span class="badge ok">implemented</span></h2>
+      <p class="lede">Screenshot bytes exist only long enough to be useful, then vanish. Every returned observation is labelled an inference.</p>
+      <div class="flow">
+        <div class="step"><div class="k">1</div><h4>Validate &amp; MIME-sniff</h4><p>PNG / JPEG / WebP only; unsupported or corrupt bytes return <span class="mono">422</span>.</p></div>
+        <div class="step"><div class="k">2</div><h4>Bound &amp; resize</h4><p>Enforce size and dimension limits; resize the analysis copy in memory.</p></div>
+        <div class="step"><div class="k">3</div><h4>Hash</h4><p>Compute a SHA&#8209;256 receipt of the original.</p></div>
+        <div class="step"><div class="k">4</div><h4>Optional Sol</h4><p>Call GPT&#8209;5.6 Sol via Responses only when an API key is configured.</p></div>
+        <div class="step"><div class="k">5</div><h4>Discard</h4><p>Stored record = hash, dimensions, MIME, findings. <b>Raw bytes never retained.</b></p></div>
+      </div>
+      <div class="callout warm">The current implementation always reports <span class="mono">retained=false</span>, even if a caller requests retention. Returned observations always carry <span class="mono">classification=inference</span>. Without an API key, screenshots are still validated, hashed, and discarded; findings fall back to visibly degraded local results.</div>
+    </section>
+
+    <!-- ===================== CONTEXT ===================== -->
+    <section id="context">
+      <h2>Context &amp; retrieval <span class="badge ok">implemented</span></h2>
+      <p class="lede">A bounded context compiler rank-fuses declared documents and durable memory, then enforces a token and entity-count bound. Its POST response is the common agent interface — prompts never enter URLs or access-log query strings.</p>
+      <div class="split">
+        <div>
+          <h3>Signals fused</h3>
+          <ul style="font-size:.9rem;color:var(--text-2);padding-left:18px">
+            <li><b>Declared</b> — copied from validated AI-cards</li>
+            <li><b>Lexical + structural</b> — deterministic, always available</li>
+            <li><b>Dense</b> — normalized float32 vector cache</li>
+            <li><b>Durable memory</b> — human-authored/confirmed facts &amp; episodes</li>
+          </ul>
+          <p style="font-size:.86rem;color:var(--muted)">Each source shows its stable ID, entity class, repository, and selection reasons. The packet header shows <span class="mono">used / budget</span> estimated tokens — a conservative bound, not a tokenizer bill.</p>
+        </div>
+        <div>
+          <h3>Embedding surface</h3>
+          <p style="font-size:.9rem;color:var(--text-2)">The canonical surface contains only entity type, project, kind, status, tags, title, content, and reason — <b>no identifiers, secrets, or arbitrary metadata</b>. SHA&#8209;256 hashes select changed rows.</p>
+          <ul style="font-size:.88rem;color:var(--text-2);padding-left:18px">
+            <li><b>Local deterministic</b> — hash provider + pure-Python cosine; fully offline</li>
+            <li><b>OpenAI</b> — <span class="mono">text-embedding-3-large</span>, <span class="mono">dimensions=256</span>, batches of 64</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">If dense embeddings or OpenAI are unavailable, writes still persist and retrieval returns lexical/structural/declared evidence marked <span class="mono">degraded=true</span> — with a human-readable reason and counted omissions rather than silent gaps.</div>
+    </section>
+
+    <!-- ===================== VOICE ===================== -->
+    <section id="voice">
+      <h2>Aria voice <span class="badge ok">implemented</span></h2>
+      <p class="lede">Voice is an optional control layer over the same typed command router that tests and visible buttons use — not a second agent or memory service. The declared command catalog does not import a voice SDK.</p>
+      <div class="split">
+        <div>
+          <h3>Transport</h3>
+          <p style="font-size:.9rem;color:var(--text-2)">The authenticated user submits a <b>BYOK</b> credential once over HTTPS. The backend seals it into an HttpOnly session envelope and mints a ten-minute ephemeral <b>OpenAI Realtime</b> client secret; the original key is never returned to or readable by browser JavaScript. With no credential, voice returns <span class="mono">provider_credential_required</span>. The browser opens a <b>WebRTC</b> peer connection directly to OpenAI using only the ephemeral secret. A privacy-preserving hash of the workspace ID is sent as the safety identifier. Defaults: <span class="mono">gpt-realtime-2.1</span>, voice <span class="mono">marin</span>.</p>
+          <p style="font-size:.86rem;color:var(--muted)">Closing voice stops local media tracks, the data channel, remote audio, and the peer connection together.</p>
+        </div>
+        <div>
+          <h3>What voice may &amp; may not do</h3>
+          <ul style="font-size:.9rem;color:var(--text-2);padding-left:18px">
+            <li>✅ Navigate seven surfaces, scroll, open evidence, run recall, focus the graph, drive the guided tour</li>
+            <li>✅ Draft a <em>pending</em> proposal · publish a bounded handoff after the exact phrase</li>
+            <li>🚫 No <span class="mono">confirm_memory_write</span> voice command</li>
+            <li>🚫 Cannot edit code, install, deploy, or take external action</li>
+          </ul>
+        </div>
+      </div>
+      <details>
+        <summary>Supported interface commands (13)</summary>
+        <div class="body">
+          <div class="tbl-wrap" style="box-shadow:none;margin-top:6px">
+            <table>
+              <thead><tr><th>Command</th><th>Result</th></tr></thead>
+              <tbody>
+                <tr><td><code>navigate_surface</code></td><td>Open Aria, Handoff, Toolbox, Recall, Graph, Timeline, or Audit</td></tr>
+                <tr><td><code>approve_handoff</code></td><td>Publish the current draft — only after the exact approval phrase</td></tr>
+                <tr><td><code>scroll_page</code> / <code>scroll_to</code></td><td>Scroll or jump to a heading, composer, or results</td></tr>
+                <tr><td><code>open_evidence</code> / <code>close_evidence</code></td><td>Control the evidence drawer</td></tr>
+                <tr><td><code>focus_graph_node</code> / <code>fit_graph</code></td><td>Center a cited source · fit the active packet or full graph</td></tr>
+                <tr><td><code>select_session</code></td><td>Select an exact visible session</td></tr>
+                <tr><td><code>run_recall</code></td><td>Open Recall and execute a query</td></tr>
+                <tr><td><code>set_deep_synthesis</code></td><td>Enable/disable GPT&#8209;5.6 Sol in text Aria</td></tr>
+                <tr><td><code>open_context_packet</code></td><td>Expand the latest bounded packet</td></tr>
+                <tr><td><code>start_guided_tour</code> + controls</td><td>Drive the five-step visual tour</td></tr>
+                <tr><td><code>draft_memory_proposal</code></td><td>Create a persisted <code>pending</code> proposal</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ===================== ARCH AWARENESS ===================== -->
+    <section id="arch-aware">
+      <h2>Architecture awareness <span class="badge ok">implemented</span></h2>
+      <p class="lede">The headline of the latest Codex cycle: the complete declared architecture is now <b>versioned and queryable</b>, while each model receives only the relevant, repository-scoped slice. One <span class="mono">ArchitectureBrief</span> (<span class="mono">command-center-architecture-brief-v1</span>) is shared by Aria, published handoffs, the remote MCP, the stdio adapter, and Codex hooks — shipped in <b>Codex Command Center v0.4</b> on application migration&nbsp;5.</p>
+      <div class="quote">Sync the architecture once. Plan with Aria. Continue in Codex with the same repository understanding and evidence receipts.</div>
+      <div class="split">
+        <div>
+          <h3>How it works</h3>
+          <ul style="font-size:.88rem;color:var(--text-2);padding-left:18px">
+            <li><b>Manifest-driven</b> — <span class="mono">.command-center/architecture.yaml</span> is the only discovery authority (id, aliases, Markdown roots, dialects); it holds no token, path, or document body.</li>
+            <li><b>Two dialects → one card</b> — root YAML frontmatter (Declarum) and fenced <span class="mono">ai_card</span> YAML (Atlas) normalize to one strict provider-neutral <span class="mono">ArchitectureCard</span> (13 fleet slots). If a file has both, they must be identical.</li>
+            <li><b>Explicit sync</b> — <span class="mono">lint</span> validates, <span class="mono">status</span> sends hashes only, <span class="mono">sync</span> shows the corpus and asks before upload. SessionStart runs <em>status</em>, never sync.</li>
+            <li><b>Immutable snapshots</b> — each sync stages, then activates transactionally; the prior snapshot becomes historical; a pinned handoff stays byte-resolvable forever.</li>
+            <li><b>Declaration over inference</b> — typed edges come only from declarations; unresolved targets remain visible issues, never invented edges.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>The shipped surface</h3>
+          <p style="font-size:.88rem;color:var(--text-2)">Migration&nbsp;5 adds seven tables: <span class="mono">architecture_repositories · _snapshots · _document_versions · _sections · _section_embeddings · _edges · _issues</span>.</p>
+          <ul style="font-size:.88rem;color:var(--text-2);padding-left:18px">
+            <li><span class="mono">POST /architecture/lint · /sync · /check · /brief</span></li>
+            <li><span class="mono">GET /architecture/health</span> — coverage, drift, conflicts, degraded reasons</li>
+            <li>Brief modes: <span class="mono">boot</span> (orientation) + <span class="mono">task</span> (request-ranked)</li>
+            <li>Evidence IDs: <span class="mono">adoc_ · asec_ · aedge_ · aissue_</span></li>
+            <li>Typed edges: <span class="mono">CONTAINS PART_OF DESCRIBES OWNS_CONTRACT PROVIDES DEPENDS_ON SAFE_EDIT_POINT RISK_AREA MENTIONS</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">Proven lineage — the contract consolidates three working systems: <b>Atlas / kg-factory</b> (fenced <span class="mono">ai_card</span>, Markdown-AST H2 chunking, PostgreSQL graph, visible gap nodes), <b>NLKE Declarum Game Engine</b> (the 13 declaration slots, lint/scaffold/staleness, minimal boot context), and <b>Command Center</b> (repository-aware retrieval, bounded compilation, immutable handoffs, MCP parity, Codex hooks). Verified on SQLite <em>and</em> real PostgreSQL under proot, across a service restart.</div>
+    </section>
+
+    <!-- ===================== SAFETY ===================== -->
+    <section id="safety">
+      <h2>Safety &amp; approvals <span class="badge ok">implemented</span></h2>
+      <p class="lede">Model-facing code may only create pending proposals. A single authenticated endpoint mutates durable memory; every transition emits an append-only audit event.</p>
+
+      <h3>Approval matrix</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Action</th><th>Aria voice</th><th>Sol analysis</th><th>Codex MCP</th><th>Browser</th></tr></thead>
+          <tbody>
+            <tr><td>Navigate / narrate</td><td><span class="badge ok">yes</span></td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td><span class="badge ok">yes</span></td></tr>
+            <tr><td>Draft handoff</td><td><span class="badge ok">yes</span></td><td>analysis only</td><td><span class="badge no">no</span></td><td><span class="badge ok">yes</span></td></tr>
+            <tr><td>Publish bounded handoff</td><td>exact phrase</td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td><span class="badge ok">yes</span></td></tr>
+            <tr><td>Load published handoff</td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td><span class="badge ok">yes</span></td><td><span class="badge ok">yes</span></td></tr>
+            <tr><td>Draft memory proposal</td><td><span class="badge ok">yes</span></td><td><span class="badge ok">yes</span></td><td><span class="badge ok">yes</span></td><td><span class="badge ok">yes</span></td></tr>
+            <tr><td>Confirm durable memory</td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td><span class="badge ok">yes</span></td></tr>
+            <tr><td>Edit repository</td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td>client approval</td><td><span class="badge no">no</span></td></tr>
+            <tr><td>Install tools / plugins</td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td>separate action</td></tr>
+            <tr><td>Deploy / external action</td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td><span class="badge no">no</span></td><td>separate authority</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="split" style="margin-top:8px">
+        <div>
+          <h3>The four durable operations</h3>
+          <p style="font-size:.88rem;color:var(--text-2)">Only the authenticated confirm endpoint executes one of: <span class="mono">remember_episode</span>, <span class="mono">record_fact</span>, <span class="mono">supersede_fact</span>, <span class="mono">invalidate_fact</span>. Confirmation is idempotent; rejection changes no memory. The <b>MUD guard</b> transitions a proposal to <span class="mono">failed</span> when it conflicts with an active project-boundary decision — without changing memory.</p>
+        </div>
+        <div>
+          <h3>Pairing &amp; tokens</h3>
+          <p style="font-size:.88rem;color:var(--text-2)">A signed HttpOnly, <span class="mono">SameSite=Lax</span> cookie authenticates the browser. <b>Pair Codex</b> creates a one-time code (5-minute expiry, stored hashed) exchanged once for a revocable workspace token. The server stores only SHA&#8209;256 hashes; the plugin keeps the original outside the repository with user-only permissions. Direct clients send it via <span class="mono">X-Command-Center-Token</span>.</p>
+        </div>
+      </div>
+
+      <div class="split" style="margin-top:8px">
+        <div>
+          <h3>Bring your own key <span class="badge ok">implemented</span></h3>
+          <p style="font-size:.88rem;color:var(--text-2)">The public deployment is <b>BYOK</b>: no operator OpenAI key funds public Aria, Sol, or Realtime. Hosted retrieval defaults to deterministic hash embeddings; an optional administrative embedding credential may index architecture in a controlled environment but cannot fund interactive model routes. An authenticated user posts their key over HTTPS; the backend seals it into an authenticated, expiring <b>Fernet</b> envelope (<span class="mono">credentials.py</span>) returned only as an HttpOnly, Secure, <span class="mono">SameSite</span> cookie (<span class="mono">cc3_openai_byok</span>) scoped to <span class="mono">/api/v1</span> and bound to one workspace. Browser JS can't read it; the plaintext never reaches PostgreSQL, SQLite, handoffs, memory, snapshots, MCP packets, or logs, and it decrypts only for that user's outbound request.</p>
+        </div>
+        <div>
+          <h3>Credential endpoints</h3>
+          <div class="tbl-wrap" style="box-shadow:none">
+            <table>
+              <thead><tr><th>Route</th><th>Behavior</th></tr></thead>
+              <tbody>
+                <tr><td><code>POST /provider-credentials/openai</code></td><td>Set a short-lived encrypted session key</td></tr>
+                <tr><td><code>GET …/openai/status</code></td><td>Configured + expiry state only — never the key</td></tr>
+                <tr><td><code>DELETE …/openai</code></td><td>Clear the encrypted session credential</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="font-size:.86rem;color:var(--text-2)">Without a key everything except live model calls still works; voice returns <span class="mono">provider_credential_required</span> and Aria/Sol degrade visibly to local evidence. The production Secret Manager inventory contains <b>no operator <span class="mono">OPENAI_API_KEY</span></b>; two workspaces can neither use nor infer each other's credential.</p>
+        </div>
+      </div>
+      <div class="callout">Responses requests use <span class="mono">store:false</span>, a bounded visible history, retrieved excerpts rather than the corpus, and a stable hashed safety identifier. The service does not intentionally log prompts, memory bodies, secrets, or access codes. Run <span class="mono">scripts/security-scan.sh</span> before release.</div>
+    </section>
+
+    <!-- ===================== MCP / REST ===================== -->
+    <section id="mcp">
+      <h2>MCP &amp; REST contract <span class="badge ok">implemented</span></h2>
+      <p class="lede">One stateless Streamable HTTP JSON-RPC MCP endpoint plus a parity stdio adapter and typed REST routes — all calling the same workspace handlers. The hosted MCP can deploy as its own <span class="mono">command-center-mcp</span> service (<span class="mono">mcp_app.py</span>) that imports the same canonical tool schemas and never forks business logic. FastAPI publishes OpenAPI at <span class="mono">/openapi.json</span> and interactive docs at <span class="mono">/docs</span>.</p>
+
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-tab="tools">MCP tools (10)</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="rest">REST groups</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="init">Initialize</button>
+      </div>
+
+      <div class="tabpanel" data-panel="tools">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Tool</th><th>Required inputs</th><th>Behavior</th></tr></thead>
+            <tbody>
+              <tr><td><code>search_capabilities</code></td><td>—</td><td>Search latest trusted capability versions</td></tr>
+              <tr><td><code>recommend_capabilities</code></td><td><code>request</code>, <code>repository</code></td><td>Ranked primary + alternatives with reasons</td></tr>
+              <tr><td><code>get_capability</code></td><td><code>capability_id</code></td><td>Exact or latest trusted instruction record</td></tr>
+              <tr><td><code>load_handoff</code></td><td><code>handoff_id</code>, <code>repository</code></td><td>Verified packet + activation receipt</td></tr>
+              <tr><td><code>build_task_pack</code></td><td><code>prompt</code></td><td><code>command-center-task-pack-v2</code>: task ArchitectureBrief + durable context</td></tr>
+              <tr><td><code>recall_context</code></td><td><code>query</code></td><td>Same bounded v2 packet, recall wording</td></tr>
+              <tr><td><code>get_evidence</code></td><td><code>source_id</code></td><td>Versioned architecture doc/section/edge/issue (<code>adoc_/asec_/aedge_/aissue_</code>) or durable evidence</td></tr>
+              <tr><td><code>walk_dependencies</code></td><td><code>source_id</code></td><td>Snapshot-preserving typed architecture paths</td></tr>
+              <tr><td><code>get_timeline</code></td><td>—</td><td>Recent durable evidence</td></tr>
+              <tr><td><code>propose_memory_write</code></td><td><code>operation</code>, <code>payload</code>, <code>rationale</code></td><td>Pending proposal only</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-note">All tools except <code>propose_memory_write</code> declare <code>readOnlyHint=true</code>. There is <b>no</b> code execution, native-skill install, tool install, deployment, or <code>confirm_memory_write</code> MCP operation. The stdio adapter exposes identical names, schemas, annotations, and HTTP-backed results.</p>
+      </div>
+
+      <div class="tabpanel" data-panel="rest" hidden>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Group</th><th>Routes</th></tr></thead>
+            <tbody>
+              <tr><td>Auth</td><td><code>POST /api/v1/auth/demo</code> · <code>/auth/pair/start</code> · <code>/auth/pair</code> · <code>/auth/token/revoke</code></td></tr>
+              <tr><td>Capabilities</td><td><code>GET/POST /capabilities</code> · <code>GET /capabilities/{id}</code> · <code>POST /capabilities/recommend</code></td></tr>
+              <tr><td>Screenshots</td><td><code>POST /screenshots/analyze</code></td></tr>
+              <tr><td>Handoffs</td><td><code>GET/POST /handoffs</code> · <code>GET/PATCH /handoffs/{id}</code> · <code>/publish</code> · <code>/revoke</code> · <code>/versions</code> · <code>POST /handoffs/load</code></td></tr>
+              <tr><td>Context</td><td><code>POST /recall</code> · <code>/documents/recall</code> · <code>/context/pack</code></td></tr>
+              <tr><td>Architecture</td><td><code>POST /architecture/lint</code> · <code>/sync</code> · <code>/check</code> · <code>/brief</code> · <code>GET /architecture/health</code></td></tr>
+              <tr><td>Evidence</td><td><code>GET /documents/{id}</code> · <code>/memories/{table}/{id}</code> · <code>/graph</code> · <code>/timeline</code></td></tr>
+              <tr><td>Aria</td><td><code>POST /realtime/token</code> · <code>/chat/stream</code></td></tr>
+              <tr><td>Credentials</td><td><code>POST/DELETE /provider-credentials/openai</code> · <code>GET /provider-credentials/openai/status</code> · BYOK session envelope</td></tr>
+              <tr><td>Memory</td><td><code>GET/POST /proposals</code> · <code>POST /proposals/{id}/confirm</code> · <code>/reject</code> · <code>GET /audit</code></td></tr>
+              <tr><td>Hooks</td><td><code>POST /hooks/events</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-note">All workspace routes use the HttpOnly cookie or <code>X-Command-Center-Token</code>. Validation failures return a structured <code>{"error":{"code","message","retryable"}}</code>.</p>
+      </div>
+
+      <div class="tabpanel" data-panel="init" hidden>
+        <div class="code" data-copy>POST https://&lt;host&gt;/mcp
+X-Command-Center-Token: &lt;revocable token&gt;
+Content-Type: application/json
+
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+  "protocolVersion":"2025-06-18",
+  "capabilities":{},
+  "clientInfo":{"name":"Codex","version":"1"}
+}}</div>
+        <p class="tbl-note">Stateless &amp; sessionless — safe across Cloud Run cold starts. Returns <code>MCP-Protocol-Version: 2025-06-18</code> and <code>serverInfo.name=codex-command-center</code>. Notifications get <code>202</code>; unsupported OAuth well-known routes return a structured <code>404</code> directing users to browser pairing. The standalone <span class="mono">command-center-mcp</span> service adds only a minimal unauthenticated <code>/healthz</code> liveness route.</p>
+      </div>
+    </section>
+
+    <!-- ===================== PLUGIN ===================== -->
+    <section id="plugin">
+      <h2>Codex plugin <span class="badge ok">v0.4.0</span></h2>
+      <p class="lede">The installable <b>Codex Command Center v0.4</b> plugin — "bring an inspectable toolbox everywhere" — injects provider-neutral workflow instructions and the versioned <span class="mono">ArchitectureBrief</span> as bounded session context, and adds an explicit architecture sync helper. It does not claim native skill installation.</p>
+      <div class="split">
+        <div>
+          <h3>Four declared hooks</h3>
+          <div class="tbl-wrap" style="box-shadow:none">
+            <table>
+              <thead><tr><th>Hook</th><th>Result</th></tr></thead>
+              <tbody>
+                <tr><td><code>SessionStart</code></td><td>Hash-only drift check + boot ArchitectureBrief</td></tr>
+                <tr><td><code>UserPromptSubmit</code></td><td><code>command-center-task-pack-v2</code> (task brief + durable context)</td></tr>
+                <tr><td><code>PostToolUse</code></td><td>Sanitized telemetry only</td></tr>
+                <tr><td><code>Stop</code></td><td>Sanitized completion; optional pending proposal (off by default)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="tbl-note">Session/prompt hooks use <code>hookSpecificOutput.additionalContext</code>. Telemetry accepts only summary, outcome, changed files, duration, exit code, and the proposal-draft boolean. Raw prompts and tool output are dropped.</p>
+        </div>
+        <div>
+          <h3>Pair &amp; run</h3>
+          <div class="code" data-copy>export COMMAND_CENTER_URL=http://127.0.0.1:8000
+python3 plugins/codex-command-center/scripts/pair.py THE-CODE
+python3 plugins/codex-command-center/scripts/health.py
+python3 plugins/codex-command-center/scripts/architecture.py lint .
+python3 plugins/codex-command-center/scripts/architecture.py status .
+python3 plugins/codex-command-center/scripts/architecture.py sync .</div>
+          <p style="font-size:.86rem;color:var(--text-2)">Two transports expose identical contracts: <b>stdio</b> (default — reads the local token, calls hosted REST) and <b>remote</b> (<span class="mono">${URL}/mcp</span> with the token header). Enable one to avoid duplicate tool names. Paths resolve from the Git root, so nested working directories stay safe.</p>
+        </div>
+      </div>
+      <div class="callout">Migration: the former public name was <span class="mono">command-center-memory</span>. Remove it, install <span class="mono">codex-command-center</span>, pair again, start a new thread. <span class="mono">build_context_pack</span> becomes <span class="mono">build_task_pack</span>; durable workspace data is preserved.</div>
+    </section>
+
+    <!-- ===================== EVAL ===================== -->
+    <section id="eval">
+      <h2>Evaluation &amp; proof <span class="badge ok">reproducible</span></h2>
+      <p class="lede">Reproducible engineering smoke evaluations — not production quality claims. Run on 2026-07-18, Python 3.14, Android/Termux, over a public labelled fixture. A live OpenAI comparison is intentionally <em>not</em> fabricated because no API credential was supplied.</p>
+
+      <h3>Retrieval evaluation <span class="badge k">35 queries · 46 records</span></h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Configuration</th><th>Recall@5</th><th>MRR</th><th>p50</th><th>p95</th></tr></thead>
+          <tbody>
+            <tr><td>Lexical score</td><td class="num">97.1%</td><td class="num">0.910</td><td class="num">4.58 ms</td><td class="num">4.91 ms</td></tr>
+            <tr><td><b>Cached hash hybrid</b></td><td class="num"><b>100%</b></td><td class="num"><b>0.913</b></td><td class="num">4.58 ms</td><td class="num">4.91 ms</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="tbl-note">The deterministic hybrid gained <b>2.9 percentage points</b> in Recall@5 on semantic aliases while preserving exact recall. Initial indexing wrote 46 vectors; ordinary queries wrote zero document embeddings. Coverage 100%.</p>
+
+      <h3>Retrospective proof — bounded evidence retention</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Task</th><th>Full-corpus tokens</th><th>Packet tokens</th><th>Reduction</th><th>Repo reads</th><th>Missing evidence</th></tr></thead>
+          <tbody>
+            <tr><td>Private mobile architecture</td><td class="num">2,585</td><td class="num">1,704</td><td class="num">34.1%</td><td class="num">5 → 0</td><td class="num">0</td></tr>
+            <tr><td>Approval boundary</td><td class="num">2,585</td><td class="num">1,869</td><td class="num">27.7%</td><td class="num">5 → 0</td><td class="num">0</td></tr>
+            <tr><td>Dense outage fallback</td><td class="num">2,585</td><td class="num">1,721</td><td class="num">33.4%</td><td class="num">5 → 0</td><td class="num">0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="tbl-note">The packet path records one tool call (<code>POST /api/v1/context/pack</code>); the baseline reads all five AI cards and scans durable memory. A runnable assertion fails if any required source ID is absent. This proves bounded retention and reduced rescanning — not lower end-to-end latency or answer quality on unseen tasks.</p>
+
+      <details>
+        <summary>Declared-document mode comparison (falsification smoke test)</summary>
+        <div class="body">
+          <div class="tbl-wrap" style="box-shadow:none">
+            <table>
+              <thead><tr><th>Mode</th><th>Recall@5</th><th>MRR</th><th>Median</th></tr></thead>
+              <tbody>
+                <tr><td>Lexical</td><td class="num">100%</td><td class="num">1.000</td><td class="num">3.44 ms</td></tr>
+                <tr><td>Declared + structural</td><td class="num">100%</td><td class="num">0.667</td><td class="num">3.32 ms</td></tr>
+                <tr><td>Cached hash dense</td><td class="num">66.7%</td><td class="num">0.444</td><td class="num">3.96 ms</td></tr>
+                <tr><td>Full hybrid</td><td class="num">100%</td><td class="num">0.500</td><td class="num">3.80 ms</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="tbl-note">A tiny set showing <em>why every signal stays visible</em>: declared and dense expansion improve breadth while sometimes moving an exact target lower. Larger labelled evaluation is required before retuning fusion weights.</p>
+        </div>
+      </details>
+      <div class="callout" style="margin-top:12px"><b>Architecture-awareness verification (new).</b> The automated suite covers both declaration dialects, repeated H2 headings, path/symlink/corpus bounds, coverage gaps, transactional activation &amp; rejection, idempotency, alias isolation, packet bounds, and exact evidence lookup. A <b>pinned-handoff</b> test activates revision&nbsp;1, publishes its <span class="mono">ArchitectureBrief</span>, activates revision&nbsp;2, and proves the alias load still reports revision&nbsp;1 with old evidence resolvable while a new task pack reports revision&nbsp;2. A <b>PostgreSQL</b> behavioral test runs migration&nbsp;5 on a real server, transitions active→historical, resolves old bytes, and re-retrieves the active brief across a clean restart.</div>
+      <div class="code" data-copy>PYTHONPATH=services/memory python3 scripts/eval.py</div>
+    </section>
+
+    <!-- ===================== DEPLOY ===================== -->
+    <section id="deploy">
+      <h2>Stack &amp; deployment <span class="badge ok">implementation-ready</span></h2>
+      <p class="lede">The proven baseline is one combined image (static web + REST API + stateless MCP). The production target — implemented in source and staged for promotion — splits it into <b>three independently deployable Cloud Run services</b> built from one commit by <span class="mono">cloudbuild.three-service.yaml</span>, keeping the rollback path to the combined revision. Google Cloud is only the hosting layer — Command Center exposes no GCP administration tools.</p>
+      <div class="grid three">
+        <div class="card"><b><span class="mono">command-center-web</span></b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">Static Next.js export + a same-origin reverse proxy to the API, preserving the HttpOnly/Secure/<span class="mono">SameSite=Lax</span> cookie contract. Owns no database, token, key, or durable state.</p></div>
+        <div class="card"><b><span class="mono">command-center-api</span></b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">FastAPI: auth, pairing, capabilities, screenshots, handoffs, architecture sync, context, Aria, memory, audit. <span class="mono">declared_core</span> + vendored <span class="mono">frontmatter_rag</span> · SQLite (local) / Cloud SQL PostgreSQL (prod, migration 5 verified under proot).</p></div>
+        <div class="card"><b><span class="mono">command-center-mcp</span></b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">Stateless Streamable HTTP MCP boundary only (<span class="mono">mcp_app.py</span>) + a minimal <span class="mono">/healthz</span>. Imports the same canonical tool schemas; scale-to-zero safe. The stdio plugin forwards <span class="mono">tools/call</span> here.</p></div>
+      </div>
+      <div class="split" style="margin-top:8px">
+        <div>
+          <h3>Least-privilege identity</h3>
+          <p style="font-size:.88rem;color:var(--text-2)">The production target creates separate runtime service accounts for web, API, and MCP. Web has no Secret Manager or Cloud SQL access by default; API receives Cloud SQL Client plus only its named cookie, signing, and BYOK-envelope secrets; MCP receives Cloud SQL Client plus only the signing secrets required by canonical handlers. No Editor, Owner, deploy, build, or general storage roles. The planned secret inventory includes <span class="mono">DEMO_ACCESS_CODE</span>, <span class="mono">COOKIE_SECRET</span>, the <b>BYOK envelope secret</b>, MCP signing, and <span class="mono">DATABASE_URL</span> — <b>never</b> an operator <span class="mono">OPENAI_API_KEY</span>. These identities and secrets do not exist yet.</p>
+        </div>
+        <div>
+          <h3>Structured logging</h3>
+          <p style="font-size:.88rem;color:var(--text-2)">Logs carry route, status, latency, workspace hash prefix, MCP method, degraded state, and error code — never headers, bodies, prompts, tokens, or screenshots. Planned alerts cover 5xx/latency, MCP failures, Cloud SQL exhaustion, repeated provider-auth failures, and the bounded monthly GCP budget threshold.</p>
+        </div>
+      </div>
+      <div class="callout">Deployment-state receipt (<span class="mono">deployment-state.md</span>): GCP project <span class="mono">codex-command-centet</span>, region <span class="mono">me-west1</span> (Tel Aviv). Artifact Registry repo <span class="mono">command-center</span> created (0 images, dry-run cleanup); Cloud Run, Cloud SQL, Artifact Registry, Cloud Build, and Secret Manager APIs enabled. <b>No build, database, service, secret, or production traffic exists yet.</b> Twelve staging gates — same-origin login cookie, 401 on unauth API/MCP, cold-start MCP <span class="mono">tools/list</span>, exact Taste capability pick, screenshot non-retention, pinned handoff, API↔MCP schema parity, restart durability, revocation/rollback visibility, mobile + reduced-motion, and BYOK isolation — gate any production promotion.</div>
+      <div class="callout warm">Cloud administration and live deployment remain separate, explicitly authorized operations. The five-minute local start (<span class="mono">cp .env.example .env → scripts/setup.sh → scripts/dev.sh</span>) needs only Python 3.12+ and Node 22+, and works with no OpenAI key in visibly degraded mode.</div>
+    </section>
+
+    <!-- ===================== RECEIPTS ===================== -->
+    <section id="receipts">
+      <h2>Legend of receipts</h2>
+      <p class="lede">Two vocabularies run through the whole product. <b>Evidence class</b> answers “how do we know this?” <b>Graph color</b> answers “what kind of thing is lit?”</p>
+      <div class="split">
+        <div>
+          <h3>Evidence class</h3>
+          <ul style="font-size:.9rem;color:var(--text-2);padding-left:18px">
+            <li><b>declared</b> — copied from a validated architecture card</li>
+            <li><b>derived</b> — produced deterministically from structure or path normalization</li>
+            <li><b>inferred</b> — produced by a model or heuristic (e.g. screenshot findings)</li>
+            <li><b>verified</b> — checked against source content at a recorded hash or revision</li>
+          </ul>
+          <p style="font-size:.84rem;color:var(--muted)">Inferred relationships never silently become declared graph edges.</p>
+        </div>
+        <div>
+          <h3>Graph palette (in-product)</h3>
+          <ul style="font-size:.9rem;color:var(--text-2);padding-left:18px">
+            <li><b>Violet</b> — declared repository, document &amp; stored capability structure</li>
+            <li><b>Amber</b> — human-authored or human-confirmed durable memory</li>
+            <li><b>Cyan + moving particle</b> — Sol-selected context or an active handoff entering Codex</li>
+            <li><b>Muted edge</b> — a relationship that exists but is inactive for this question</li>
+            <li><b>Dimmed card</b> — superseded evidence retained for provenance</li>
+          </ul>
+          <p style="font-size:.84rem;color:var(--muted)">With reduced motion, state stays legible through color, labels, icons, and borders.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PROVENANCE ===================== -->
+    <section id="provenance">
+      <h2>Provenance &amp; license</h2>
+      <p class="lede">Licensed under <b>Apache&#8209;2.0</b> (with a <span class="mono">NOTICE</span> file and explicit contributor patent grant). Built by a self-taught context/knowledge engineer consolidating independently working systems into one inspectable product.</p>
+      <div class="grid two">
+        <div class="card">
+          <h3 style="margin-top:0">What is <em>not</em> claimed</h3>
+          <p style="font-size:.88rem;color:var(--text-2);margin:0">No native skill installation, arbitrary code distribution, dynamic tool installation, deployment control, or voice/Codex memory confirmation. Published handoffs are bounded context — not code changes, installs, deploys, or external actions.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Credits</h3>
+          <p style="font-size:.88rem;color:var(--text-2);margin:0">Architecture-awareness lineage: <b>Atlas / kg-factory</b> + <b>NLKE Declarum Game Engine</b> + Command Center. Cloud Run / MCP deployment patterns adapted from the MIT-licensed same-author sibling <b>Claude-ToolBox-Curriculum</b>; the vendored declared-retrieval (<span class="mono">frontmatter_rag</span>) and the Taste-guided redesign workflow (a bounded, provider-neutral adaptation of <b>Taste Skill</b> by Leonxlnx) retain their original MIT terms in <span class="mono">FRONTMATTER_RAG_LICENSE</span> / <span class="mono">TASTE_SKILL_LICENSE</span> / <span class="mono">THIRD_PARTY_NOTICES.md</span> / <span class="mono">NOTICE</span>.</p>
+        </div>
+      </div>
+      <div class="footer">
+        <p><b>Codex Command Center</b> — OpenAI Build Week 2026 submission. Generated from the repository's own documentation set, grounded in git HEAD <span class="mono">7d25e72</span>, using only synthetic public examples. The core product surfaces are <span class="badge ok">implemented</span> in source; the remaining roadmap is architecture-section dense retrieval reconciliation, <b>three-service cloud promotion</b> (reconciled source → three images → least-privilege GCP + Cloud SQL → twelve staging gates), and evidence-aware <b>GPT‑5.6 Luna</b> tour narration.</p>
+        <p class="repo">Public target: github.com/verbalogicproject-creator/codex-command-center</p>
+        <p style="margin-top:14px">Source docs: README · architecture.md · <b>architecture-awareness.md</b> · <b>byok.md</b> · handoffs.md · capability-authoring.md · api-mcp.md · security-privacy.md · aria-voice.md · graph-canvas.md · codex-plugin.md · eval-report.md · cloud-run.md · <b>deployment-topology.md</b> · <b>deployment-state.md</b> · postgresql-proot.md · demo-script.md · roadmap.md · docs/plans/full-architecture-awareness.md</p>
+        <p class="repo" style="margin-top:6px">Reflects git HEAD <b>7d25e72</b> — deployment continuation state after the Taste, BYOK, three-service, and Codex Command Center v0.4 cycle (2026-07-19).</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+"use strict";
+(function(){
+  /* ---------- mobile nav ---------- */
+  var body=document.body, menuBtn=document.getElementById('menuBtn'), scrim=document.getElementById('scrim');
+  function closeNav(){body.classList.remove('nav-open');}
+  if(menuBtn) menuBtn.addEventListener('click',function(){body.classList.toggle('nav-open');});
+  if(scrim) scrim.addEventListener('click',closeNav);
+  document.querySelectorAll('nav.toc a').forEach(function(a){a.addEventListener('click',closeNav);});
+
+  /* ---------- scrollspy ---------- */
+  var links=Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var map={}; links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+  var spy=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){l.classList.remove('active');});
+        var a=map[e.target.id]; if(a) a.classList.add('active');
+      }
+    });
+  },{rootMargin:'-45% 0px -50% 0px',threshold:0});
+  document.querySelectorAll('main section').forEach(function(s){spy.observe(s);});
+
+  /* ---------- nav search filter ---------- */
+  var search=document.getElementById('navSearch');
+  if(search){
+    search.addEventListener('input',function(){
+      var q=search.value.trim().toLowerCase();
+      links.forEach(function(a){
+        if(a.classList.contains('grp'))return;
+        var kw=(a.getAttribute('data-kw')||'')+' '+a.textContent.toLowerCase();
+        a.classList.toggle('hidden', q!=='' && kw.indexOf(q)===-1);
+      });
+    });
+  }
+
+  /* ---------- copy buttons ---------- */
+  document.querySelectorAll('.code[data-copy]').forEach(function(block){
+    var btn=document.createElement('button'); btn.className='copy'; btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var t=block.innerText.replace(/Copy$/,'').trim();
+      if(navigator.clipboard){navigator.clipboard.writeText(t).then(done);}else{done();}
+      function done(){btn.textContent='Copied ✓';btn.classList.add('done');setTimeout(function(){btn.textContent='Copy';btn.classList.remove('done');},1400);}
+    });
+    block.appendChild(btn);
+  });
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll('.tabs').forEach(function(tabs){
+    var sec=tabs.closest('section');
+    var btns=tabs.querySelectorAll('.tab');
+    btns.forEach(function(b){
+      b.addEventListener('click',function(){
+        btns.forEach(function(x){x.setAttribute('aria-selected','false');});
+        b.setAttribute('aria-selected','true');
+        var key=b.getAttribute('data-tab');
+        sec.querySelectorAll('.tabpanel').forEach(function(p){
+          p.hidden = p.getAttribute('data-panel')!==key;
+        });
+      });
+    });
+  });
+
+  /* ================= FORCE GRAPH ================= */
+  var TYPES={
+    actor:{c:'#5b7cfa',s:'#e2e8ff',label:'Actor'},
+    artifact:{c:'#ec4d9b',s:'#ffe1ef',label:'Artifact'},
+    service:{c:'#9a72f5',s:'#ece2ff',label:'Service'},
+    store:{c:'#12b886',s:'#d3f6e8',label:'Store'},
+    contract:{c:'#e8850c',s:'#ffecce',label:'Contract'}
+  };
+  var N=[
+    {id:'you',   t:'actor',   label:'You · Browser',    r:22, sub:'Isolated workspace',
+      facts:['Signed HttpOnly, SameSite=Lax cookie authenticates the browser.','One isolated SQLite database per authenticated browser under gitignored data/.','The only actor that can confirm durable memory.'], src:'security-privacy.md · architecture.md'},
+    {id:'aria',  t:'actor',   label:'Aria',             r:24, sub:'Voice/text planner',
+      facts:['Optional control layer over the same typed command router used by tests and buttons.','Navigates seven surfaces; may draft pending proposals and publish a handoff after the exact phrase.','Cannot edit code, install, deploy, or confirm memory.'], src:'aria-voice.md · user-guide.md'},
+    {id:'sol',   t:'actor',   label:'GPT-5.6 Sol',      r:24, sub:'Screenshot + evidence',
+      facts:['Fuses screenshot inferences with declared repository evidence.','Called via the Responses API with store:false and a hashed safety identifier.','Every observation returned as classification=inference.'], src:'README.md · handoffs.md'},
+    {id:'codex', t:'actor',   label:'Codex',            r:24, sub:'Primary client',
+      facts:['Loads a published handoff via MCP and cites versioned evidence.','Asks the first informed interview question before any file edit.','Can draft pending proposals; cannot confirm durable memory.'], src:'codex-plugin.md · demo-script.md'},
+    {id:'shot',  t:'service', label:'Screenshot analysis', r:18, sub:'Validate → hash → discard',
+      facts:['PNG/JPEG/WebP only; corrupt or unsupported bytes return 422.','Resized in memory; SHA-256 receipt computed.','Always retained=false — raw bytes never stored.'], src:'handoffs.md · security-privacy.md'},
+    {id:'plan',  t:'artifact',label:'Open Plan',        r:18, sub:'Editable, line by line',
+      facts:['Editable plan pinned into a draft handoff.','Changing a capability resolves and pins its exact trusted version.','The packet preview is exactly the data Codex will receive.'], src:'handoffs.md · user-guide.md'},
+    {id:'cap',   t:'store',   label:'Capability library', r:20, sub:'6 kinds · versioned',
+      facts:['Composite key (stable_id, version); canonical SHA-256 content hash.','Trust filtering excludes untrusted and retired records.','Six verified provider-neutral built-ins (Taste-guided redesign is the primary).'], src:'capability-authoring.md'},
+    {id:'hand',  t:'artifact',label:'Handoff',          r:22, sub:'draft → published → revoked',
+      facts:['Published records are immutable; a direct patch returns HTTP 409.','Editing a published packet creates a new lineage version.','Repository-bound and version-pinned; ID is not a bearer secret.'], src:'handoffs.md'},
+    {id:'ctx',   t:'service', label:'Context compiler', r:20, sub:'Bounded, one interface',
+      facts:['Rank-fuses declared documents + durable memory, then bounds tokens and entity count.','POST response is the common agent interface; prompts never enter URLs.','Counts omitted candidates instead of hiding them.'], src:'architecture.md · eval-report.md'},
+    {id:'ret',   t:'service', label:'Hybrid retriever', r:18, sub:'lexical + structural + dense',
+      facts:['Deterministic lexical/structural always available.','Normalized float32 vector cache; SHA-256 selects changed rows.','Degraded=true with a reason when dense/OpenAI is unavailable.'], src:'architecture.md'},
+    {id:'cards', t:'store',   label:'Declared AI-cards', r:17, sub:'Repository structure',
+      facts:['Two dialects (frontmatter + fenced ai_card) normalize to one strict ArchitectureCard.','13 fleet declaration slots; scalars normalize to lists without mutating the parsed input.','Missing cards are visible coverage gaps, not silent omissions.'], src:'architecture-awareness.md · declared-context.md'},
+    {id:'arch',  t:'store',   label:'Architecture snapshot', r:18, sub:'Versioned · migration 5',
+      facts:['Each sync stages then activates transactionally; the prior snapshot becomes historical.','Seven tables: repositories, snapshots, document_versions, sections, section_embeddings, edges, issues.','Pinned handoffs resolve historical evidence forever (adoc_/asec_/aedge_/aissue_).'], src:'architecture-awareness.md'},
+    {id:'mem',   t:'store',   label:'Durable memory',   r:20, sub:'Facts & episodes',
+      facts:['Row schema stays version 1; app_migrations versions everything else.','Mutated only by the authenticated confirm endpoint.','Four operations: remember_episode, record_fact, supersede_fact, invalidate_fact.'], src:'architecture.md · AGENTS.md'},
+    {id:'prop',  t:'artifact',label:'Pending proposal', r:17, sub:'Never a write',
+      facts:['Aria, Sol, and Codex can only create pending proposals.','The MUD guard fails proposals conflicting with an active boundary decision.','Survives reload; visible on the proposal card and in Audit.'], src:'user-guide.md · architecture.md'},
+    {id:'mcp',   t:'contract',label:'MCP endpoint',     r:20, sub:'POST /mcp · stateless',
+      facts:['Stateless Streamable HTTP JSON-RPC; safe across Cloud Run cold starts.','Ten tools; nine read-only + propose_memory_write.','Parity stdio adapter exposes identical schemas and results.'], src:'api-mcp.md'},
+    {id:'hooks', t:'contract',label:'Codex hooks',      r:17, sub:'4 declared',
+      facts:['SessionStart = hash-only drift check + boot ArchitectureBrief.','UserPromptSubmit = command-center-task-pack-v2 (task brief + durable context).','PostToolUse + Stop telemetry reduced to a declared safe field set; Stop proposals off by default.'], src:'codex-plugin.md · architecture-awareness.md'},
+    {id:'act',   t:'artifact',label:'Activation receipt', r:16, sub:'Per successful load',
+      facts:['Distinct activation ID, client name, optional session ID, repository, evidence IDs, timestamp.','Recorded on every successful load_handoff.','Preserved through revocation for audit.'], src:'handoffs.md'},
+    {id:'audit', t:'store',   label:'Append-only audit', r:17, sub:'Every transition',
+      facts:['Every memory transition emits an append-only audit event.','A refusal is recorded and survives reload; no memory row is created.','Confirmed writes appear in Timeline and Audit.'], src:'architecture.md · user-guide.md'},
+    {id:'graph', t:'service', label:'Evidence graph',   r:17, sub:'Browser canvas',
+      facts:['Visualizes retrieved evidence; not a second store or retrieval engine.','React Flow + Dagre compute a left-to-right layout in the client.','No graph position or decorative state is written to durable memory.'], src:'graph-canvas.md'},
+    {id:'rt',    t:'service', label:'Realtime voice',   r:16, sub:'WebRTC',
+      facts:['The user submits BYOK once over HTTPS; the key is sealed server-side and never returned to or readable by browser JavaScript.','Browser receives only a ten-minute ephemeral secret and opens a WebRTC peer connection directly to OpenAI.','Function calls enter the same typed router as buttons and tests.'], src:'aria-voice.md'},
+    {id:'ws',    t:'store',   label:'Workspace store',  r:18, sub:'SQLite / Cloud SQL',
+      facts:['Isolated SQLite per browser locally; Cloud SQL PostgreSQL in production.','Holds memory, capabilities, handoffs, activations, and hashed tokens.','An instance filesystem is not a durability boundary.'], src:'architecture.md · cloud-run.md'},
+    {id:'byok',  t:'contract',label:'BYOK envelope',    r:16, sub:'Encrypted session key',
+      facts:['Authenticated, expiring Fernet envelope; HttpOnly, Secure cookie scoped to /api/v1 and bound to one workspace.','Plaintext never touches PostgreSQL, SQLite, handoffs, snapshots, MCP packets, or logs.','No operator OPENAI_API_KEY funds public Aria, Sol, or voice; without a key they degrade visibly.'], src:'byok.md · security-privacy.md'}
+  ];
+  var L=[
+    ['you','aria','request'],['you','shot','upload'],['shot','sol','resized'],
+    ['aria','sol','plan'],['sol','plan','build'],['cap','plan','pin version'],
+    ['plan','hand','publish'],['aria','hand','approve'],['hand','mcp','packet'],
+    ['mcp','codex','load_handoff'],['hooks','ctx','inject'],['codex','hooks','session'],
+    ['ctx','ret','fuse'],['ret','cards','declared'],['ret','mem','memory'],
+    ['ctx','plan','evidence'],['codex','act','receipt'],['aria','prop','propose'],
+    ['codex','prop','propose'],['sol','prop','draft'],['prop','you','review'],
+    ['you','mem','confirm'],['mem','audit','append'],['ctx','graph','visualize'],
+    ['rt','aria','fn calls'],['ws','mem','holds'],['ws','cap','holds'],['ws','hand','holds'],
+    ['cards','arch','version'],['arch','ctx','brief'],['arch','hand','pin'],['ws','arch','holds'],
+    ['you','byok','provide key'],['byok','sol','funds'],['byok','rt','ephemeral token']
+  ];
+  var byId={}; N.forEach(function(n){byId[n.id]=n;});
+
+  var svg=document.getElementById('ccgraph');
+  var SVGNS='http://www.w3.org/2000/svg';
+  var W=800, H=460;
+  function measure(){ var r=svg.getBoundingClientRect(); if(r.width>4){W=Math.round(r.width);} if(r.height>4){H=Math.round(r.height);} }
+  var view={x:0,y:0,k:1};
+  var root=document.createElementNS(SVGNS,'g');
+  svg.appendChild(root);
+
+  // arrow marker
+  var defs=document.createElementNS(SVGNS,'defs');
+  defs.innerHTML='<marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c9c2e6"/></marker>';
+  svg.insertBefore(defs,root);
+
+  var gEdges=document.createElementNS(SVGNS,'g');
+  var gNodes=document.createElementNS(SVGNS,'g');
+  root.appendChild(gEdges); root.appendChild(gNodes);
+
+  // init positions in a circle (called by start() once real dimensions are known)
+  function seed(){
+    N.forEach(function(n,i){
+      var a=i/N.length*Math.PI*2;
+      n.x=W/2+Math.cos(a)*Math.min(W,H)*0.36;
+      n.y=H/2+Math.sin(a)*Math.min(W,H)*0.36;
+      n.vx=0; n.vy=0;
+    });
+  }
+
+  // edge elements
+  var edgeEls=L.map(function(e){
+    var s=byId[e[0]], t=byId[e[1]];
+    var ln=document.createElementNS(SVGNS,'line');
+    ln.setAttribute('stroke','#d7d0ec'); ln.setAttribute('stroke-width','1.4');
+    ln.setAttribute('marker-end','url(#arw)'); ln.setAttribute('opacity','.75');
+    gEdges.appendChild(ln);
+    return {el:ln,s:s,t:t};
+  });
+
+  // node elements
+  var nodeEls=N.map(function(n){
+    var g=document.createElementNS(SVGNS,'g'); g.style.cursor='pointer';
+    var ty=TYPES[n.t];
+    var c=document.createElementNS(SVGNS,'circle');
+    c.setAttribute('r',n.r); c.setAttribute('fill',ty.s);
+    c.setAttribute('stroke',ty.c); c.setAttribute('stroke-width','2.2');
+    var lab=document.createElementNS(SVGNS,'text');
+    lab.setAttribute('class','g-node-label'); lab.setAttribute('text-anchor','middle');
+    lab.setAttribute('dy',n.r+13); lab.textContent=n.label;
+    g.appendChild(c); g.appendChild(lab);
+    gNodes.appendChild(g);
+    n._c=c; n._g=g;
+    g.addEventListener('click',function(ev){ev.stopPropagation();select(n);});
+    // drag
+    var dragging=false;
+    g.addEventListener('pointerdown',function(ev){dragging=true;n.fixed=true;g.setPointerCapture(ev.pointerId);ev.preventDefault();});
+    g.addEventListener('pointermove',function(ev){
+      if(!dragging)return;
+      var p=toWorld(ev); n.x=p.x; n.y=p.y; n.vx=0; n.vy=0;
+      if(reduce){ render(); } else { alpha=Math.max(alpha,.35); heat(); }
+    });
+    g.addEventListener('pointerup',function(ev){dragging=false;n.fixed=false;try{g.releasePointerCapture(ev.pointerId);}catch(e){}});
+    return n;
+  });
+
+  function toWorld(ev){
+    var rect=svg.getBoundingClientRect();
+    return {x:(ev.clientX-rect.left-view.x)/view.k, y:(ev.clientY-rect.top-view.y)/view.k};
+  }
+
+  /* ---------- simulation ---------- */
+  var alpha=1, running=true, reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // collision separation so nodes and their labels never overlap
+  function separate(){
+    var i,j,a,b,dx,dy,d,md,push,ux,uy,p;
+    for(p=0;p<2;p++){
+      for(i=0;i<N.length;i++){for(j=i+1;j<N.length;j++){
+        a=N[i];b=N[j];dx=b.x-a.x;dy=b.y-a.y;d=Math.sqrt(dx*dx+dy*dy)||1;
+        md=a.r+b.r+30;
+        if(d<md){ push=(md-d)/2; ux=dx/d;uy=dy/d;
+          if(!a.fixed){a.x-=ux*push;a.y-=uy*push;} if(!b.fixed){b.x+=ux*push;b.y+=uy*push;} }
+      }}
+    }
+  }
+  function clamp(){ N.forEach(function(n){ n.x=Math.max(n.r+6,Math.min(W-n.r-6,n.x)); n.y=Math.max(n.r+6,Math.min(H-n.r-6,n.y)); }); }
+  function tick(){
+    var i,j,a,b,dx,dy,d,f,ux,uy;
+    // repulsion
+    for(i=0;i<N.length;i++){for(j=i+1;j<N.length;j++){
+      a=N[i];b=N[j];dx=a.x-b.x;dy=a.y-b.y;d=Math.sqrt(dx*dx+dy*dy)||1;
+      f=3800/(d*d); ux=dx/d;uy=dy/d;
+      a.vx+=ux*f;a.vy+=uy*f;b.vx-=ux*f;b.vy-=uy*f;
+    }}
+    // springs
+    L.forEach(function(e){
+      a=byId[e[0]];b=byId[e[1]];dx=b.x-a.x;dy=b.y-a.y;d=Math.sqrt(dx*dx+dy*dy)||1;
+      f=(d-136)*0.013; ux=dx/d;uy=dy/d;
+      a.vx+=ux*f;a.vy+=uy*f;b.vx-=ux*f;b.vy-=uy*f;
+    });
+    // centering + integrate
+    N.forEach(function(n){
+      n.vx+=(W/2-n.x)*0.004; n.vy+=(H/2-n.y)*0.004;
+      n.vx*=0.86; n.vy*=0.86;
+      if(!n.fixed){ n.x+=n.vx*alpha; n.y+=n.vy*alpha; }
+    });
+    separate(); clamp();
+    alpha*=0.985;
+    render();
+    if(alpha>0.02 && running){requestAnimationFrame(tick);} else {running=false;}
+  }
+  function heat(){ if(!running){running=true;requestAnimationFrame(tick);} }
+  function render(){
+    root.setAttribute('transform','translate('+view.x+','+view.y+') scale('+view.k+')');
+    edgeEls.forEach(function(e){
+      e.el.setAttribute('x1',e.s.x);e.el.setAttribute('y1',e.s.y);
+      // stop the line short of the target node radius so the arrow shows
+      var dx=e.t.x-e.s.x,dy=e.t.y-e.s.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+      e.el.setAttribute('x2',e.t.x-dx/d*(e.t.r+4));e.el.setAttribute('y2',e.t.y-dy/d*(e.t.r+4));
+    });
+    N.forEach(function(n){n._g.setAttribute('transform','translate('+n.x+','+n.y+')');});
+  }
+
+  /* ---------- selection + panel ---------- */
+  var panel=document.getElementById('gpanel');
+  function select(n){
+    N.forEach(function(m){m._c.setAttribute('stroke-width', m===n?'4':'2.2');});
+    // highlight connected edges
+    edgeEls.forEach(function(e){
+      var on=(e.s===n||e.t===n);
+      e.el.setAttribute('stroke', on?TYPES[n.t].c:'#d7d0ec');
+      e.el.setAttribute('stroke-width', on?'2.4':'1.4');
+      e.el.setAttribute('opacity', on?'1':'.5');
+    });
+    var ty=TYPES[n.t];
+    var lis=n.facts.map(function(f){return '<li>'+f+'</li>';}).join('');
+    panel.innerHTML=
+      '<span class="pt" style="background:'+ty.s+';color:'+ty.c+'">'+ty.label+'</span>'+
+      '<h3>'+n.label+'</h3>'+
+      '<p class="sub">'+n.sub+'</p>'+
+      '<ul>'+lis+'</ul>'+
+      '<div class="src">Specified in: '+n.src+'</div>';
+  }
+  svg.addEventListener('click',function(){
+    N.forEach(function(m){m._c.setAttribute('stroke-width','2.2');});
+    edgeEls.forEach(function(e){e.el.setAttribute('stroke','#d7d0ec');e.el.setAttribute('stroke-width','1.4');e.el.setAttribute('opacity','.75');});
+    panel.innerHTML='<div class="ph">◀ Select a node to inspect its receipts.<br><br>The graph is colored by <b>component type</b>. Evidence itself carries a separate class — see the <a href="#receipts">legend of receipts</a>.</div>';
+  });
+
+  /* ---------- zoom / pan ---------- */
+  function zoom(factor,cx,cy){
+    cx=cx==null?W/2:cx; cy=cy==null?H/2:cy;
+    var k2=Math.max(0.4,Math.min(2.4,view.k*factor));
+    view.x=cx-(cx-view.x)*(k2/view.k); view.y=cy-(cy-view.y)*(k2/view.k); view.k=k2; render();
+  }
+  document.getElementById('zin').addEventListener('click',function(){zoom(1.2);});
+  document.getElementById('zout').addEventListener('click',function(){zoom(1/1.2);});
+  document.getElementById('zfit').addEventListener('click',function(){view={x:0,y:0,k:1};if(reduce){render();}else{alpha=Math.max(alpha,.4);heat();}});
+  svg.addEventListener('wheel',function(ev){ev.preventDefault();var r=svg.getBoundingClientRect();zoom(ev.deltaY<0?1.1:1/1.1,ev.clientX-r.left,ev.clientY-r.top);},{passive:false});
+  // background pan
+  var panning=false,panStart={x:0,y:0};
+  svg.addEventListener('pointerdown',function(ev){if(ev.target===svg||ev.target===root){panning=true;panStart={x:ev.clientX-view.x,y:ev.clientY-view.y};}});
+  svg.addEventListener('pointermove',function(ev){if(panning){view.x=ev.clientX-panStart.x;view.y=ev.clientY-panStart.y;render();}});
+  window.addEventListener('pointerup',function(){panning=false;});
+
+  /* ---------- filters + legend ---------- */
+  var filt=document.getElementById('gfilters'), leg=document.getElementById('glegend');
+  var active={}; Object.keys(TYPES).forEach(function(k){active[k]=true;});
+  Object.keys(TYPES).forEach(function(k){
+    var ty=TYPES[k];
+    var chip=document.createElement('div'); chip.className='chip'; chip.setAttribute('data-on','true');
+    chip.style.color=ty.c; chip.style.background=ty.s; chip.textContent=ty.label;
+    chip.addEventListener('click',function(){
+      active[k]=!active[k]; chip.setAttribute('data-on',active[k]?'true':'false'); applyFilter();
+    });
+    filt.appendChild(chip);
+    var li=document.createElement('div'); li.className='li';
+    li.innerHTML='<span class="sw" style="background:'+ty.s+';border:2px solid '+ty.c+'"></span>'+ty.label;
+    leg.appendChild(li);
+  });
+  function applyFilter(){
+    N.forEach(function(n){var on=active[n.t]; n._g.style.opacity=on?'1':'.12'; n._g.style.pointerEvents=on?'auto':'none';});
+    edgeEls.forEach(function(e){var on=active[e.s.t]&&active[e.t.t]; e.el.style.opacity=on?'':'0.08';});
+  }
+
+  /* ---------- robust start / resize ---------- */
+  var seeded=false;
+  function clampAll(){ N.forEach(function(n){ n.x=Math.max(n.r+6,Math.min(W-n.r-6,n.x)); n.y=Math.max(n.r+6,Math.min(H-n.r-6,n.y)); }); }
+  function settleSync(steps){ for(var s=0;s<(steps||340);s++){ tickOnce(); } clampAll(); running=false; render(); }
+  function run(){ if(reduce){ settleSync(340); } else { alpha=1; running=true; requestAnimationFrame(tick); } }
+  function start(attempt){
+    if(seeded){ return; }
+    measure();
+    if((W<60||H<60) && (attempt||0)<40){ return requestAnimationFrame(function(){ start((attempt||0)+1); }); }
+    seed(); seeded=true; run();
+  }
+  function relayout(){ measure(); clampAll(); if(reduce){ settleSync(140); } else { alpha=Math.max(alpha,.3); heat(); } }
+  window.addEventListener('resize',function(){ if(seeded){ relayout(); } });
+  if('ResizeObserver' in window){ new ResizeObserver(function(){ if(!seeded){ return; } var pw=W,ph=H; measure(); if(W!==pw||H!==ph){ relayout(); } }).observe(svg); }
+  // kick off — attempt on next frame and again on full load; guarded so it only seeds once
+  requestAnimationFrame(function(){ start(0); });
+  window.addEventListener('load',function(){ start(0); });
+
+  function tickOnce(){ // one settle step used only in reduced-motion / synchronous pre-layout
+    var i,j,a,b,dx,dy,d,f;
+    for(i=0;i<N.length;i++){for(j=i+1;j<N.length;j++){a=N[i];b=N[j];dx=a.x-b.x;dy=a.y-b.y;d=Math.sqrt(dx*dx+dy*dy)||1;f=3800/(d*d);a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f;}}
+    L.forEach(function(e){a=byId[e[0]];b=byId[e[1]];dx=b.x-a.x;dy=b.y-a.y;d=Math.sqrt(dx*dx+dy*dy)||1;f=(d-136)*0.013;a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f;});
+    N.forEach(function(n){n.vx+=(W/2-n.x)*0.004;n.vy+=(H/2-n.y)*0.004;n.vx*=0.86;n.vy*=0.86;n.x+=n.vx;n.y+=n.vy;});
+    separate(); clamp();
+  }
+})();
+</script>
+</body>
+</html>
