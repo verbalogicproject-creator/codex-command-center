@@ -263,6 +263,28 @@ export type ScreenshotAnalysis = {
   degraded: boolean;
 };
 
+export type VisualSourceRole = "current" | "reference" | "constraint";
+
+export type VisualSourceAnalysis = ScreenshotAnalysis & {
+  role: VisualSourceRole;
+  label: string;
+};
+
+export type VisualComparisonReceipt = {
+  schema_version: "command-center-visual-comparison-v1";
+  target_surface: string;
+  sources: VisualSourceAnalysis[];
+  preserve: string[];
+  adopt: string[];
+  avoid: string[];
+  conflicts: string[];
+  unresolved: string[];
+  model: string;
+  degraded: boolean;
+  degraded_reasons: string[];
+  retained: false;
+};
+
 export type Handoff = {
   id: string;
   lineage_id: string;
@@ -270,6 +292,7 @@ export type Handoff = {
   repository: string;
   original_request: string;
   screenshot?: ScreenshotAnalysis | null;
+  visual_brief?: VisualComparisonReceipt | null;
   capability_refs: string[];
   open_plan: string[];
   planning_receipt: {

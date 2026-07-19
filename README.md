@@ -3,8 +3,9 @@
 > Plan with Aria. Continue in Codex. Bring your toolbox everywhere.
 
 Codex Command Center is one provider-neutral cloud toolbox for coding sessions.
-Aria accepts a repository, screenshot, and voice or text request. GPT‑5.6 Sol
-combines screenshot inferences with declared repository evidence, recommends an
+Aria accepts a repository, role-labelled current/reference screenshots, and a
+voice or text request. GPT‑5.6 Sol combines visual comparison inferences with
+declared repository evidence, recommends an
 exact versioned capability, and builds an editable Open Plan. After explicit
 publication, Codex loads the bounded handoff through MCP and begins an informed
 interview before editing.
@@ -25,8 +26,9 @@ portable to other compatible clients without changing the visible demo story.
   redesign interview, mobile accessibility review, graph-canvas integration,
   evidence-bound coding plan, and safe deployment preparation.
 - Screenshot validation, MIME sniffing, in-memory resize, SHA-256 receipts,
-  optional Responses API multimodal analysis, inference labels, and zero raw
-  image retention.
+  optional Responses API multimodal comparison, current/reference/constraint
+  roles, explicit preserve/adopt/avoid/conflicts/unresolved groups, inference
+  labels, and zero raw image retention.
 - Draft, immutable published, versioned, and revoked handoffs with exact
   capability pins, editable Open Plans, evidence receipts, risks, safe edit
   points, omissions, degraded metadata, persisted Sol planning receipts, and
@@ -86,9 +88,9 @@ Then run the generated command in Codex:
 ```
 
 Without a connected user-owned OpenAI key, all retrieval, capability, handoff,
-and MCP workflows remain usable; Aria and screenshot analysis explicitly mark
-local fallback results degraded. Raw screenshots are still validated, hashed,
-and discarded. **Connect OpenAI** creates only an encrypted, expiring,
+and MCP workflows remain usable; Aria and visual comparison explicitly mark
+deterministic fallback results degraded. Raw screenshots are still validated,
+hashed, and discarded. **Connect OpenAI** creates only an encrypted, expiring,
 workspace-bound browser-session credential.
 
 ## Verify

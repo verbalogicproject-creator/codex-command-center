@@ -118,6 +118,45 @@ class ScreenshotAnalysis(BaseModel):
     degraded: bool
 
 
+VisualSourceRole = Literal["current", "reference", "constraint"]
+
+
+class VisualSourceAnalyzeInput(BaseModel):
+    role: VisualSourceRole
+    label: str = Field(min_length=1, max_length=120)
+    image_base64: str = Field(min_length=8, max_length=7_000_000)
+    mime_type: Literal["image/png", "image/jpeg", "image/webp"]
+
+
+class VisualSourceAnalysis(ScreenshotAnalysis):
+    role: VisualSourceRole
+    label: str
+
+
+class VisualComparisonAnalyzeRequest(BaseModel):
+    repository: str = Field(min_length=1, max_length=240)
+    user_request: str = Field(min_length=1, max_length=8_000)
+    target_surface: str = Field(min_length=1, max_length=160)
+    sources: list[VisualSourceAnalyzeInput] = Field(min_length=2, max_length=4)
+
+
+class VisualComparisonReceipt(BaseModel):
+    schema_version: Literal["command-center-visual-comparison-v1"] = (
+        "command-center-visual-comparison-v1"
+    )
+    target_surface: str
+    sources: list[VisualSourceAnalysis]
+    preserve: list[str]
+    adopt: list[str]
+    avoid: list[str]
+    conflicts: list[str]
+    unresolved: list[str]
+    model: str
+    degraded: bool
+    degraded_reasons: list[str] = []
+    retained: Literal[False] = False
+
+
 HandoffStatus = Literal["draft", "published", "revoked"]
 
 
@@ -160,6 +199,7 @@ class HandoffDraftRequest(BaseModel):
     repository: str = Field(min_length=1, max_length=240)
     original_request: str = Field(min_length=1, max_length=8_000)
     screenshot: ScreenshotAnalysis | None = None
+    visual_brief: VisualComparisonReceipt | None = None
     capability_refs: list[str] = []
     open_plan: list[str] = []
     token_budget: int = Field(default=3_000, ge=512, le=8_000)
@@ -178,6 +218,7 @@ class Handoff(BaseModel):
     repository: str
     original_request: str
     screenshot: ScreenshotAnalysis | None
+    visual_brief: VisualComparisonReceipt | None
     capability_refs: list[str]
     open_plan: list[str]
     planning_receipt: PlanningReceipt
@@ -250,6 +291,7 @@ class HandoffPacket(BaseModel):
     approved_open_plan: list[str]
     planning_receipt: PlanningReceipt
     screenshot_observations: list[dict[str, Any]]
+    visual_comparison: VisualComparisonReceipt | None = None
     declared_architecture: dict[str, Any]
     memories_and_documents: list[dict[str, Any]]
     safe_edit_points: list[str]

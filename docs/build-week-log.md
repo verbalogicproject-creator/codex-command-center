@@ -166,3 +166,21 @@ MIT-licensed `Claude-ToolBox-Curriculum` sibling project.
   reloaded a screenshot-derived Taste handoff, exercised the seven-step tour,
   rejected pending-only synthetic writes, revoked and repaired a token, and
   forced fresh revisions of all three services without losing state.
+
+## 2026-07-19 — role-labelled comparison handoffs
+
+- Replaced the new-builder happy path with current/reference visual slots and
+  an explicit target surface while preserving legacy single-screenshot
+  handoffs.
+- Added migration 7 and `command-center-visual-comparison-v1`: per-source
+  roles, labels, hashes, dimensions, and findings plus preserve, adopt, avoid,
+  conflicts, and unresolved groups. Raw bytes remain confined to analysis.
+- Updated Taste as a new immutable content-addressed capability version.
+  Comparison handoffs permit at most three focused questions before Codex
+  presents an implementation plan; publication still does not approve edits.
+- Recorded the approved Graph Canvas direction: evidence cards remain primary,
+  with the atlas supplying candidate atmosphere, filters, connection
+  highlighting, and a side receipt inspector.
+- Verified SQLite and real PostgreSQL 18 migration behavior, multimodal success
+  and deterministic fallback, handoff persistence/publication/MCP loading,
+  plugin directives, frontend types/tests/build, retrieval, and security.

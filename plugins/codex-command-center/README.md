@@ -10,7 +10,9 @@ bounded handoff used by Aria. Run:
 ```
 
 Codex loads the exact capability version, approved Open Plan, screenshot
-inferences, architecture, evidence receipts, safe edit points, and risks. It does
+inferences, role-labelled visual comparison, architecture, evidence receipts,
+safe edit points, and risks. Comparison handoffs allow at most three focused
+interview questions before the implementation plan. It does
 not expose a confirmation operation: Codex can create a pending proposal, but
 only the authenticated Command Center browser can make memory durable.
 

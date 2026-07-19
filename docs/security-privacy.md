@@ -36,7 +36,7 @@ logs. Revocation sets a timestamp and immediately prevents token authentication.
 | Data | Persistence |
 |---|---|
 | Raw screenshot bytes | Never retained |
-| Screenshot hash/dimensions/MIME/findings | Handoff |
+| Visual role/label/hash/dimensions/MIME/findings/comparison groups | Handoff |
 | Capability instructions and versions | Workspace database |
 | Architecture manifest | Repository; paths and identities only |
 | Architecture cards and sections | Versioned workspace snapshots after explicit sync |
@@ -50,9 +50,11 @@ logs. Revocation sets a timestamp and immediately prevents token authentication.
 | Realtime client secret | Browser memory for one short-lived voice connection |
 
 OpenAI Responses requests use bounded selected evidence, a stable hashed safety
-identifier, and `store: false` in the Aria agent path. Screenshot analysis sends
-the validated, resized image only when that workspace has an active BYOK
-credential. Failure falls back to visibly degraded local findings. The
+identifier, and `store: false` in the Aria agent path. Visual comparison sends
+only the validated, resized current/reference/constraint images during the
+analysis request and only when that workspace has an active BYOK credential.
+Planning, tours, persistence, and Codex receive no raw image bytes. Failure
+falls back to visibly degraded deterministic findings. The
 encrypted credential cookie is bound to one workspace, scoped to `/api/v1`,
 authenticated against tampering, cryptographically expired, unreadable by
 browser JavaScript, and removable immediately.
@@ -72,7 +74,7 @@ browser JavaScript, and removable immediately.
 | Deploy/external action | no | no | no | separate explicit authority |
 
 Published handoffs are immutable, repository-bound, and version-pinned.
-Screenshot findings are labelled as inferences. Untrusted and retired
+Visual-source findings are role-labelled as inferences. Untrusted and retired
 capabilities are excluded from normal selection. Optional retrieval failures
 produce visible degraded metadata.
 

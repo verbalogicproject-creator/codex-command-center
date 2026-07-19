@@ -6,6 +6,3 @@ required = true
 startup_timeout_sec = 15
 tool_timeout_sec = 60
 default_tools_approval_mode = "writes"
-
-[mcp_servers.codex-command-center.env]
-COMMAND_CENTER_URL = "http://127.0.0.1:8000"

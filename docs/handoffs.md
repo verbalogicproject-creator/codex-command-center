@@ -10,8 +10,8 @@ ai_card:
   status: implemented
   owner_area: task handoff
   main_files: [services/memory/aria_memory/toolbox.py, apps/web/app/page.tsx]
-  public_interfaces: [Handoff, HandoffPacket, PlanningReceipt, "load_handoff"]
-  provides: [draft publication revocation and activation semantics, immutable architecture pinning, Sol Open Plan receipts]
+  public_interfaces: [Handoff, HandoffPacket, PlanningReceipt, VisualComparisonReceipt, "load_handoff"]
+  provides: [draft publication revocation and activation semantics, immutable architecture pinning, Sol Open Plan receipts, role-labelled visual comparison]
   depends_on: [command-center.architecture-awareness, command-center.capability-authoring]
   safe_edit_points: [draft edits, new immutable lineage versions, per-client activation audit]
   risk_areas: [editing published packets, repository mismatch, mutable evidence receipts]
@@ -56,6 +56,25 @@ caller requests retention.
 Drafts are editable. Changing a selected capability resolves and pins its exact
 trusted version. The packet preview is the data Codex will receive.
 
+### Visual comparison
+
+Migration 7 adds an optional `command-center-visual-comparison-v1` receipt while
+retaining the legacy single-screenshot field. A comparison requires two to four
+uniquely labelled sources and must include `current` and `reference`; optional
+sources use the `constraint` role.
+
+The comparison analysis may inspect all validated images together. It returns
+per-source findings plus explicit `preserve`, `adopt`, `avoid`, `conflicts`, and
+`unresolved` groups. `current` describes existing presentation, `reference` is
+a direction rather than a specification, and `constraint` is a boundary.
+Every finding remains an inference.
+
+Raw bytes exist only inside the comparison-analysis request. Planning, tours,
+handoff persistence, and Codex receive hashes, dimensions, roles, labels,
+findings, and the comparison groups—never image data. Without BYOK, a
+deterministic receipt remains available but is visibly degraded and does not
+pretend to have performed a detailed visual comparison.
+
 ## Publication
 
 Publication requires the explicit browser action or exact voice phrase
@@ -85,12 +104,17 @@ The returned packet includes:
   IDs, generation time, and degradation reasons;
 - pinned architecture snapshot and source revision;
 - screenshot observations marked `classification=inference`;
+- a role-labelled visual comparison receipt when present;
 - declared architecture;
 - selected memory/document receipts and selection reasons;
 - safe edit points and risks;
 - available tools;
 - explicit degraded reasons;
 - `interview_required=true`.
+
+Comparison handoffs also carry a standard interview budget: at most three
+focused questions, one at a time, limited to unresolved visual decisions.
+Handoff publication is not implementation-plan approval.
 
 Missing optional dense retrieval does not make the handoff unavailable.
 `degraded=true` and a human-readable reason remain in the packet. Lower-ranked

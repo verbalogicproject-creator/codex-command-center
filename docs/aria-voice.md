@@ -59,8 +59,8 @@ operating system’s reduced-motion preference.
 | `run_recall` | Opens Recall and executes a query |
 | `set_deep_synthesis` | Enables or disables GPT-5.6 Sol in text Aria |
 | `open_context_packet` | Expands the latest bounded packet |
-| `start_redesign_session` | Opens and prefills Handoff Builder |
-| `prepare_redesign_handoff` | Analyzes the uploaded screenshot and creates the visible draft |
+| `start_redesign_session` | Opens and prefills a repository, intent, and optional target surface |
+| `prepare_redesign_handoff` | Compares uploaded current/reference screenshots and creates the visible draft |
 | `select_handoff_capability` | Selects a currently visible trusted exact reference |
 | `edit_open_plan` | Bounded append, replace, remove, or reorder on the reversible draft |
 | `open_handoff_packet` | Expands the packet and returns its receipt summary |
@@ -115,6 +115,14 @@ For frontend redesign intent, text Aria also emits
 `command-center-redesign-suggestion-v1`: repository identity, exact Taste
 version/hash, alternatives, selection reasons, architecture snapshot, evidence
 IDs, degradation state, and a **Prepare in Handoff Builder** action.
+
+For a comparison redesign, voice opens the session and labels the target
+surface, but the user uploads or pastes the current and reference images.
+`prepare_redesign_handoff` operates only after both visible slots are filled.
+Aria may edit the reversible plan and explain `preserve`, `adopt`, `avoid`,
+`conflicts`, and `unresolved`; it cannot fabricate a missing source or upload
+one. Comparison handoffs constrain Codex to at most three focused interview
+questions before its implementation plan.
 
 This follows OpenAI’s current guidance to use WebRTC for browser Realtime
 sessions, keep transport separate from business logic, and return function

@@ -48,7 +48,7 @@ flowchart LR
   X[Codex hooks + MCP] --> AB
   X --> C
   H[Handoff builder] --> TB[Versioned capability library]
-  H --> S[Sol screenshot analysis]
+  H --> S[Sol role-labelled visual comparison]
   S --> PR[validated Open Plan + planning receipt]
   H --> HP[Draft / published handoff]
   PR --> HP

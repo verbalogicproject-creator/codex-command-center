@@ -177,6 +177,155 @@ def test_screenshot_is_validated_resized_and_not_retained(client):
     assert mismatch.status_code == 422
 
 
+def test_role_labelled_visual_comparison_persists_and_loads_without_raw_images(
+    client,
+):
+    compared = client.post("/api/v1/screenshots/compare", json={
+        "repository": "Command Center",
+        "user_request": (
+            "Merge the current Graph Canvas with the interactive atlas reference."
+        ),
+        "target_surface": "Graph Canvas",
+        "sources": [
+            {
+                "role": "current",
+                "label": "Current product",
+                "image_base64": _png(),
+                "mime_type": "image/png",
+            },
+            {
+                "role": "reference",
+                "label": "Interactive atlas reference",
+                "image_base64": _png(),
+                "mime_type": "image/png",
+            },
+        ],
+    })
+    assert compared.status_code == 200
+    visual = compared.json()
+    assert visual["schema_version"] == "command-center-visual-comparison-v1"
+    assert {source["role"] for source in visual["sources"]} == {
+        "current", "reference",
+    }
+    assert visual["retained"] is False
+    assert visual["degraded"] is True
+    assert "visual_comparison_requires_byok" in visual["degraded_reasons"]
+    assert "image_base64" not in json.dumps(visual)
+
+    invalid = client.post("/api/v1/screenshots/compare", json={
+        "repository": "Command Center",
+        "user_request": "Compare references.",
+        "target_surface": "Graph Canvas",
+        "sources": [
+            {
+                "role": "reference", "label": "One",
+                "image_base64": _png(), "mime_type": "image/png",
+            },
+            {
+                "role": "reference", "label": "Two",
+                "image_base64": _png(), "mime_type": "image/png",
+            },
+        ],
+    })
+    assert invalid.status_code == 422
+
+    created = client.post("/api/v1/handoffs", json={
+        "repository": "Command Center",
+        "original_request": (
+            "Merge the current Graph Canvas with the interactive atlas reference."
+        ),
+        "visual_brief": visual,
+    })
+    assert created.status_code == 201
+    handoff = created.json()
+    assert handoff["visual_brief"] == visual
+    assert handoff["screenshot"] is None
+    assert any(
+        "no more than three questions" in step for step in handoff["open_plan"]
+    )
+    assert client.post(
+        f"/api/v1/handoffs/{handoff['id']}/publish"
+    ).status_code == 200
+    packet = client.post("/api/v1/handoffs/load", json={
+        "handoff_id": handoff["id"],
+        "repository": "Command Center",
+        "client_name": "Codex",
+    }).json()
+    assert packet["visual_comparison"] == visual
+    assert {item["role"] for item in packet["screenshot_observations"]} == {
+        "current", "reference",
+    }
+    assert "image_base64" not in json.dumps(packet)
+
+
+def test_visual_comparison_uses_one_bounded_multimodal_call(client, monkeypatch):
+    calls: list[dict] = []
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(output_text=json.dumps({
+                "source_findings": [
+                    {
+                        "role": "current",
+                        "label": "Current product",
+                        "findings": [
+                            "The current graph appears to use evidence cards.",
+                            "Active context appears visually distinct.",
+                        ],
+                    },
+                    {
+                        "role": "reference",
+                        "label": "Interactive atlas reference",
+                        "findings": [
+                            "The reference appears to use a spatial node field.",
+                            "A side receipt inspector appears prominent.",
+                        ],
+                    },
+                ],
+                "preserve": ["Preserve evidence provenance and card semantics."],
+                "adopt": ["Adopt the reference's side receipt inspector."],
+                "avoid": ["Avoid persisting decorative node positions."],
+                "conflicts": ["Card and circular-node grammars differ."],
+                "unresolved": ["Confirm the preferred primary node grammar."],
+            }))
+
+    class FakeOpenAI:
+        def __init__(self, **_kwargs):
+            self.responses = FakeResponses()
+
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
+    assert client.post("/api/v1/provider-credentials/openai", json={
+        "api_key": "sk-test-" + "x" * 32,
+    }).status_code == 200
+    compared = client.post("/api/v1/screenshots/compare", json={
+        "repository": "Command Center",
+        "user_request": "Merge the two graph directions.",
+        "target_surface": "Graph Canvas",
+        "sources": [
+            {
+                "role": "current", "label": "Current product",
+                "image_base64": _png(), "mime_type": "image/png",
+            },
+            {
+                "role": "reference", "label": "Interactive atlas reference",
+                "image_base64": _png(), "mime_type": "image/png",
+            },
+        ],
+    })
+    assert compared.status_code == 200
+    body = compared.json()
+    assert body["model"] == "gpt-5.6-sol"
+    assert body["degraded"] is False
+    assert body["adopt"] == ["Adopt the reference's side receipt inspector."]
+    assert len(calls) == 1
+    call = calls[0]
+    assert call["store"] is False
+    content = call["input"][0]["content"]
+    assert sum(item["type"] == "input_image" for item in content) == 2
+    assert "data:image" not in json.dumps(body)
+
+
 def test_redesign_handoff_has_deterministic_planning_receipt_and_tour(client):
     created = client.post("/api/v1/handoffs", json={
         "repository": "Command Center",

@@ -10,7 +10,11 @@ export type HandoffControllerResult = {
 };
 
 export type HandoffController = {
-  startSession: (repository: string, intent: string) => Promise<HandoffControllerResult>;
+  startSession: (
+    repository: string,
+    intent: string,
+    targetSurface?: string,
+  ) => Promise<HandoffControllerResult>;
   prepare: () => Promise<HandoffControllerResult>;
   selectCapability: (capabilityRef: string) => Promise<HandoffControllerResult>;
   editPlan: (

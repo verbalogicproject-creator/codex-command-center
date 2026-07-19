@@ -322,7 +322,7 @@
         <span class="kicker">⚡ OpenAI Build Week 2026 · submission</span>
         <h1>Codex Command Center</h1>
         <div class="tag">Plan with Aria. Continue in Codex. Bring your toolbox everywhere.</div>
-        <p class="sub">One provider-neutral cloud toolbox for coding sessions. Aria takes a repository, a screenshot, and a voice or text request. <b>GPT&#8209;5.6&nbsp;Sol</b> fuses screenshot inferences with <em>declared</em> repository evidence, recommends an exact versioned capability, and builds an editable Open Plan. After explicit publication, Codex loads the bounded handoff through MCP and begins an informed interview <em>before</em> editing.</p>
+        <p class="sub">One provider-neutral cloud toolbox for coding sessions. Aria takes a repository, role-labelled current/reference screenshots, and a voice or text request. <b>GPT&#8209;5.6&nbsp;Sol</b> fuses visual comparison inferences with <em>declared</em> repository evidence, recommends an exact versioned capability, and builds an editable Open Plan. After explicit publication, Codex loads the bounded handoff through MCP and begins an informed interview <em>before</em> editing.</p>
         <div class="cta">
           <a class="btn primary" href="#graph">Explore the architecture graph →</a>
           <a class="btn ghost" href="#demo">Walk the 3-minute demo</a>
@@ -375,8 +375,8 @@
       <h2>The core loop</h2>
       <p class="lede">One reviewed toolbox travels from voice-and-screenshot planning into a coding interview — without installing arbitrary skills or hiding context.</p>
       <div class="flow">
-        <div class="step"><div class="k">01 · PLAN</div><h4>Aria receives the task</h4><p>Repository + screenshot + voice/text request in the browser workspace.</p></div>
-        <div class="step"><div class="k">02 · ANALYZE</div><h4>Sol fuses evidence</h4><p>GPT&#8209;5.6 Sol combines screenshot inferences with declared repository evidence.</p></div>
+        <div class="step"><div class="k">01 · PLAN</div><h4>Aria receives the task</h4><p>Repository + current/reference visuals + voice/text request in the browser workspace.</p></div>
+        <div class="step"><div class="k">02 · ANALYZE</div><h4>Sol fuses evidence</h4><p>GPT&#8209;5.6 Sol produces preserve/adopt/avoid/conflicts/unresolved groups and combines them with declared repository evidence.</p></div>
         <div class="step"><div class="k">03 · RECOMMEND</div><h4>Exact capability + Open Plan</h4><p>A versioned capability is pinned; the Open Plan is editable line by line.</p></div>
         <div class="step"><div class="k">04 · PUBLISH</div><h4>Immutable handoff</h4><p>“Approve this handoff” records a bounded, version-pinned packet.</p></div>
         <div class="step"><div class="k">05 · CONTINUE</div><h4>Codex loads via MCP</h4><p><span class="mono">load_handoff</span> verifies the repository and returns the packet + activation receipt.</p></div>
@@ -391,7 +391,7 @@
       <p class="lede">The competition demo script, beat by beat. Narration in plain type; spoken commands highlighted.</p>
       <div class="timeline">
         <div class="tl"><div class="clock">0:00</div><div class="c"><h4>Promise</h4><p>Show the Codex plugin list with only <b>Codex Command Center</b> installed. “Today GPT&#8209;5.6, Aria, and Codex carry one inspectable redesign plan from voice and screenshot into a coding interview.”</p></div></div>
-        <div class="tl"><div class="clock">0:20</div><div class="c"><h4>Give Aria the task</h4><p>Open <b>Handoff Builder</b>, select the repository, paste the current interface screenshot, describe the change. Show raw-image retention is off; point to the <b>Screenshot-derived inferences</b> label.</p></div></div>
+        <div class="tl"><div class="clock">0:20</div><div class="c"><h4>Give Aria the task</h4><p>Open <b>Handoff Builder</b>, select the repository and target surface, then paste current and reference screenshots. Show role labels, raw-image retention off, and the visible comparison contract.</p></div></div>
         <div class="tl"><div class="clock">0:55</div><div class="c"><h4>Inspect the toolbox</h4><p>Show the primary <b>Frontend redesign interview</b> recommendation and its exact version; reveal alternatives; edit one Open Plan line. Open the exact bounded packet — architecture, evidence IDs, selection reasons, safe edit points, risks, omitted candidates, token estimate, degraded state.</p></div></div>
         <div class="tl"><div class="clock">1:30</div><div class="c"><h4>Approve by voice</h4><p>Aria publishes and reads the exact command. Voice exposed bounded context only — it did not edit code, install a tool, deploy, or confirm memory.<br><span class="say">🎙 “Approve this handoff.”</span></p></div></div>
         <div class="tl"><div class="clock">1:50</div><div class="c"><h4>Continue in Codex</h4><p>Run the generated command. Show the visible <span class="mono">load_handoff</span> call: capability ID, version, hash, provenance; approved Open Plan; screenshot inferences; repository identity; evidence receipts; safe edit points, risks; activation receipt.</p></div></div>
@@ -478,7 +478,7 @@
       <div class="grid two">
         <div class="card">
           <h3 style="margin-top:0">Draft</h3>
-          <p style="font-size:.88rem;color:var(--text-2);margin:0">Compiles repository identity, original intent, screenshot metadata &amp; findings, exact capability versions, an Open Plan, declared architecture, ranked evidence receipts, safe edit points, risks, tool references, token estimate, omitted-candidate count, and degraded-state metadata. The packet preview <em>is</em> the data Codex will receive.</p>
+          <p style="font-size:.88rem;color:var(--text-2);margin:0">Compiles repository identity, original intent, role-labelled visual sources, preserve/adopt/avoid/conflicts/unresolved groups, exact capability versions, an Open Plan, declared architecture, ranked evidence receipts, safe edit points, risks, tool references, token estimate, omissions, and degraded state. The packet preview <em>is</em> the data Codex will receive.</p>
         </div>
         <div class="card">
           <h3 style="margin-top:0">Publication</h3>
@@ -497,16 +497,16 @@
 
     <!-- ===================== SCREENSHOTS ===================== -->
     <section id="screenshots">
-      <h2>Screenshot discipline <span class="badge ok">implemented</span></h2>
-      <p class="lede">Screenshot bytes exist only long enough to be useful, then vanish. Every returned observation is labelled an inference.</p>
+      <h2>Visual comparison discipline <span class="badge ok">implemented</span></h2>
+      <p class="lede">Current, reference, and optional constraint bytes exist only long enough to be useful, then vanish. Every returned observation is labelled an inference and keeps its source role.</p>
       <div class="flow">
         <div class="step"><div class="k">1</div><h4>Validate &amp; MIME-sniff</h4><p>PNG / JPEG / WebP only; unsupported or corrupt bytes return <span class="mono">422</span>.</p></div>
         <div class="step"><div class="k">2</div><h4>Bound &amp; resize</h4><p>Enforce size and dimension limits; resize the analysis copy in memory.</p></div>
         <div class="step"><div class="k">3</div><h4>Hash</h4><p>Compute a SHA&#8209;256 receipt of the original.</p></div>
-        <div class="step"><div class="k">4</div><h4>Optional Sol</h4><p>Call GPT&#8209;5.6 Sol via Responses only when an API key is configured.</p></div>
-        <div class="step"><div class="k">5</div><h4>Discard</h4><p>Stored record = hash, dimensions, MIME, findings. <b>Raw bytes never retained.</b></p></div>
+        <div class="step"><div class="k">4</div><h4>Optional Sol comparison</h4><p>Analyze all role-labelled sources together and produce per-source findings plus five explicit merge groups.</p></div>
+        <div class="step"><div class="k">5</div><h4>Discard</h4><p>Stored record = role, label, hash, dimensions, MIME, findings, merge groups. <b>Raw bytes never retained.</b></p></div>
       </div>
-      <div class="callout warm">The current implementation always reports <span class="mono">retained=false</span>, even if a caller requests retention. Returned observations always carry <span class="mono">classification=inference</span>. Without an API key, screenshots are still validated, hashed, and discarded; findings fall back to visibly degraded local results.</div>
+      <div class="callout warm">Migration 7 adds <span class="mono">command-center-visual-comparison-v1</span> while legacy single-screenshot handoffs remain readable. Comparison requires current and reference roles. Without BYOK, sources are still validated, hashed, and discarded, but the deterministic comparison is visibly degraded. Codex asks at most three focused comparison questions before its implementation plan.</div>
     </section>
 
     <!-- ===================== CONTEXT ===================== -->
@@ -708,7 +708,7 @@
             <tbody>
               <tr><td>Auth</td><td><code>POST /api/v1/auth/demo</code> · <code>/auth/pair/start</code> · <code>/auth/pair</code> · <code>/auth/token/revoke</code></td></tr>
               <tr><td>Capabilities</td><td><code>GET/POST /capabilities</code> · <code>GET /capabilities/{id}</code> · <code>POST /capabilities/recommend</code></td></tr>
-              <tr><td>Screenshots</td><td><code>POST /screenshots/analyze</code></td></tr>
+              <tr><td>Screenshots</td><td><code>POST /screenshots/analyze</code> · <code>/screenshots/compare</code></td></tr>
               <tr><td>Handoffs</td><td><code>GET/POST /handoffs</code> · <code>GET/PATCH /handoffs/{id}</code> · <code>/publish</code> · <code>/revoke</code> · <code>/versions</code> · <code>POST /handoffs/load</code></td></tr>
               <tr><td>Context</td><td><code>POST /recall</code> · <code>/documents/recall</code> · <code>/context/pack</code></td></tr>
               <tr><td>Architecture</td><td><code>POST /architecture/lint</code> · <code>/sync</code> · <code>/check</code> · <code>/brief</code> · <code>GET /architecture/health</code></td></tr>
@@ -828,7 +828,7 @@ python3 plugins/codex-command-center/scripts/architecture.py sync .</div>
       <p class="lede">The rollback baseline is one combined image (static web + REST API + stateless MCP). The live v0.5 deployment splits it into <b>three independently deployable Cloud Run services</b> built from one commit by <span class="mono">cloudbuild.three-service.yaml</span>, keeping the rollback path to the combined revision. Google Cloud is only the hosting layer — Command Center exposes no GCP administration tools.</p>
       <div class="grid three">
         <div class="card"><b><span class="mono">command-center-web</span></b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">Static Next.js export + a same-origin reverse proxy to the API, preserving the HttpOnly/Secure/<span class="mono">SameSite=Lax</span> cookie contract. Owns no database, token, key, or durable state.</p></div>
-        <div class="card"><b><span class="mono">command-center-api</span></b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">FastAPI: auth, pairing, capabilities, screenshots, handoffs, architecture sync, context, Aria, memory, audit. <span class="mono">declared_core</span> + vendored <span class="mono">frontmatter_rag</span> · SQLite (local) / Cloud SQL PostgreSQL (prod, migration 5 verified under proot).</p></div>
+        <div class="card"><b><span class="mono">command-center-api</span></b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">FastAPI: auth, pairing, visual comparison, handoffs, architecture sync, context, Aria, memory, audit. <span class="mono">declared_core</span> + vendored <span class="mono">frontmatter_rag</span> · SQLite local / Cloud SQL PostgreSQL hosted; migrations through 7 verified under proot.</p></div>
         <div class="card"><b><span class="mono">command-center-mcp</span></b><p style="font-size:.86rem;color:var(--muted);margin:.3em 0 0">Stateless Streamable HTTP MCP boundary only (<span class="mono">mcp_app.py</span>) + a minimal <span class="mono">/health</span>. Imports the same canonical tool schemas; scale-to-zero safe. The stdio plugin forwards <span class="mono">tools/call</span> here.</p></div>
       </div>
       <div class="split" style="margin-top:8px">

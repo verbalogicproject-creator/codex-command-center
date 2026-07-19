@@ -124,6 +124,14 @@ The workflow makes Codex:
 6. produce an editable design contract and evidence-cited implementation plan;
 7. ask the next focused question instead of editing immediately.
 
+When a handoff contains a `command-center-visual-comparison-v1` receipt, Taste
+preserves each source role and explicitly works through `preserve`, `adopt`,
+`avoid`, `conflicts`, and `unresolved`. `current` is existing presentation,
+`reference` is direction rather than specification, and `constraint` is a
+boundary. The standard comparison interview is limited to three focused
+questions before Codex presents its implementation plan. Existing workspaces
+receive this instruction change as a new immutable capability version.
+
 The capability deliberately does not impose marketing-page patterns on dense
 application surfaces. Declared architecture and the existing design system take
 precedence. Routes, navigation labels, form contracts, analytics identifiers,

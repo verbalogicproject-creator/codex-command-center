@@ -17,7 +17,9 @@ from .models import (
     CapabilityRecommendationRequest, CapabilityRecommendations, Handoff,
     HandoffDraftRequest, HandoffLoadRequest, HandoffPacket, HandoffUpdateRequest,
     PlanningReceipt, RedesignSuggestion, ScreenshotAnalysis,
-    ScreenshotAnalyzeRequest, TourScript, TourScriptRequest, TourStep, utc_now,
+    ScreenshotAnalyzeRequest, TourScript, TourScriptRequest, TourStep,
+    VisualComparisonAnalyzeRequest, VisualComparisonReceipt,
+    VisualSourceAnalysis, utc_now,
 )
 from .store import uid
 
@@ -56,6 +58,13 @@ observations and aesthetic judgments are inferences.
 - If architecture is stale, missing, mismatched, or degraded, expose that state
   and interview before planning around the gap. Never fall back to another
   repository.
+- When the handoff contains multiple visual sources, preserve their declared
+  roles. Treat `current` as evidence of the existing presentation,
+  `reference` as a direction rather than a specification, and `constraint` as
+  a boundary. Report the comparison receipt's preserve, adopt, avoid,
+  conflicts, and unresolved groups without blending their provenance.
+- Raw visual-source bytes never enter the handoff or Codex. Use only the
+  role-labelled hashes, dimensions, findings, and comparison receipt.
 
 2. Read the design brief before choosing an aesthetic
 
@@ -76,7 +85,9 @@ screenshot evidence informed them.
 
 3. Begin the redesign interview
 
-Ask one focused question at a time. Cover only unresolved decisions:
+Ask one focused question at a time. Cover only unresolved decisions. When an
+interview contract is present, obey its question limit; the standard visual
+comparison handoff allows at most three questions:
 
 - What should users notice or accomplish first?
 - Which current flows, navigation, copy, brand elements, and interactions must
@@ -611,6 +622,184 @@ class Toolbox:
             model=self.deep_model, degraded=degraded,
         )
 
+    def compare_screenshots(
+        self,
+        request: VisualComparisonAnalyzeRequest,
+        api_key: str | None = None,
+    ) -> VisualComparisonReceipt:
+        roles = {source.role for source in request.sources}
+        if not {"current", "reference"} <= roles:
+            raise ValueError(
+                "visual comparison requires current and reference sources"
+            )
+        labels = [source.label.casefold() for source in request.sources]
+        if len(labels) != len(set(labels)):
+            raise ValueError("visual source labels must be unique")
+
+        analyses = [
+            VisualSourceAnalysis(
+                **self.analyze_screenshot(
+                    ScreenshotAnalyzeRequest(
+                        repository=request.repository,
+                        user_request=request.user_request,
+                        image_base64=source.image_base64,
+                        mime_type=source.mime_type,
+                        retain=False,
+                    ),
+                    None,
+                ).model_dump(mode="json"),
+                role=source.role,
+                label=source.label,
+            )
+            for source in request.sources
+        ]
+        preserve = [
+            "Preserve the current surface's verified information architecture, "
+            "semantics, and accessibility behavior until repository evidence "
+            "and the user approve a change."
+        ]
+        adopt = [
+            "Treat the reference as a visual direction; select individual "
+            "qualities only after they are visible in the comparison contract."
+        ]
+        avoid = [
+            "Do not copy reference behavior that conflicts with repository "
+            "contracts, evidence provenance, responsive rules, or reduced motion."
+        ]
+        conflicts = [
+            "Current and reference visual grammars may imply different node, "
+            "layout, color, or interaction systems."
+        ]
+        unresolved = [
+            "Confirm which reference qualities to adopt and which current "
+            "interactions must remain recognizable."
+        ]
+        degraded_reasons = ["visual_comparison_requires_byok"]
+        model = "deterministic-visual-comparison-v1"
+
+        if api_key:
+            try:
+                from openai import OpenAI
+
+                content: list[dict[str, Any]] = [{
+                    "type": "input_text",
+                    "text": (
+                        "Compare these role-labelled interface screenshots for "
+                        "an evidence-bound coding handoff. Return one JSON object "
+                        "with source_findings (role, label, findings), preserve, "
+                        "adopt, avoid, conflicts, and unresolved. Each value is a "
+                        "list of concise strings; use 1-6 items per comparison "
+                        "group and 2-5 findings per source. Treat screenshots as "
+                        "inferences, current as existing presentation, reference "
+                        "as direction, and constraint as a boundary. Do not claim "
+                        "repository facts. Repository: "
+                        f"{request.repository}. Target surface: "
+                        f"{request.target_surface}. User request: "
+                        f"{request.user_request}"
+                    ),
+                }]
+                for source in request.sources:
+                    raw = base64.b64decode(source.image_base64, validate=True)
+                    with Image.open(io.BytesIO(raw)) as image:
+                        rendered = image.convert("RGB")
+                        rendered.thumbnail((1600, 1600))
+                        output = io.BytesIO()
+                        rendered.save(output, format="JPEG", quality=84, optimize=True)
+                    content.extend([
+                        {
+                            "type": "input_text",
+                            "text": (
+                                f"Visual source role={source.role}; "
+                                f"label={source.label}."
+                            ),
+                        },
+                        {
+                            "type": "input_image",
+                            "image_url": (
+                                "data:image/jpeg;base64,"
+                                + base64.b64encode(output.getvalue()).decode()
+                            ),
+                        },
+                    ])
+                response = OpenAI(api_key=api_key).responses.create(
+                    model=self.deep_model,
+                    input=[{"role": "user", "content": content}],
+                    max_output_tokens=1_200,
+                    store=False,
+                )
+                text = response.output_text.strip()
+                if text.startswith("```"):
+                    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text)
+                parsed = json.loads(text)
+
+                def bounded(name: str, minimum: int = 1) -> list[str]:
+                    values = [
+                        str(value).strip()
+                        for value in parsed.get(name, [])
+                        if str(value).strip()
+                    ][:6]
+                    if len(values) < minimum or any(
+                        len(value) > MAX_OPEN_PLAN_STEP_LENGTH for value in values
+                    ):
+                        raise ValueError(f"invalid comparison group: {name}")
+                    return values
+
+                source_findings = {
+                    (
+                        str(item.get("role", "")),
+                        str(item.get("label", "")).casefold(),
+                    ): [
+                        str(value).strip()
+                        for value in item.get("findings", [])
+                        if str(value).strip()
+                    ][:5]
+                    for item in parsed.get("source_findings", [])
+                    if isinstance(item, dict)
+                }
+                updated = []
+                for analysis in analyses:
+                    findings = source_findings.get(
+                        (analysis.role, analysis.label.casefold()),
+                    )
+                    if not findings or any(
+                        len(value) > MAX_OPEN_PLAN_STEP_LENGTH
+                        for value in findings
+                    ):
+                        raise ValueError(
+                            f"missing source findings: {analysis.label}"
+                        )
+                    updated.append(analysis.model_copy(update={
+                        "findings": findings,
+                        "model": self.deep_model,
+                        "degraded": False,
+                    }))
+                analyses = updated
+                preserve = bounded("preserve")
+                adopt = bounded("adopt")
+                avoid = bounded("avoid")
+                conflicts = bounded("conflicts")
+                unresolved = bounded("unresolved")
+                degraded_reasons = []
+                model = self.deep_model
+            except Exception as exc:
+                degraded_reasons = [
+                    f"visual_comparison_unavailable:{type(exc).__name__}"
+                ]
+
+        return VisualComparisonReceipt(
+            target_surface=request.target_surface,
+            sources=analyses,
+            preserve=preserve,
+            adopt=adopt,
+            avoid=avoid,
+            conflicts=conflicts,
+            unresolved=unresolved,
+            model=model,
+            degraded=bool(degraded_reasons),
+            degraded_reasons=degraded_reasons,
+            retained=False,
+        )
+
     @staticmethod
     def _handoff(row: Any) -> Handoff:
         handoff_id = row["id"]
@@ -635,6 +824,15 @@ class Toolbox:
             screenshot=(
                 ScreenshotAnalysis(**json.loads(row["screenshot_json"]))
                 if row["screenshot_json"] else None
+            ),
+            visual_brief=(
+                VisualComparisonReceipt(**json.loads(row["visual_brief_json"]))
+                if (
+                    "visual_brief_json" in row.keys()
+                    and row["visual_brief_json"]
+                    and json.loads(row["visual_brief_json"])
+                )
+                else None
             ),
             capability_refs=json.loads(row["capability_refs_json"]),
             open_plan=json.loads(row["open_plan_json"]),
@@ -681,8 +879,13 @@ class Toolbox:
     @staticmethod
     def _deterministic_taste_plan(
         screenshot: ScreenshotAnalysis | None,
+        visual_brief: VisualComparisonReceipt | None = None,
     ) -> list[str]:
         screenshot_step = (
+            "Review the role-labelled visual comparison receipt. Report its "
+            "preserve, adopt, avoid, conflicts, and unresolved groups, then "
+            "validate them against cited repository evidence."
+            if visual_brief else
             "Review the labelled screenshot inferences and validate them against "
             "the cited repository evidence."
             if screenshot else
@@ -694,8 +897,9 @@ class Toolbox:
             "architecture snapshot, evidence IDs, safe edit points, risks, "
             "omissions, and degradation state.",
             screenshot_step,
-            "Interview the user one focused question at a time about the primary "
-            "journey, preserve boundaries, references, and acceptance criteria.",
+            "Interview the user one focused question at a time about unresolved "
+            "visual decisions, preserve boundaries, and acceptance criteria; "
+            "for a comparison handoff ask no more than three questions.",
             "Propose DESIGN_VARIANCE, MOTION_INTENSITY, and VISUAL_DENSITY values "
             "as explicit design dials for user confirmation.",
             "Inventory preserve, improve, retire, and unresolved items without "
@@ -725,6 +929,7 @@ class Toolbox:
                 from openai import OpenAI
 
                 screenshot = request.screenshot
+                visual_brief = request.visual_brief
                 bounded_input = {
                     "original_intent": request.original_request,
                     "screenshot": ({
@@ -735,6 +940,10 @@ class Toolbox:
                         "findings_are_inferences": True,
                         "retained": False,
                     } if screenshot else None),
+                    "visual_comparison": (
+                        visual_brief.model_dump(mode="json")
+                        if visual_brief else None
+                    ),
                     "capability": {
                         "stable_id": capability.stable_id,
                         "version": capability.version,
@@ -772,9 +981,13 @@ class Toolbox:
             degraded_reasons.append("sol_planning_requires_byok")
         if plan is None:
             model = "deterministic-taste-plan-v1"
-            plan = self._deterministic_taste_plan(request.screenshot)
+            plan = self._deterministic_taste_plan(
+                request.screenshot, request.visual_brief,
+            )
         if request.screenshot and request.screenshot.degraded:
             degraded_reasons.append("screenshot_analysis_degraded")
+        if request.visual_brief and request.visual_brief.degraded:
+            degraded_reasons.extend(request.visual_brief.degraded_reasons)
         if architecture.get("degraded"):
             degraded_reasons.extend(
                 f"architecture:{reason}"
@@ -808,7 +1021,15 @@ class Toolbox:
     ) -> Handoff:
         recommendations = self.recommend(CapabilityRecommendationRequest(
             request=request.original_request, repository=request.repository,
-            screenshot_findings=request.screenshot.findings if request.screenshot else [],
+            screenshot_findings=(
+                [
+                    finding
+                    for source in request.visual_brief.sources
+                    for finding in source.findings
+                ]
+                if request.visual_brief else
+                request.screenshot.findings if request.screenshot else []
+            ),
         ))
         refs = request.capability_refs or [
             f"{recommendations.items[0].capability.stable_id}@"
@@ -898,6 +1119,10 @@ class Toolbox:
             return estimate_tokens(json.dumps({
                 "capabilities": [item.instructions for item in capabilities],
                 "plan": plan, "architecture": architecture, "evidence": evidence,
+                "visual_comparison": (
+                    request.visual_brief.model_dump(mode="json")
+                    if request.visual_brief else None
+                ),
                 "safe_edit_points": safe_edit_points, "risks": risks,
             }, separators=(",", ":")))
 
@@ -921,15 +1146,19 @@ class Toolbox:
             conn.execute(
                 """INSERT INTO handoffs(
                 id,lineage_id,version,repository,original_request,screenshot_json,
-                capability_refs_json,open_plan_json,architecture_json,
+                visual_brief_json,capability_refs_json,open_plan_json,architecture_json,
                 evidence_sources_json,safe_edit_points_json,risks_json,
                 tool_references_json,token_estimate,omitted_candidates,degraded,
                 status,creator,created_at,published_at,revoked_at,
                 planning_receipt_json)
-                VALUES(?,?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?,?,NULL,NULL,?)""",
+                VALUES(?,?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?,?,NULL,NULL,?)""",
                 (
                     handoff_id, lineage_id, request.repository, request.original_request,
                     request.screenshot.model_dump_json() if request.screenshot else None,
+                    (
+                        request.visual_brief.model_dump_json()
+                        if request.visual_brief else "{}"
+                    ),
                     json.dumps(exact_refs), json.dumps(plan), json.dumps(architecture),
                     json.dumps(evidence), json.dumps(safe_edit_points),
                     json.dumps(risks), json.dumps(tools), token_estimate,
@@ -940,6 +1169,10 @@ class Toolbox:
                         pack.degraded
                         or (architecture_brief.degraded if architecture_brief else False)
                         or planning_receipt.degraded
+                        or (
+                            request.visual_brief.degraded
+                            if request.visual_brief else False
+                        )
                         or removed > 0
                     ),
                     creator, now, planning_receipt.model_dump_json(),
@@ -1021,6 +1254,7 @@ class Toolbox:
             repository=current.repository,
             original_request=patch.original_request or current.original_request,
             screenshot=current.screenshot,
+            visual_brief=current.visual_brief,
             capability_refs=patch.capability_refs or current.capability_refs,
             open_plan=patch.open_plan or current.open_plan,
         )
@@ -1097,13 +1331,18 @@ class Toolbox:
                 id="redesign-screenshot-boundary", surface="handoff",
                 target="screenshot", evidence_ids=[],
                 narration=(
-                    "The raw screenshot is analyzed once. Only its hash, dimensions, "
-                    "and labelled findings continue; the image is not retained."
+                    "Raw visual sources are analyzed only at the comparison "
+                    "boundary. Their roles, hashes, dimensions, labelled findings, "
+                    "and merge groups continue; the images are not retained."
                 ),
-                action="Upload or inspect the screenshot inference receipt.",
+                action="Upload or inspect current and reference receipts.",
                 pause_reason=(
-                    None if handoff and handoff.screenshot
-                    else "A screenshot must be uploaded before this boundary can be inspected."
+                    None
+                    if handoff and (handoff.visual_brief or handoff.screenshot)
+                    else (
+                        "Current and reference screenshots must be uploaded "
+                        "before this boundary can be inspected."
+                    )
                 ),
             ),
             TourStep(
@@ -1191,6 +1430,10 @@ class Toolbox:
                         "screenshot": (
                             handoff.screenshot.model_dump(mode="json")
                             if handoff.screenshot else None
+                        ),
+                        "visual_comparison": (
+                            handoff.visual_brief.model_dump(mode="json")
+                            if handoff.visual_brief else None
                         ),
                         "capability_refs": handoff.capability_refs,
                         "open_plan": handoff.open_plan,
@@ -1304,6 +1547,18 @@ class Toolbox:
             {"text": finding, "classification": "inference", "source": "screenshot"}
             for finding in (handoff.screenshot.findings if handoff.screenshot else [])
         ]
+        if handoff.visual_brief:
+            observations.extend(
+                {
+                    "text": finding,
+                    "classification": "inference",
+                    "source": f"visual:{source.role}:{source.label}",
+                    "role": source.role,
+                    "image_hash": source.image_hash,
+                }
+                for source in handoff.visual_brief.sources
+                for finding in source.findings
+            )
         return HandoffPacket(
             handoff_id=handoff.id,
             repository_identity=handoff.architecture.get("repository_identity", {}),
@@ -1315,6 +1570,7 @@ class Toolbox:
             approved_open_plan=handoff.open_plan,
             planning_receipt=handoff.planning_receipt,
             screenshot_observations=observations,
+            visual_comparison=handoff.visual_brief,
             declared_architecture=handoff.architecture,
             memories_and_documents=handoff.evidence_sources,
             safe_edit_points=handoff.safe_edit_points, risks=handoff.risks,

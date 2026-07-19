@@ -21,7 +21,9 @@ export type AriaCommand =
   | {name: "draft_memory_proposal"; arguments: {
     title: string; content: string; rationale: string;
   }}
-  | {name: "start_redesign_session"; arguments: {repository: string; intent: string}}
+  | {name: "start_redesign_session"; arguments: {
+    repository: string; intent: string; target_surface?: string;
+  }}
   | {name: "prepare_redesign_handoff"; arguments: Record<string, never>}
   | {name: "select_handoff_capability"; arguments: {capability_ref: string}}
   | {name: "edit_open_plan"; arguments: {
@@ -56,7 +58,11 @@ export type CommandDependencies = {
     mode?: "overview" | "redesign",
   ) => Promise<void>;
   draftProposal: (title: string, content: string, rationale: string) => Promise<string>;
-  startRedesignSession?: (repository: string, intent: string) => Promise<CommandResult>;
+  startRedesignSession?: (
+    repository: string,
+    intent: string,
+    targetSurface?: string,
+  ) => Promise<CommandResult>;
   prepareRedesignHandoff?: () => Promise<CommandResult>;
   selectHandoffCapability?: (capabilityRef: string) => Promise<CommandResult>;
   editOpenPlan?: (
@@ -103,13 +109,17 @@ export const ariaVoiceTools = [
       properties: {
         repository: {type: "string"},
         intent: {type: "string"},
+        target_surface: {
+          type: "string",
+          description: "The visible product surface, such as Graph Canvas.",
+        },
       },
       required: ["repository", "intent"],
     },
   },
   {
     type: "function", name: "prepare_redesign_handoff",
-    description: "Analyze the already uploaded screenshot, recommend Taste, and create the visible draft handoff.",
+    description: "Compare the already uploaded current and reference screenshots, recommend Taste, and create the visible draft handoff.",
     parameters: emptyObject,
   },
   {
@@ -348,6 +358,7 @@ export async function executeAriaCommand(
       return dependencies.startRedesignSession(
         command.arguments.repository,
         command.arguments.intent,
+        command.arguments.target_surface,
       );
     }
     case "prepare_redesign_handoff":

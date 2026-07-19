@@ -91,6 +91,19 @@ describe("Aria command router", () => {
 
   it("routes reversible redesign draft controls without publication", async () => {
     const deps = dependencies();
+    await executeAriaCommand({
+      name: "start_redesign_session",
+      arguments: {
+        repository: "Command Center",
+        intent: "Merge the current graph with the atlas reference.",
+        target_surface: "Graph Canvas",
+      },
+    }, deps);
+    expect(deps.startRedesignSession).toHaveBeenCalledWith(
+      "Command Center",
+      "Merge the current graph with the atlas reference.",
+      "Graph Canvas",
+    );
     const prepared = await executeAriaCommand({
       name: "prepare_redesign_handoff", arguments: {},
     }, deps);

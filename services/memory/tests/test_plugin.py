@@ -231,6 +231,8 @@ def test_exact_handoff_prompt_requires_visible_load_without_secret_fetch():
     assert "Do not secretly load" in directive
     assert "`build_task_pack`" in directive
     assert "activation ID" in directive
+    assert "role-labelled visual comparison" in directive
+    assert "at most three questions" in directive
     assert "Do not edit files" in directive
     assert handoff_directive("Please load hoff_abc123", "command-center", None) is None
 

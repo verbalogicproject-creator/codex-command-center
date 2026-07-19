@@ -51,7 +51,8 @@ from .models import (
     ProviderCredentialSetRequest, ProviderCredentialStatus,
     ProposalList, RecallRequest, RecallResponse, Session,
     SessionCreate, SessionList, StatusResponse, SyncResponse, TimelineResponse,
-    TourScript, TourScriptRequest, TurnList,
+    TourScript, TourScriptRequest, TurnList, VisualComparisonAnalyzeRequest,
+    VisualComparisonReceipt,
 )
 from .mcp import handle_rpc
 from .workspaces import Workspace, Workspaces
@@ -318,6 +319,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         limited(workspace, "screenshot", 40)
         try:
             return workspace.toolbox.analyze_screenshot(
+                body, credential.api_key if credential else None,
+            )
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+
+    @app.post(
+        "/api/v1/screenshots/compare",
+        response_model=VisualComparisonReceipt,
+    )
+    def compare_screenshots(
+        body: VisualComparisonAnalyzeRequest,
+        workspace: Workspace = Depends(current_workspace),
+        credential: ProviderCredential | None = Depends(openai_credential),
+    ) -> VisualComparisonReceipt:
+        limited(workspace, "screenshot", 40)
+        try:
+            return workspace.toolbox.compare_screenshots(
                 body, credential.api_key if credential else None,
             )
         except ValueError as exc:

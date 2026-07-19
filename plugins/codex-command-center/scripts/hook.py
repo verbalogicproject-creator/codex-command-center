@@ -188,10 +188,11 @@ def handoff_directive(
         "Do not secretly load the handoff in this hook and do not substitute "
         "`build_task_pack`.",
         "After the tool returns, report its activation ID; exact capability "
-        "version, hash, and provenance; Open Plan; labelled screenshot "
-        "inferences; architecture snapshot; evidence IDs; safe edit points; "
-        "risks; omissions; and degradation state.",
-        "Then ask one focused redesign interview question. Do not edit files "
+        "version, hash, and provenance; Open Plan; role-labelled visual "
+        "comparison and screenshot inferences; architecture snapshot; evidence "
+        "IDs; safe edit points; risks; omissions; and degradation state.",
+        "Then ask one focused redesign interview question at a time. A visual "
+        "comparison handoff permits at most three questions. Do not edit files "
         "until the user confirms the design direction and explicitly approves "
         "the implementation plan.",
     ])

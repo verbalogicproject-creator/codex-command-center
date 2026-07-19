@@ -257,8 +257,10 @@ def handle_rpc(workspace: Any, message: dict[str, Any]) -> dict[str, Any] | None
                 "serverInfo": {"name": "codex-command-center", "version": "0.5.0"},
                 "instructions": (
                     "Load published handoffs before repository edits. Show injected capability "
-                    "versions and evidence IDs, then interview the user. Screenshot observations "
-                    "are inferences. Memory writes remain pending until browser confirmation."
+                    "versions and evidence IDs, then interview the user. Screenshot "
+                    "observations and role-labelled visual comparisons are inferences. "
+                    "A comparison handoff permits at most three focused questions. "
+                    "Memory writes remain pending until browser confirmation."
                 ),
             }
         elif method == "tools/list":

@@ -9,7 +9,7 @@ ai_card:
   audience: [user, engineer, ai_agent]
   status: implemented
   owner_area: visualization
-  main_files: [apps/web/components/MemoryGraph.tsx, apps/web/components/ContextPulseEdge.tsx, services/memory/aria_memory/app.py]
+  main_files: [apps/web/components/MemoryGraph.tsx, apps/web/components/ContextPulseEdge.tsx, apps/web/app/globals.css, docs/command-center-atlas.html, services/memory/aria_memory/app.py]
   public_interfaces: ["GET /api/v1/graph", "aria:graph-command"]
   provides: [typed evidence visualization, active handoff and Codex activation receipts]
   depends_on: [command-center.architecture-awareness, command-center.handoffs]
@@ -80,6 +80,21 @@ receipt.
 These components are Command Center-native. They use the existing React Flow,
 Dagre, Lucide, React, and plain-CSS stack; they do not import Canvas OS runtime
 behavior, Tailwind, WebLLM, or editor state.
+
+## Approved visual direction
+
+The comparison handoff for the next graph iteration keeps evidence cards as the
+primary node language. The interactive atlas is a role-labelled visual
+reference, not a replacement specification. Candidate qualities to adopt are
+its canvas atmosphere, type filters, connected-edge highlighting, and side
+receipt inspector. The evidence-stage palette, stable evidence IDs, active
+context meaning, repository data contract, narrow-screen neighborhood, and
+reduced-motion behavior remain authoritative.
+
+Taste and Codex must still interview around unresolved layout freedom,
+temporary dragging, palette priority, and motion intensity. Publication of the
+comparison handoff approves only the injected context; implementation begins
+only after the user approves Codex's bounded plan.
 
 ## Mobile and accessibility
 

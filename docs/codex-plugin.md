@@ -69,6 +69,9 @@ defaults to stdio and does not override `COMMAND_CENTER_URL`.
 
 Repository development uses `.codex/config.toml` and `.codex/hooks.json`. Their
 paths resolve from the Git root, so nested working directories remain safe.
+They do not pin a host: unset `COMMAND_CENTER_URL` uses
+`http://127.0.0.1:8000`, while exporting the hosted origin before launching
+Codex switches both MCP and hooks together.
 Workspace tokens use `~/.command-center/` by default and never a checkout path.
 
 ## Architecture awareness
@@ -107,9 +110,11 @@ Codex should:
 2. report the activation receipt;
 3. summarize the exact capability ID, version, hash, and provenance;
 4. cite injected evidence IDs and selection reasons;
-5. label screenshot findings as inferences;
+5. label screenshot findings and role-labelled visual comparisons as
+   inferences, preserving current/reference/constraint provenance;
 6. state safe edit points, risks, omissions, and degraded state;
-7. ask the first interview question before any file edit.
+7. ask one question at a time before any file edit, with at most three
+   questions for a comparison handoff;
 8. wait for explicit design-direction confirmation and implementation-plan
    approval before editing.
 

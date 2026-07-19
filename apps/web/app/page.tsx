@@ -13,6 +13,7 @@ import type {
   ArchitectureBrief, Audit, Capability, ContextPack, DeclaredDocument, GraphData,
   Handoff, Memory, Proposal, ProviderCredentialStatus, RecallHit,
   RedesignSuggestion, ScreenshotAnalysis, Session, TourScript, TourStep, Trace,
+  VisualComparisonReceipt, VisualSourceRole,
 } from "@/lib/types";
 import {MemoryGraph} from "@/components/MemoryGraph";
 import {InfiniteDock} from "@/components/InfiniteDock";
@@ -397,9 +398,11 @@ export default function Page() {
         await refresh();
         return proposal.id;
       },
-      startRedesignSession: async (repository, intent) => {
+      startRedesignSession: async (repository, intent, targetSurface) => {
         await navigate("handoff");
-        return handoffControllerRef.current?.startSession(repository, intent)
+        return handoffControllerRef.current?.startSession(
+          repository, intent, targetSurface,
+        )
           ?? {ok: false, message: "Handoff Builder is still loading.", surface: "handoff"};
       },
       prepareRedesignHandoff: async () => {
@@ -958,10 +961,14 @@ function HandoffBuilder({
   onStartTour: () => void;
 }) {
   const [repository, setRepository] = useState("Command Center");
-  const [intent, setIntent] = useState("Redesign the Command Center interface shown in this screenshot.");
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState("");
+  const [intent, setIntent] = useState(
+    "Merge the current Graph Canvas with the visual direction in the interactive atlas.",
+  );
+  const [targetSurface, setTargetSurface] = useState("Graph Canvas");
+  const [files, setFiles] = useState<Partial<Record<VisualSourceRole, File>>>({});
+  const [previews, setPreviews] = useState<Partial<Record<VisualSourceRole, string>>>({});
   const [analysis, setAnalysis] = useState<ScreenshotAnalysis | null>(null);
+  const [visualBrief, setVisualBrief] = useState<VisualComparisonReceipt | null>(null);
   const [recommendations, setRecommendations] = useState<{
     capability: Capability; score: number; selection_reasons: string[];
   }[]>([]);
@@ -982,6 +989,8 @@ function HandoffBuilder({
       setRepository(current.repository);
       setIntent(current.original_request);
       setAnalysis(current.screenshot ?? null);
+      setVisualBrief(current.visual_brief ?? null);
+      setTargetSurface(current.visual_brief?.target_surface ?? "Graph Canvas");
       setSelectedRef(current.capability_refs[0] ?? "");
     }
   }, [activeId, handoffs]);
@@ -996,41 +1005,65 @@ function HandoffBuilder({
     return () => window.removeEventListener("aria:handoff-published", published);
   }, []);
 
-  function chooseFile(next: File) {
+  function chooseFile(role: VisualSourceRole, next: File) {
     if (!["image/png", "image/jpeg", "image/webp"].includes(next.type)) {
       setError("Use a PNG, JPEG, or WebP screenshot.");
       return;
     }
-    setFile(next);
-    setPreview(URL.createObjectURL(next));
+    setFiles((current) => ({...current, [role]: next}));
+    setPreviews((current) => ({
+      ...current,
+      [role]: URL.createObjectURL(next),
+    }));
     setAnalysis(null);
+    setVisualBrief(null);
     setError("");
   }
 
   async function prepare(): Promise<HandoffControllerResult> {
-    if (!file || !intent.trim()) {
-      const message = !file
-        ? "Upload or paste a screenshot first; voice cannot upload files."
+    const currentFile = files.current;
+    const referenceFile = files.reference;
+    if (!currentFile || !referenceFile || !intent.trim() || !targetSurface.trim()) {
+      const message = !currentFile || !referenceFile
+        ? "Upload both current and reference screenshots; voice cannot upload files."
         : "Describe the desired redesign before preparing the handoff.";
       setError(message);
       return {ok: false, message, surface: "handoff"};
     }
     setBusy(true); setError("");
     try {
-      const finding = await api<ScreenshotAnalysis>("/api/v1/screenshots/analyze", {
+      const finding = await api<VisualComparisonReceipt>("/api/v1/screenshots/compare", {
         method: "POST",
         body: JSON.stringify({
-          repository, user_request: intent, image_base64: await imagePayload(file),
-          mime_type: file.type, retain: false,
+          repository,
+          user_request: intent,
+          target_surface: targetSurface,
+          sources: [
+            {
+              role: "current",
+              label: "Current product",
+              image_base64: await imagePayload(currentFile),
+              mime_type: currentFile.type,
+            },
+            {
+              role: "reference",
+              label: "Interactive atlas reference",
+              image_base64: await imagePayload(referenceFile),
+              mime_type: referenceFile.type,
+            },
+          ],
         }),
       });
-      setAnalysis(finding);
+      setVisualBrief(finding);
       const result = await api<{items: {
         capability: Capability; score: number; selection_reasons: string[];
       }[]}>("/api/v1/capabilities/recommend", {
         method: "POST",
         body: JSON.stringify({
-          request: intent, repository, screenshot_findings: finding.findings, limit: 3,
+          request: intent,
+          repository,
+          screenshot_findings: finding.sources.flatMap((source) => source.findings),
+          limit: 3,
         }),
       });
       setRecommendations(result.items);
@@ -1040,7 +1073,7 @@ function HandoffBuilder({
       const created = await api<Handoff>("/api/v1/handoffs", {
         method: "POST",
         body: JSON.stringify({
-          repository, original_request: intent, screenshot: finding,
+          repository, original_request: intent, visual_brief: finding,
           capability_refs: ref ? [ref] : [],
         }),
       });
@@ -1112,11 +1145,16 @@ function HandoffBuilder({
   async function startSession(
     nextRepository: string,
     nextIntent: string,
+    nextTargetSurface?: string,
   ): Promise<HandoffControllerResult> {
     setRepository(nextRepository.trim() || "Command Center");
     setIntent(nextIntent.trim());
+    setTargetSurface(nextTargetSurface?.trim() || "Target surface");
     setDraft(null);
     setAnalysis(null);
+    setVisualBrief(null);
+    setFiles({});
+    setPreviews({});
     setRecommendations([]);
     setSelectedRef("");
     setPlanText("");
@@ -1125,7 +1163,7 @@ function HandoffBuilder({
     await afterPaint();
     return {
       ok: true,
-      message: "Opened Handoff Builder. Upload or paste the redesign screenshot, then ask me to prepare the handoff.",
+      message: "Opened Handoff Builder. Upload current and reference screenshots, then ask me to prepare the comparison handoff.",
       surface: "handoff",
     };
   }
@@ -1253,7 +1291,7 @@ function HandoffBuilder({
 
   return <section className="surface handoff-surface" onPaste={(event) => {
     const pasted = [...event.clipboardData.files].find((item) => item.type.startsWith("image/"));
-    if (pasted) chooseFile(pasted);
+    if (pasted) chooseFile(files.current ? "reference" : "current", pasted);
   }}>
     <SurfaceTitle eyebrow="Prepare for Codex" title="Handoff Builder"
       note="GPT-5.6 Sol · bounded packet · voice-publishable" />
@@ -1264,18 +1302,28 @@ function HandoffBuilder({
       <section className="handoff-input">
         <label>Repository<input value={repository}
           onChange={(event) => setRepository(event.target.value)} /></label>
+        <label>Target surface<input value={targetSurface}
+          onChange={(event) => setTargetSurface(event.target.value)} /></label>
         <label>Desired change<textarea value={intent}
           onChange={(event) => setIntent(event.target.value)} /></label>
-        <label className="screenshot-drop" data-aria-target="screenshot">
-          <input type="file" accept="image/png,image/jpeg,image/webp"
-            onChange={(event) => event.target.files?.[0] && chooseFile(event.target.files[0])} />
-          {preview ? <img src={preview} alt="Screenshot preview" /> : <>
-            <Upload /><strong>Upload or paste a screenshot</strong>
-            <span>PNG, JPEG, or WebP · raw image is not retained</span>
-          </>}
-        </label>
+        <div className="visual-source-grid" data-aria-target="screenshot">
+          {([
+            ["current", "Current product"],
+            ["reference", "Reference direction"],
+          ] as [VisualSourceRole, string][]).map(([role, label]) =>
+            <label className={`screenshot-drop ${role}`} key={role}>
+              <input type="file" accept="image/png,image/jpeg,image/webp"
+                onChange={(event) => event.target.files?.[0]
+                  && chooseFile(role, event.target.files[0])} />
+              {previews[role] ? <img src={previews[role]} alt={`${label} screenshot preview`} /> : <>
+                <Upload /><strong>{label}</strong>
+                <span>Upload or paste · raw image is not retained</span>
+              </>}
+              <b>{role}</b>
+            </label>)}
+        </div>
         <button className="primary-action" disabled={busy} onClick={() => void prepare()}>
-          <Sparkles /> {busy ? "Sol is preparing…" : "Analyze and prepare for Codex"}
+          <Sparkles /> {busy ? "Sol is comparing…" : "Compare and prepare for Codex"}
         </button>
         {error && <p className="form-error">{error}</p>}
       </section>
@@ -1283,9 +1331,30 @@ function HandoffBuilder({
       <section className="handoff-review">
         <article className="sol-findings">
           <header><span>01</span><div><small>SOL OBSERVATIONS</small>
-            <strong>Screenshot-derived inferences</strong></div></header>
+            <strong>Role-labelled visual comparison</strong></div></header>
+          {visualBrief?.sources.map((source) => <section
+            className="visual-source-findings" key={`${source.role}:${source.label}`}>
+            <h4>{source.role} · {source.label}</h4>
+            {source.findings.map((finding) => <p key={finding}>{finding}</p>)}
+            <footer><code>{source.image_hash.slice(0, 16)}</code>
+              <span>{source.width}×{source.height} · not retained</span></footer>
+          </section>)}
+          {visualBrief && <div className="comparison-contract">
+            {([
+              ["Preserve", visualBrief.preserve],
+              ["Adopt", visualBrief.adopt],
+              ["Avoid", visualBrief.avoid],
+              ["Conflicts", visualBrief.conflicts],
+              ["Unresolved", visualBrief.unresolved],
+            ] as [string, string[]][]).map(([label, values]) =>
+              <section key={label}><h4>{label}</h4>
+                {values.map((value) => <p key={value}>{value}</p>)}
+              </section>)}
+          </div>}
           {(analysis?.findings ?? []).map((finding) => <p key={finding}>{finding}</p>)}
-          {!analysis && <p className="quiet">Upload a screenshot to begin the evidence-bound analysis.</p>}
+          {!analysis && !visualBrief && <p className="quiet">
+            Upload current and reference screenshots to begin the evidence-bound comparison.
+          </p>}
           {analysis && <footer><code>{analysis.image_hash.slice(0, 16)}</code>
             <span>{analysis.width}×{analysis.height} · not retained</span></footer>}
         </article>
@@ -1337,6 +1406,11 @@ function HandoffBuilder({
               ? `degraded · ${(draftArchitecture.degraded_reasons ?? []).join(" · ")}`
               : "versioned and repository-scoped"}</dd></div>
             <div><dt>Planning model</dt><dd>{draft.planning_receipt.model}</dd></div>
+            <div><dt>Visual sources</dt><dd>{draft.visual_brief
+              ? `${draft.visual_brief.sources.length} role-labelled · ${draft.visual_brief.target_surface}`
+              : draft.screenshot ? "1 legacy screenshot" : "None"}</dd></div>
+            <div><dt>Interview budget</dt><dd>{draft.visual_brief
+              ? "Maximum 3 focused questions" : "One focused question at a time"}</dd></div>
             <div><dt>Planning state</dt><dd>{draft.planning_receipt.degraded
               ? `degraded · ${draft.planning_receipt.degraded_reasons.join(" · ")}`
               : "validated Sol plan"}</dd></div>
@@ -1349,6 +1423,10 @@ function HandoffBuilder({
             <code>{draft.planning_receipt.capability_reference.stable_id}
               @{draft.planning_receipt.capability_reference.version}
               {" · "}{draft.planning_receipt.capability_reference.content_hash}</code>
+            {draft.visual_brief?.sources.map((source) => <code
+              key={`${source.role}:${source.image_hash}`}>
+              {source.role} · {source.label} · {source.image_hash}
+            </code>)}
             {draft.evidence_sources.map((source) => <code key={source.id}>
               {source.id} · {source.selection_reasons.join(" · ") || "bounded selection"}
             </code>)}

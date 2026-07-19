@@ -56,6 +56,12 @@ def test_postgres_v6_adds_persisted_handoff_planning_receipt():
     assert "planning_receipt_json TEXT NOT NULL" in migration
 
 
+def test_postgres_v7_adds_role_labelled_visual_comparison_receipt():
+    migration = POSTGRES_APP_MIGRATIONS[7]
+    assert "ALTER TABLE handoffs" in migration
+    assert "visual_brief_json TEXT NOT NULL" in migration
+
+
 def test_postgres_adapter_translates_portable_placeholders():
     assert CompatConnection._sql(
         "SELECT * FROM handoffs WHERE id=? AND status=?"

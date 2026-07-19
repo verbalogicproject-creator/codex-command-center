@@ -124,8 +124,10 @@ def main() -> None:
                     "instructions": (
                         "Load published handoffs before repository edits. Show injected "
                         "capability versions and evidence IDs, then interview the user. "
-                        "Screenshot observations are inferences. Memory writes remain "
-                        "pending until browser confirmation."
+                        "Screenshot observations and role-labelled visual comparisons "
+                        "are inferences. Comparison handoffs permit at most three "
+                        "focused questions. Memory writes remain pending until browser "
+                        "confirmation."
                     ),
                 })
             elif method == "tools/list":
