@@ -420,7 +420,40 @@ kbd {
 .pair-panel > span { display: flex; align-items: center; gap: 7px; font: 9px var(--mono); color: var(--cyan); letter-spacing: .12em; }
 .pair-panel > span svg { width: 14px; }
 .pair-panel p { color: #b4bec2; font-size: 11px; line-height: 1.55; }
-.pair-panel > code { display: block; margin: 13px 0; padding: 12px; text-align: center; border: 1px dashed #47717b; border-radius: 7px; color: var(--ink); font: 500 22px var(--mono); letter-spacing: .15em; background: #0b1113; }
+.pair-panel > code {
+  display: block;
+  width: 100%;
+  margin: 13px 0 8px;
+  padding: 12px;
+  border: 1px dashed #47717b;
+  border-radius: 7px;
+  background: #0b1113;
+  color: var(--ink);
+  font: 500 clamp(12px, 4vw, 16px)/1.6 var(--mono);
+  letter-spacing: .08em;
+  overflow-wrap: anywhere;
+  text-align: center;
+  user-select: all;
+}
+.pair-panel > code:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.pair-copy {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #47717b;
+  border-radius: 7px;
+  background: #132126;
+  color: var(--cyan);
+  font: 600 10px var(--mono);
+  cursor: pointer;
+}
+.pair-copy:hover { background: #172a30; }
+.pair-copy:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.pair-copy svg { width: 14px; height: 14px; }
 .pair-panel > small { display: block; color: var(--muted); font: 8px/1.5 var(--mono); }
 .credential-panel { position: fixed; z-index: 95; top: 78px; right: 16px; width: min(390px, calc(100vw - 28px)); border: 1px solid #514328; border-radius: 12px; background: #17150f; box-shadow: 0 24px 70px #000; padding: 20px; }
 .credential-panel > button.icon-button { position: absolute; top: 10px; right: 8px; }

@@ -5,8 +5,8 @@ import {
 } from "react";
 import {
   Activity, Archive, BrainCircuit, Boxes, Check, CircleHelp, Clock3, Command,
-  GitBranch, KeyRound, Menu, Link2, MessageSquareText, Plus, Search, Send, ShieldCheck,
-  Sparkles, Upload, Workflow, X,
+  Copy, GitBranch, KeyRound, Menu, Link2, MessageSquareText, Plus, Search, Send,
+  ShieldCheck, Sparkles, Upload, Workflow, X,
 } from "lucide-react";
 import {api, apiUrl, readSSE} from "@/lib/api";
 import type {
@@ -87,6 +87,7 @@ export default function Page() {
   const [railOpen, setRailOpen] = useState(false);
   const [pairCode, setPairCode] = useState("");
   const [pairError, setPairError] = useState("");
+  const [pairCopied, setPairCopied] = useState(false);
   const [credentialPanel, setCredentialPanel] = useState(false);
   const [providerCredential, setProviderCredential] =
     useState<ProviderCredentialStatus | null>(null);
@@ -151,6 +152,7 @@ export default function Page() {
 
   async function startPairing() {
     setPairError("");
+    setPairCopied(false);
     try {
       const result = await api<{code: string; expires_in_seconds: number}>(
         "/api/v1/auth/pair/start", {method: "POST"},
@@ -158,6 +160,15 @@ export default function Page() {
       setPairCode(result.code);
     } catch (reason) {
       setPairError(reason instanceof Error ? reason.message : "Could not create a pairing code.");
+    }
+  }
+
+  async function copyPairCode() {
+    try {
+      await navigator.clipboard.writeText(pairCode);
+      setPairCopied(true);
+    } catch {
+      setPairCopied(false);
     }
   }
 
@@ -546,14 +557,20 @@ export default function Page() {
       />}
       {palette && <CommandPalette onSelect={(id) => {setSurface(id); setPalette(false);}}
         onClose={() => setPalette(false)} />}
-      {(pairCode || pairError) && <aside className="pair-panel">
+      {(pairCode || pairError) && <aside className="pair-panel" role="dialog"
+        aria-modal="true" aria-labelledby="pair-panel-title">
         <button className="icon-button" onClick={() => {
-          setPairCode(""); setPairError("");
-        }}><X /></button>
-        <span><Link2 /> CODEX PAIRING</span>
+          setPairCode(""); setPairError(""); setPairCopied(false);
+        }} aria-label="Close Codex pairing"><X /></button>
+        <span id="pair-panel-title"><Link2 /> CODEX PAIRING</span>
         {pairError ? <p className="form-error">{pairError}</p> : <>
           <p>Use this one-time code within five minutes so Codex proposals appear in this workspace.</p>
-          <code>{pairCode}</code>
+          <code tabIndex={0} aria-label="Codex pairing code">{pairCode}</code>
+          <button className="pair-copy" onClick={() => void copyPairCode()}
+            aria-live="polite">
+            {pairCopied ? <Check /> : <Copy />}
+            {pairCopied ? "Copied" : "Copy code"}
+          </button>
           <small>Set it as COMMAND_CENTER_PAIR_CODE before the plugin’s first call.</small>
         </>}
       </aside>}
