@@ -7,7 +7,7 @@ ai_card:
   title: Cloud Run Deployment Guide
   kind: operations_guide
   audience: [operator, engineer, ai_agent]
-  status: implementation_ready
+  status: deployed_staging
   owner_area: cloud deployment
   main_files: [Dockerfile, cloudbuild.yaml, services/memory/aria_memory/config.py]
   public_interfaces: ["PORT", "DATABASE_URL", "POST /mcp", "/.well-known/*"]
@@ -19,13 +19,18 @@ ai_card:
   last_verified: 2026-07-19
 ```
 
-The proven baseline is one combined static web, REST API, and stateless
-Streamable HTTP MCP service. The production target now separates web, API, and
-MCP into three Cloud Run services while retaining shared handlers and one Cloud
-SQL data plane. See the
+The rollback baseline is one combined static web, REST API, and stateless
+Streamable HTTP MCP service. The live v0.5 staging deployment separates web,
+API, and MCP into three Cloud Run services while retaining shared handlers and
+one Cloud SQL data plane. See the
 [three-service deployment topology](deployment-topology.md). Google Cloud is
 only the hosting layer; Command Center does not expose GCP administration tools.
 The initial shared region is `me-west1` (Tel Aviv).
+
+The verified judge URL is
+`https://command-center-web-67134152472.me-west1.run.app`; exact image,
+revision, database, IAM, budget, and gate receipts are recorded in
+[Deployment state](deployment-state.md).
 
 ## Resources
 

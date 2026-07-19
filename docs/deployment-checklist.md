@@ -16,7 +16,7 @@ ai_card:
   safe_edit_points: [marking only evidence-backed completed gates]
   risk_areas: [wrong GCP project, skipped staging handshake, mutable demo state]
   graph_rag_entities: [DeploymentGate, SubmissionGate]
-  last_verified: 2026-07-18
+  last_verified: 2026-07-19
 ```
 
 - [x] Create public GitHub repository `verbalogicproject-creator/codex-command-center`.
@@ -24,10 +24,10 @@ ai_card:
   coverage.
 - [x] Run the SQLite suite, real PostgreSQL behavioral contract, clean restart,
   and repeated PostgreSQL contract.
-- [ ] Build the root Dockerfile on a Docker-capable laptop or Cloud Build.
-- [ ] Create Artifact Registry, Cloud SQL PostgreSQL, runtime service account,
+- [x] Build the three service images from one commit through Cloud Build.
+- [x] Create Artifact Registry, Cloud SQL PostgreSQL, runtime service accounts,
   budget alerts, and Secret Manager secrets.
-- [ ] Run Cloud Build using `cloudbuild.yaml`.
+- [x] Run the three-service Cloud Build and deploy its exact digests.
 - [ ] Authenticate and execute the hero recall and Deep Synthesis.
 - [ ] Confirm a proposal, reload, and inspect its audit entry.
 - [ ] Expand the injected context packet and open both a document and memory source.
@@ -40,8 +40,8 @@ ai_card:
   injection, read/write tool annotations, and production-safe Stop behavior.
 - [ ] Open a fresh Codex thread at the repository root and confirm `/mcp` and
   `/hooks` show Command Center as first-class and trusted.
-- [ ] Authenticate a second browser workspace and verify isolation.
-- [ ] Restart the Cloud Run revision and verify published handoffs remain
+- [x] Authenticate a second browser workspace and verify BYOK isolation.
+- [x] Restart all Cloud Run revisions and verify published handoffs remain
   available through Cloud SQL.
 - [ ] Connect a disposable user-owned test key through BYOK and run a live
   Sol/Aria smoke test with explicit cost limits; verify no operator key exists.
@@ -55,5 +55,6 @@ ai_card:
   snapshot and selected-source receipts at the 2,000-token task boundary.
 - [ ] Record a sub-three-minute narrated video.
 - [ ] Submit the Cloud Run URL, public repository URL, video, and `/feedback` ID.
-- [ ] Run authenticated remote MCP initialize, tools/list, handoff load, token
+- [x] Run authenticated remote MCP initialize, tools/list, all ten tools,
+  handoff load, token
   revoke, cold-start, and repository-mismatch smoke tests in staging and prod.

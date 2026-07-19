@@ -41,10 +41,11 @@ command-center-mcp  (public endpoint, Command Center token required)
        Cloud SQL PostgreSQL
 ```
 
-The service-specific applications, containers, build manifest, and cleanup
-policy are implemented and locally verified. `implemented` describes the
-source architecture; Cloud Run staging and Cloud SQL provisioning remain
-deployment gates and are not claimed complete.
+The service-specific applications, containers, build manifest, cleanup policy,
+Cloud SQL instance, and three Cloud Run services are live as a public v0.5
+staging workspace. Automated hosted gates pass; viewport, live voice,
+clean-Linux Codex, dogfood design approval, and v1.0 promotion remain manual
+gates.
 
 The current combined root Docker image remains the proven baseline until the
 three service-specific images and staging smoke tests pass. Promotion must not

@@ -33,6 +33,11 @@ An editable Devpost project exists:
 The final human-authored description and video URL remain intentionally unset
 until the deployed v1.0 artifact and dogfood recording pass their gates.
 
+The current v0.5 judge-test URL is
+`https://command-center-web-67134152472.me-west1.run.app`. The private Devpost
+test-instructions field should include the public demo code only at submission
+time; it is not committed to the repository.
+
 ## Live deadline and deliverables
 
 The submission period closes **July 21, 2026 at 5:00 PM Pacific Daylight Time**,

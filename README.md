@@ -139,14 +139,17 @@ The local API publishes OpenAPI at `/openapi.json` and interactive docs at
 
 ## Deployment
 
-The root-level Dockerfile builds the static Next.js client and combined
-FastAPI/API/MCP runtime. `cloudbuild.yaml` publishes the image and deploys it to
-Cloud Run with `PORT`, Secret Manager bindings, a runtime service account, Cloud
-SQL attachment, scale-to-zero, structured Cloud Logging, and bounded instances.
-See the [deployment guide](docs/cloud-run.md) before using production data.
+The public v0.5 staging workspace is live at
+`https://command-center-web-67134152472.me-west1.run.app`. The judge path works
+without an operator model key; optional Aria, Sol, Luna, and Realtime calls use
+the authenticated user's expiring BYOK envelope.
 
-Cloud administration and live deployment remain separate, explicitly
-authorized operations.
+`cloudbuild.three-service.yaml` builds immutable web, API, and MCP images from
+one commit. Cloud Run uses separate least-privilege service accounts,
+scale-to-zero, bounded instances, named Secret Manager bindings, and one zonal
+Cloud SQL PostgreSQL data plane. The combined root Dockerfile remains the
+rollback baseline. See the [deployment guide](docs/cloud-run.md) and
+[live deployment receipt](docs/deployment-state.md).
 
 ## Provenance and license
 

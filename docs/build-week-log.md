@@ -148,3 +148,21 @@ MIT-licensed `Claude-ToolBox-Curriculum` sibling project.
 - Advanced Codex Command Center to v0.5.0. The exact generated `/plan` command
   now injects a directive requiring a visible `load_handoff` call and never
   secretly loads or substitutes an ordinary task pack.
+
+## 2026-07-19 — live v0.5 staging
+
+- Built and deployed web, API, and MCP from commit
+  `9729ec3fb411ffba53e34c8578375bd5967544f0` with Cloud SQL PostgreSQL,
+  separate runtime identities, per-secret IAM, a recurring approximately
+  USD 50 budget, and no operator OpenAI key.
+- The first MCP rollout exposed an eager package import that crossed the
+  API-only BYOK boundary. Replaced it with a lazy API factory and added an
+  isolated cloud-import regression test instead of granting MCP more secrets.
+- The first hosted Taste query exposed psycopg interpreting literal percent
+  characters as placeholders. The PostgreSQL adapter now escapes literals
+  before translating portable parameters; the exact capability query passes
+  against real PostgreSQL before and after a clean restart.
+- Called all ten remote MCP tools, verified API/MCP schema parity, published and
+  reloaded a screenshot-derived Taste handoff, exercised the seven-step tour,
+  rejected pending-only synthetic writes, revoked and repaired a token, and
+  forced fresh revisions of all three services without losing state.

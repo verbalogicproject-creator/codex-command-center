@@ -44,13 +44,14 @@ ai_card:
     controller-backed voice drafting, evidence-aware Luna fallback, and exact
     visible Codex handoff activation.
 
-## Next: cloud promotion and submission
+## Next: dogfood, v1.0, and submission
 
-The immediate promotion phase is to push the reviewed repository, build the
-root image on a Docker-capable laptop or Cloud Build, create least-privilege GCP
-resources in the verified project, pass staging database/MCP/mobile/voice
-smokes, and promote the same image digest for the competition demo.
+The v0.5 web, API, MCP, Cloud SQL, least-privilege identities, secrets, budget,
+migration job, and deterministic judge path are live in `me-west1`. Hosted
+MCP, Taste selection, architecture receipts, no-key planning/tour fallbacks,
+publication, activation, revocation, isolation, and restart durability pass.
 
 Overview and redesign tours now operate live surfaces with bounded receipts and
-explicit pauses. Remaining work is external production promotion, clean Codex
-reinstall validation, dogfood capture, video, and submission.
+explicit pauses. Remaining work is the user-led Taste interview and approved
+bounded redesign, viewport/voice receipts, clean Linux Codex reinstall and
+`/feedback`, v1.0 promotion, the human-narrated video, and final submission.
