@@ -118,8 +118,9 @@ runtime accessor.
 - handoff `hoff_c5b352d8a5734882` persisted a seven-step deterministic Taste
   plan, published, loaded through MCP, and remained immutable;
 - post-restart activation `activate_ddb1a366bec14d41` loaded the same handoff;
-- architecture snapshot `asnap_cf2e8d0c7682d2ea1606ce84` has 26/26 valid
-  cards, 100% dense coverage, zero issues, and the release image revision;
+- architecture receipt snapshot `asnap_bf5bef1e5b8ac09a58e860d6` pins source
+  revision `ff764c3eabcdaad9654936141338aead94bbedd5` with 26/26 valid cards,
+  100% dense coverage, and zero issues;
 - token revocation returned 401 and fresh browser pairing restored MCP access;
 - a synthetic BYOK envelope was isolated from a second workspace and deleted;
 - all synthetic pending memory proposals were rejected, leaving zero durable
