@@ -10,7 +10,8 @@ documents:
     - docs
   patterns:
     - "**/*.md"
-  exclude: []
+  exclude:
+    - "docs/video-submission-screenplay.md"
 dialects:
   - frontmatter
   - fenced-ai-card
