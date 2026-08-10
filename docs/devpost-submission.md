@@ -16,7 +16,7 @@ ai_card:
   safe_edit_points: [evidence-backed project links and final human-authored copy]
   risk_areas: [missing feedback ID, inaccessible video, premature submission]
   graph_rag_entities: [Devpost, OpenAI Build Week, Codex Command Center]
-  last_verified: 2026-07-19
+  last_verified: 2026-07-20
 ```
 
 ## Editable draft
@@ -37,6 +37,22 @@ The current v0.5 judge-test URL is
 `https://command-center-web-67134152472.me-west1.run.app`. The private Devpost
 test-instructions field should include the public demo code only at submission
 time; it is not committed to the repository.
+
+The architecture exhibit is served from the same judge origin at
+`/atlas/index.html`.
+The product header exposes it as **Take a step back**. Devpost should link it
+after the working-product instructions, with this framing:
+
+> First run the Aria → handoff → Codex path. Then take a step back to inspect
+> how any claim is grounded in the UI, Python backend, database schema,
+> contract, regression test, and failure behavior.
+
+The formal name is **NLKE Grounded Continuity Architecture (NLKE-GCA)**.
+Natural Language Knowledge Engineering is the methodology; Command Center is
+the first public reference implementation.
+
+The exhibit complements the product demonstration; it is not a substitute for
+showing the working handoff and visible Codex load.
 
 ## Live deadline and deliverables
 
@@ -75,3 +91,25 @@ The final submit action is blocked until the video URL, `/feedback` ID,
 human-authored description, deployed judge URL, and real dogfood receipts are
 available. The [three-minute demo script](demo-script.md) is the recording
 source of truth.
+
+## Architecture story for judges
+
+Prove the system before telling the origin story:
+
+> I developed NLKE Grounded Continuity Architecture to carry bounded,
+> versioned understanding across people, models, interfaces, sessions, and
+> implementation tools. Command Center is its first public reference
+> implementation: Aria and Codex share an inspectable handoff whose claims can
+> be traced through interface, Python, database, test, and failure behavior.
+
+Close with the origin:
+
+> On my first day using an LLM, before I knew the vocabulary of RAG or agent
+> frameworks, I discovered the grounding principle manually. The timestamped
+> post shows the same concern thirteen months before this implementation.
+
+The linked OpenAI Community post is a timestamped origin artifact, not a claim
+of technical authority. Private NLKE, Atlas, Declarum, and ARIA work is labelled
+research lineage and points only to sanitized receipts. Android/Termux is presented as
+the delivery constraint, followed immediately by clean CI, PostgreSQL, and
+Cloud Run verification.

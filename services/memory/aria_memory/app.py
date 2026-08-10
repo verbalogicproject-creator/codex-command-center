@@ -40,6 +40,8 @@ from .credentials import (
     ProviderCredentialVault,
 )
 from .models import (
+    AriaAliasRequest, AriaExecutionEvent, AriaProfileRequest,
+    AriaTranscriptEvent, AriaVoiceSessionRequest,
     AuditResponse, AuthResponse, Capability, CapabilityInput, CapabilityList,
     CapabilityRecommendationRequest, CapabilityRecommendations,
     ChatRequest, DemoAuthRequest, ErrorDetail,
@@ -643,6 +645,219 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> ContextPack:
         limited(workspace, "recall", settings.max_direct_recalls)
         return workspace.context.build(body)
+
+    @app.get("/api/v1/aria/commands")
+    def aria_commands(
+        surface: str | None = None,
+        workflow: str | None = None,
+        profile_id: str = "profile_default",
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        """Return the deterministic global + surface + workflow projection."""
+        return {
+            "items": workspace.aria_registry.commands(surface, workflow, profile_id),
+            "context": {"surface": surface, "workflow": workflow},
+        }
+
+    @app.get("/api/v1/aria/profiles")
+    def aria_profiles(workspace: Workspace = Depends(current_workspace)):
+        return {"items": workspace.aria_registry.profiles()}
+
+    @app.post("/api/v1/aria/profiles", status_code=201)
+    def create_aria_profile(
+        body: AriaProfileRequest,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        try:
+            return workspace.aria_registry.save_profile(body.model_dump())
+        except (ValueError, PermissionError) as exc:
+            raise HTTPException(422, str(exc)) from None
+
+    @app.put("/api/v1/aria/profiles/{profile_id}")
+    def update_aria_profile(
+        profile_id: str,
+        body: AriaProfileRequest,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        if not workspace.aria_registry.profile(profile_id):
+            raise HTTPException(404, "profile not found")
+        try:
+            return workspace.aria_registry.save_profile(body.model_dump(), profile_id)
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from None
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+
+    @app.delete("/api/v1/aria/profiles/{profile_id}")
+    def delete_aria_profile(
+        profile_id: str,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        profile = workspace.aria_registry.profile(profile_id)
+        if not profile:
+            raise HTTPException(404, "profile not found")
+        if profile["is_default"]:
+            raise HTTPException(403, "the default profile cannot be deleted")
+        with workspace.db.transaction() as conn:
+            conn.execute("DELETE FROM aria_profiles WHERE id=?", (profile_id,))
+        return {"deleted": True}
+
+    @app.post("/api/v1/aria/profiles/{profile_id}/aliases", status_code=201)
+    def create_aria_alias(
+        profile_id: str,
+        body: AriaAliasRequest,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        if not workspace.aria_registry.profile(profile_id):
+            raise HTTPException(404, "profile not found")
+        try:
+            return workspace.aria_registry.add_alias(
+                profile_id, body.command_id, body.alias,
+            )
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from None
+
+    @app.get("/api/v1/aria/profiles/{profile_id}/aliases")
+    def aria_aliases(
+        profile_id: str,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        if not workspace.aria_registry.profile(profile_id):
+            raise HTTPException(404, "profile not found")
+        with workspace.db.connect() as conn:
+            rows = conn.execute(
+                """SELECT id,profile_id,command_id,alias,normalized_alias,created_at
+                FROM aria_command_aliases WHERE profile_id=?
+                ORDER BY normalized_alias""", (profile_id,),
+            ).fetchall()
+        return {"items": [dict(row) for row in rows]}
+
+    @app.delete("/api/v1/aria/aliases/{alias_id}")
+    def delete_aria_alias(
+        alias_id: str,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        with workspace.db.transaction() as conn:
+            changed = conn.execute(
+                "DELETE FROM aria_command_aliases WHERE id=?", (alias_id,)
+            ).rowcount
+        if not changed:
+            raise HTTPException(404, "alias not found")
+        return {"deleted": True}
+
+    @app.post("/api/v1/aria/voice-sessions", status_code=201)
+    def start_aria_voice_session(
+        body: AriaVoiceSessionRequest,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        if (
+            body.conversation_session_id
+            and not workspace.store.session_exists(body.conversation_session_id)
+        ):
+            raise HTTPException(404, "conversation session not found")
+        try:
+            return workspace.aria_registry.start_voice_session(
+                body.profile_id, body.conversation_session_id,
+            )
+        except KeyError:
+            raise HTTPException(404, "profile not found") from None
+
+    @app.post("/api/v1/aria/voice-sessions/{voice_session_id}/end")
+    def end_aria_voice_session(
+        voice_session_id: str,
+        degraded_reason: str | None = None,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        from .models import utc_now
+
+        with workspace.db.transaction() as conn:
+            changed = conn.execute(
+                """UPDATE aria_voice_sessions
+                SET transport_state=?,ended_at=?,degraded_reason=?
+                WHERE id=? AND ended_at IS NULL""",
+                (
+                    "error" if degraded_reason else "ended", utc_now(),
+                    (degraded_reason or "")[:1_000] or None, voice_session_id,
+                ),
+            ).rowcount
+        if not changed:
+            raise HTTPException(404, "active voice session not found")
+        return {"ended": True}
+
+    @app.post("/api/v1/aria/voice-sessions/{voice_session_id}/state")
+    def update_aria_voice_session_state(
+        voice_session_id: str,
+        state: str,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        if state not in {"connecting", "active"}:
+            raise HTTPException(422, "unknown voice transport state")
+        with workspace.db.transaction() as conn:
+            changed = conn.execute(
+                """UPDATE aria_voice_sessions SET transport_state=?
+                WHERE id=? AND ended_at IS NULL""",
+                (state, voice_session_id),
+            ).rowcount
+        if not changed:
+            raise HTTPException(404, "active voice session not found")
+        return {"updated": True, "transport_state": state}
+
+    @app.post("/api/v1/aria/voice-sessions/{voice_session_id}/transcript")
+    def append_aria_transcript(
+        voice_session_id: str,
+        body: AriaTranscriptEvent,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        try:
+            workspace.aria_registry.append_voice_turn(
+                voice_session_id, body.role, body.content, body.metadata,
+            )
+        except KeyError:
+            raise HTTPException(404, "voice session not found") from None
+        return {"stored": True, "raw_audio_stored": False}
+
+    @app.post("/api/v1/aria/executions", status_code=201)
+    def record_aria_execution(
+        body: AriaExecutionEvent,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        try:
+            return workspace.aria_registry.record_execution(body.model_dump())
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+
+    @app.get("/api/v1/aria/devhub")
+    def aria_devhub(
+        limit: int = Query(default=100, ge=1, le=500),
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        return workspace.aria_registry.devhub(limit)
+
+    @app.delete("/api/v1/aria/voice-sessions")
+    def delete_aria_voice_history(
+        confirmation: str,
+        workspace: Workspace = Depends(current_workspace),
+    ):
+        if confirmation != "Delete Aria voice history.":
+            raise HTTPException(409, "exact human confirmation is required")
+        with workspace.db.transaction() as conn:
+            conversations = [
+                row[0] for row in conn.execute(
+                    """SELECT DISTINCT conversation_session_id
+                    FROM aria_voice_sessions
+                    WHERE conversation_session_id IS NOT NULL"""
+                ).fetchall()
+            ]
+            count = conn.execute(
+                "SELECT COUNT(*) FROM aria_voice_sessions"
+            ).fetchone()[0]
+            conn.execute("DELETE FROM aria_voice_sessions")
+            for session_id in conversations:
+                conn.execute(
+                    "DELETE FROM turns WHERE session_id=? AND modality='voice'",
+                    (session_id,),
+                )
+        return {"deleted_sessions": count}
 
     @app.post("/api/v1/realtime/token")
     async def realtime_token(

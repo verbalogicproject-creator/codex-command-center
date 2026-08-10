@@ -126,6 +126,7 @@ export function InfiniteDock<T extends string>({
                   tabIndex={copy === "primary" ? 0 : -1}
                   aria-current={copy === "primary" && activeId === id ? "page" : undefined}
                   aria-label={copy === "primary" ? label : undefined}
+                  data-command-id={copy === "primary" ? `navigate_surface:${id}` : undefined}
                   title={label}
                   onClick={(event) => {
                     if (movedRef.current) {

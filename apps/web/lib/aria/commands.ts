@@ -42,6 +42,27 @@ export type CommandResult = {
   requires_human_confirmation?: boolean;
 };
 
+export type RegistryCommand = {
+  id: string;
+  description: string;
+  tool_schema: Record<string, unknown>;
+  handler_key: string;
+  scopes: string[];
+  safety_class: string;
+  confirmation_policy: string;
+  eligible: boolean;
+  aliases?: string[];
+};
+
+export type AriaContextState = {
+  surface: Surface;
+  workflow?: string;
+  activeSession?: string;
+  visibleDraft?: string;
+  drawerOpen?: boolean;
+  tourActive?: boolean;
+};
+
 export type CommandDependencies = {
   navigate: (surface: Surface) => Promise<void>;
   scrollPage: (direction: "up" | "down" | "top" | "bottom", amount: "small" | "page") => Promise<void>;
@@ -255,7 +276,7 @@ export const ariaVoiceTools = [
 ] as const;
 
 export const ARIA_VOICE_INSTRUCTIONS = `You are Aria, the voice guide for Command Center.
-Be warm, concise, and evidence-conscious. Use tools whenever the user asks to navigate,
+Be warm, concise, and grounding-conscious. Use tools whenever the user asks to navigate,
 scroll, inspect evidence, manipulate the graph, run recall, or control the guided tour.
 After a tool returns, briefly describe what is now visible. Never claim an interface action
 finished before its tool result says it did. You may draft a pending memory proposal, but
@@ -266,16 +287,87 @@ install tools, confirm memory, or perform external actions. You may revise the v
 draft because it is reversible, but you may not upload files, invent capability references,
 bypass plan bounds, edit code, deploy, install, or confirm memory. Never ask for or repeat secrets.`;
 
-export function ariaRealtimeSessionUpdate() {
+export function ariaRealtimeSessionUpdate(options: {
+  commands?: RegistryCommand[];
+  persona?: {
+    voice?: string; preset: string; tone: number; directness: number;
+    verbosity: number; initiative: number;
+  };
+  state?: AriaContextState;
+} = {}) {
+  const tools = options.commands
+    ? options.commands.filter((item) => item.eligible).map((item) => ({
+      type: "function" as const,
+      name: item.id,
+      description: item.aliases?.length
+        ? `${item.description} The user may also call this action: ${item.aliases
+          .map((alias) => `“${alias}”`).join(", ")}.`
+        : item.description,
+      parameters: item.tool_schema,
+    }))
+    : ariaVoiceTools;
+  const persona = options.persona
+    ? `\nDelivery profile: preset=${options.persona.preset}; tone=${options.persona.tone}/100; `
+      + `directness=${options.persona.directness}/100; verbosity=${options.persona.verbosity}/100; `
+      + `initiative=${options.persona.initiative}/100. These values affect delivery only.`
+    : "";
+  const state = options.state
+    ? `\nCurrent bounded UI state: ${JSON.stringify(options.state)}`
+    : "";
   return {
     type: "session.update",
     session: {
       type: "realtime",
-      instructions: ARIA_VOICE_INSTRUCTIONS,
-      tools: ariaVoiceTools,
+      instructions: ARIA_VOICE_INSTRUCTIONS + persona + state,
+      tools,
       tool_choice: "auto",
+      ...(options.persona?.voice ? {
+        audio: {output: {voice: options.persona.voice}},
+      } : {}),
     },
   } as const;
+}
+
+export function ariaStateDelta(previous: AriaContextState, next: AriaContextState) {
+  const changed = Object.fromEntries(Object.entries(next).filter(
+    ([key, value]) => previous[key as keyof AriaContextState] !== value,
+  ));
+  return {
+    type: "conversation.item.create",
+    item: {
+      type: "message",
+      role: "system",
+      content: [{type: "input_text", text: `Bounded UI state delta: ${JSON.stringify(changed)}`}],
+    },
+  } as const;
+}
+
+export const commandActionInventory = [
+  ...ariaVoiceTools.map((tool) => ({
+    actionId: tool.name, classification: "voice-supported" as const,
+  })),
+  {actionId: "confirm_memory_write", classification: "human-confirmation-only" as const},
+  {actionId: "upload_screenshot", classification: "browser-permission-only" as const},
+  {actionId: "deploy_code", classification: "voice-ineligible" as const},
+  {actionId: "open_architecture_atlas", classification: "voice-ineligible" as const,
+    reason: "Documentation opens in a separate browser page."},
+] as const;
+
+export function validateCommandCoverage(handlerKeys: readonly string[]) {
+  const handlers = new Set(handlerKeys);
+  const missing: string[] = commandActionInventory
+    .filter((item) => item.classification === "voice-supported" && !handlers.has(item.actionId))
+    .map((item) => item.actionId);
+  const publication = commandActionInventory.find((item) => item.actionId === "approve_handoff");
+  if (publication?.classification !== "voice-supported") missing.push("approve_handoff:classification");
+  return missing;
+}
+
+const buildCoverageErrors = validateCommandCoverage(
+  ariaVoiceTools.map((tool) => tool.name),
+);
+if (buildCoverageErrors.length) {
+  throw new Error(`Aria command coverage failed: ${buildCoverageErrors.join(", ")}`);
 }
 
 export async function executeAriaCommand(

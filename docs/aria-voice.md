@@ -9,9 +9,9 @@ ai_card:
   audience: [user, engineer, ai_agent, evaluator]
   status: implemented
   owner_area: Aria interface
-  main_files: [apps/web/components/AriaVoice.tsx, apps/web/lib/aria/commands.ts, apps/web/lib/handoff-controller.ts, services/memory/aria_memory/agent.py]
-  public_interfaces: ["/api/v1/realtime/token", "/api/v1/chat/stream", "command-center-redesign-suggestion-v1", "command-center-tour-script-v1"]
-  provides: [voice navigation guide, controller-backed redesign workflow, evidence-aware Luna tour, voice approval boundaries]
+  main_files: [apps/web/components/AriaVoice.tsx, apps/web/lib/aria/commands.ts, apps/web/lib/handoff-controller.ts, services/memory/aria_memory/aria_registry.py]
+  public_interfaces: ["/api/v1/realtime/token", "/api/v1/aria/commands", "/api/v1/aria/profiles", "/api/v1/aria/devhub", "/api/v1/chat/stream"]
+  provides: [persistent voice transport, scoped command registry, unified transcript, persona profiles, bounded DevHub receipts]
   depends_on: [command-center.architecture-awareness, command-center.handoffs, command-center.byok]
   safe_edit_points: [typed browser command router, narration after visible UI completion]
   risk_areas: [voice implying external authority, exposing standard API keys]
@@ -19,10 +19,10 @@ ai_card:
   last_verified: 2026-07-19
 ```
 
-Aria voice is an optional control layer for the existing Command Center
-interface. It does not create a second agent or a second memory service. The
-same typed commands work whether they come from OpenAI Realtime, a future voice
-provider, tests, or a visible browser control.
+Aria is a persistent Command Center agent. Her fixed orb and WebRTC transport
+remain mounted while the user moves among surfaces or starts a tour. Her Aria
+home has Conversation, Voice & Persona, and DevHub tabs. It does not create a
+second agent, database, context corpus, or memory service.
 
 ## Start voice
 
@@ -33,16 +33,52 @@ provider, tests, or a visible browser control.
    defaults are `gpt-realtime-2.1` and `marin`.
 3. Open Command Center through HTTPS or `localhost`. Browsers require a secure
    context for microphone access.
-4. Select the floating microphone orb and approve microphone access.
+4. Select the fixed microphone orb and approve microphone access.
 5. Speak naturally: “Open Handoff Builder,” “open the graph,” “focus fact cc
    zero seven,” “run recall for the approval boundary,” or “start the guided
    tour.”
-6. Select the square button or close the voice panel to stop. Microphone tracks,
+6. Open Aria and select **Stop**. Microphone tracks,
    the data channel, remote audio, and the peer connection are closed together.
 
-The panel exposes listening, thinking, speaking, and error states. It also
-shows available input and output transcripts. The interface respects the
-operating system’s reduced-motion preference.
+There is no floating transcript panel. While voice is active, the orb opens
+Aria’s Conversation tab. That tab exposes listening, thinking, speaking,
+muted, and error states alongside stop and reconnect controls. Typed and spoken
+turns share the persisted chronological transcript and are labelled by
+modality. Raw audio, SDP/WebRTC payloads, and provider credentials are never
+stored.
+
+## Registry and context projection
+
+Migration 8 adds command definitions, profile-specific aliases, persona
+profiles, voice sessions, bounded execution receipts, and turn modality.
+SQLite and PostgreSQL use the same contract. Built-ins come from the versioned
+repository manifest in `aria_registry.py`; workspace rows are reconciled by
+stable ID and SHA-256 hash at startup. Database rows contain metadata only.
+Executable handlers remain the TypeScript allow-list.
+
+Realtime receives a deterministic subset: global navigation/tour commands,
+active-surface commands, and an optional active-workflow set. Connection
+includes a compact state snapshot. Navigation and drawer/tour changes produce
+compact state deltas instead of replaying repository context. Surface,
+workflow, profile, and alias changes refresh the effective Realtime tool
+projection while the WebRTC transport remains connected.
+
+Profiles persist voice, preset, bounded tone/directness/verbosity/initiative,
+and explicitly enabled eligible commands. Active selection stays in browser
+local storage. Profiles cannot change schema, handler, safety, confirmation, or
+trust metadata. Alias normalization detects profile-local collisions and
+reserves the handoff approval phrase. The effective command projection appends
+the selected profile's permitted aliases to Realtime tool descriptions, so a
+spoken alias still resolves to the same semantic command rather than a
+synthetic click.
+
+DevHub correlates bounded voice transcript events, Realtime call IDs, command
+IDs, sanitized arguments/results, timing, errors, and transport degradation.
+Its coverage badge is deliberately scoped to the registered Aria action
+projection. It is not described as proof that every DOM control is voice
+eligible. A cross-language regression gate requires every eligible Python
+registry definition to match the frontend Realtime tool projection; the typed
+frontend coverage test then requires an allow-listed controller handler.
 
 ## Supported interface commands
 
@@ -71,6 +107,10 @@ There is intentionally no `confirm_memory_write` voice command. Handoff
 publication is allowed only for the exact phrase **Approve this handoff.** and
 only exposes the already visible bounded packet. It does not authorize code,
 installation, deployment, or another external action.
+
+Stored voice sessions and voice-modality turns can be removed only after a
+human types the exact phrase **Delete Aria voice history.** The default persona
+profile cannot be deleted; non-default workspace profiles can.
 
 ## Trust boundary
 
@@ -149,7 +189,7 @@ covers the problem, non-retention boundary, Taste choice, receipts, editable
 plan/interview boundary, publication, and Codex activation edge.
 
 Back, Next, Repeat, and Stop are available as 44-pixel button targets. Starting
-a tour minimizes without disconnecting voice, restores focus when stopped,
+a tour changes visual focus without disconnecting voice, restores focus when stopped,
 respects reduced motion, and falls back to a deterministic evidence-bound
 script without BYOK or Realtime.
 

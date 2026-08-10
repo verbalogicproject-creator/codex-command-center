@@ -1,0 +1,235 @@
+{
+  "schema_version": "nlke-gca-grounding-receipt-v1",
+  "title": "NLKE Grounded Continuity Architecture",
+  "subtitle": "Take a step back from the product and follow its claims into the system that makes them true.",
+  "climax_claim_id": "immutable-handoff",
+  "repository_url": "https://github.com/verbalogicproject-creator/codex-command-center",
+  "origin_url": "https://community.openai.com/t/how-i-simulated-memory-in-free-chatgpt-using-logic-alone-manual-memory-log-method/1286932",
+  "grounding_layers": [
+    {
+      "id": "collaboration",
+      "number": "01",
+      "title": "Durable collaboration",
+      "summary": "Sessions, typed and spoken turns, facts, episodes, proposals, and receipts preserve continuity without giving a model silent write authority.",
+      "accent": "cyan"
+    },
+    {
+      "id": "architecture",
+      "number": "02",
+      "title": "Declared repository architecture",
+      "summary": "Versioned AI cards, sections, graph edges, embeddings, health, and visible gaps describe what the repository says is true.",
+      "accent": "violet"
+    },
+    {
+      "id": "intent",
+      "number": "03",
+      "title": "Human and visual intent",
+      "summary": "Role-labelled images become bounded findings, unresolved choices, and an editable Open Plan. Raw screenshots are discarded.",
+      "accent": "rose"
+    },
+    {
+      "id": "execution",
+      "number": "04",
+      "title": "Executable context",
+      "summary": "Trusted capabilities, the command registry, active UI state, and persona profiles determine what Aria may offer right now.",
+      "accent": "amber"
+    }
+  ],
+  "claims": [
+    {
+      "id": "bounded-grounding",
+      "title": "Grounding is bounded and repository-scoped",
+      "plain": "Aria and Codex receive a selected packet with explicit omissions and degraded reasons—not an unrestricted database dump.",
+      "layer": "architecture",
+      "failure": "Unknown repository identity fails closed; unavailable dense retrieval remains visible as a degraded reason.",
+      "supports": [
+        {"kind": "symbol", "path": "services/memory/aria_memory/architecture/compiler.py", "name": "ArchitectureCompiler.build"},
+        {"kind": "symbol", "path": "services/memory/aria_memory/context.py", "name": "ContextCompiler.build"},
+        {"kind": "test", "path": "services/memory/tests/test_architecture_brief.py", "name": "test_brief_is_bounded_over_fully_serialized_packet"},
+        {"kind": "doc", "path": "docs/architecture-awareness.md", "needle": "command-center-architecture-brief-v1"}
+      ]
+    },
+    {
+      "id": "immutable-handoff",
+      "title": "Published handoffs cannot silently change",
+      "plain": "A published packet is version-pinned. Editing creates a new lineage version while the original remains inspectable.",
+      "layer": "intent",
+      "failure": "A direct patch of a published handoff returns a conflict instead of mutating history.",
+      "supports": [
+        {"kind": "file", "path": "apps/web/app/page.tsx", "needle": "Approve this handoff</button>"},
+        {"kind": "route", "method": "POST", "path": "/api/v1/handoffs/{handoff_id}/publish"},
+        {"kind": "symbol", "path": "services/memory/aria_memory/toolbox.py", "name": "Toolbox.publish_handoff"},
+        {"kind": "table", "name": "handoffs"},
+        {"kind": "table", "name": "handoff_activations"},
+        {"kind": "test", "path": "services/memory/tests/test_toolbox.py", "name": "test_handoff_publication_immutability_repository_guard_and_activation"},
+        {"kind": "doc", "path": "docs/handoffs.md", "needle": "Published records are immutable"}
+      ]
+    },
+    {
+      "id": "self-grounding-atlas",
+      "title": "The architecture exhibit proves its own source boundary",
+      "plain": "The visible story is curated, but its modules, routes, tables, commands, tests, excerpts, claim links, and snapshot hash are compiled from the same repository it explains.",
+      "layer": "architecture",
+      "failure": "A missing source, regression test, unknown layer, unsafe local path, or stale generated artifact fails the atlas build instead of publishing an unsupported receipt.",
+      "supports": [
+        {"kind": "file", "path": "docs/atlas/template.html", "needle": "Select any claim. Follow it into the backend."},
+        {"kind": "file", "path": "scripts/build_atlas.py", "needle": "snapshot_inputs"},
+        {"kind": "test", "path": "services/memory/tests/test_atlas.py", "name": "test_atlas_snapshot_is_deterministic_and_source_backed"},
+        {"kind": "doc", "path": "docs/nlke-gca.md", "needle": "nlke-gca-grounding-receipt-v1"}
+      ]
+    },
+    {
+      "id": "no-raw-audio",
+      "title": "Aria never stores raw audio",
+      "plain": "WebRTC audio travels directly between the browser and OpenAI. Command Center stores only bounded transcript events and transport receipts.",
+      "layer": "execution",
+      "failure": "Audio, SDP, WebRTC payloads, authorization values, and credentials are removed or redacted from receipt inputs.",
+      "supports": [
+        {"kind": "route", "method": "POST", "path": "/api/v1/aria/voice-sessions/{voice_session_id}/transcript"},
+        {"kind": "symbol", "path": "services/memory/aria_memory/aria_registry.py", "name": "bounded"},
+        {"kind": "table", "name": "aria_voice_sessions"},
+        {"kind": "test", "path": "services/memory/tests/test_aria_registry.py", "name": "test_voice_transcript_and_receipts_are_bounded_without_audio"},
+        {"kind": "doc", "path": "docs/aria-voice.md", "needle": "Raw audio"}
+      ]
+    },
+    {
+      "id": "screenshots-discarded",
+      "title": "Screenshot pixels are not retained",
+      "plain": "Screenshots are validated and resized in memory, then reduced to hashes, dimensions, roles, and labelled findings.",
+      "layer": "intent",
+      "failure": "Unsupported or corrupt image bytes are rejected before analysis; stored receipts always report retained=false.",
+      "supports": [
+        {"kind": "route", "method": "POST", "path": "/api/v1/screenshots/analyze"},
+        {"kind": "symbol", "path": "services/memory/aria_memory/toolbox.py", "name": "Toolbox.analyze_screenshot"},
+        {"kind": "test", "path": "services/memory/tests/test_toolbox.py", "name": "test_screenshot_is_validated_resized_and_not_retained"},
+        {"kind": "doc", "path": "docs/security-privacy.md", "needle": "retained"}
+      ]
+    },
+    {
+      "id": "allowlisted-handlers",
+      "title": "Database records cannot inject executable commands",
+      "plain": "The database stores versioned command metadata and aliases. Executable behavior remains in a typed, allow-listed TypeScript controller.",
+      "layer": "execution",
+      "failure": "The coverage gate rejects a manifest handler with no controller and protects confirmation classifications from drift.",
+      "supports": [
+        {"kind": "symbol", "path": "services/memory/aria_memory/aria_registry.py", "name": "AriaRegistry.reconcile"},
+        {"kind": "table", "name": "aria_command_definitions"},
+        {"kind": "file", "path": "apps/web/lib/aria/commands.ts", "needle": "executeAriaCommand"},
+        {"kind": "file", "path": "apps/web/lib/aria/commands.test.ts", "needle": "allow-listed handlers"},
+        {"kind": "test", "path": "services/memory/tests/test_aria_registry.py", "name": "test_migration_8_and_manifest_reconcile_are_durable"}
+      ]
+    },
+    {
+      "id": "controller-parity",
+      "title": "Buttons and voice invoke the same semantic actions",
+      "plain": "Voice function calls do not synthesize clicks or DOM coordinates. They enter the same typed controller used by product controls and tests.",
+      "layer": "execution",
+      "failure": "Unknown, malformed, disabled, or out-of-scope commands return bounded failures instead of touching the interface.",
+      "supports": [
+        {"kind": "file", "path": "apps/web/lib/aria/commands.ts", "needle": "executeAriaCommand"},
+        {"kind": "file", "path": "apps/web/components/AriaVoice.tsx", "needle": "parseAriaCommand"},
+        {"kind": "file", "path": "apps/web/app/page.tsx", "needle": "voiceCommand"},
+        {"kind": "file", "path": "apps/web/lib/aria/commands.test.ts", "needle": "routes graph focus"}
+      ]
+    },
+    {
+      "id": "human-memory-gate",
+      "title": "Durable memory requires a human tap",
+      "plain": "Models may draft pending proposals. Only the authenticated confirmation endpoint can create or change durable memory.",
+      "layer": "collaboration",
+      "failure": "Rejection and policy refusal are auditable; neither creates a durable memory row.",
+      "supports": [
+        {"kind": "route", "method": "POST", "path": "/api/v1/proposals/{proposal_id}/confirm"},
+        {"kind": "symbol", "path": "services/memory/aria_memory/store.py", "name": "AppStore.confirm"},
+        {"kind": "table", "name": "proposals"},
+        {"kind": "table", "name": "memories"},
+        {"kind": "test", "path": "services/memory/tests/test_memory.py", "name": "test_proposal_confirmation_is_idempotent"},
+        {"kind": "doc", "path": "AGENTS.md", "needle": "only the authenticated confirmation endpoint"}
+      ]
+    },
+    {
+      "id": "exact-publication-gate",
+      "title": "Publication keeps an exact human gate",
+      "plain": "Voice may publish a prepared handoff only after hearing the exact phrase “Approve this handoff.”",
+      "layer": "intent",
+      "failure": "Aliases cannot use the reserved phrase, and partial or paraphrased approval cannot cross the boundary.",
+      "supports": [
+        {"kind": "symbol", "path": "services/memory/aria_memory/aria_registry.py", "name": "normalize_alias"},
+        {"kind": "file", "path": "apps/web/lib/aria/commands.ts", "needle": "Approve this handoff."},
+        {"kind": "test", "path": "services/memory/tests/test_aria_registry.py", "name": "test_scoped_catalog_profiles_aliases_and_reserved_phrase"},
+        {"kind": "doc", "path": "docs/aria-voice.md", "needle": "Approve this handoff"}
+      ]
+    },
+    {
+      "id": "workspace-isolation",
+      "title": "Workspaces and BYOK remain isolated",
+      "plain": "Browser workspaces are independently authenticated. Provider keys live only in an expiring encrypted session envelope and never enter memory or handoffs.",
+      "layer": "collaboration",
+      "failure": "Missing keys degrade optional model features; they do not redirect usage to an operator-funded credential.",
+      "supports": [
+        {"kind": "symbol", "path": "services/memory/aria_memory/workspaces.py", "name": "Workspaces"},
+        {"kind": "symbol", "path": "services/memory/aria_memory/credentials.py", "name": "ProviderCredentialVault"},
+        {"kind": "table", "name": "workspace_tokens"},
+        {"kind": "test", "path": "services/memory/tests/test_api.py", "name": "test_workspace_isolation"},
+        {"kind": "test", "path": "services/memory/tests/test_credentials.py", "name": "test_byok_is_passed_only_to_request_scoped_screenshot_analysis"}
+      ]
+    }
+  ],
+  "lineage": [
+    {
+      "year": "June 2025",
+      "title": "Manual Memory Log",
+      "visibility": "public",
+      "summary": "Before knowing the vocabulary of RAG or agent frameworks, explicit context, a single source of truth, factual framing, and logic-gated progression established the core grounding principle.",
+      "principles": [
+        "Memory Log construction → durable collaboration",
+        "Context is supplied, never assumed → Grounding Compiler",
+        "Only explicit facts may influence reasoning → versioned grounding receipts",
+        "New conclusions must follow known inputs → human gates and immutable handoffs"
+      ],
+      "url": "https://community.openai.com/t/how-i-simulated-memory-in-free-chatgpt-using-logic-alone-manual-memory-log-method/1286932"
+    },
+    {
+      "year": "Private lineage",
+      "title": "Python NLKE Framework",
+      "visibility": "private",
+      "summary": "Tested structure-aware retrieval, temporal facts, code knowledge graphs, bounded recall, and the memory-to-code provenance bridge.",
+      "receipt": "docs/nlke-gca.md"
+    },
+    {
+      "year": "Private lineage",
+      "title": "Atlas / kg-factory",
+      "visibility": "private",
+      "summary": "Contributed fenced architecture cards, deterministic H2 chunking, PostgreSQL graph records, and visible gap nodes.",
+      "receipt": "docs/research/full-architecture-awareness-context.md"
+    },
+    {
+      "year": "Private lineage",
+      "title": "Declarum",
+      "visibility": "private",
+      "summary": "Contributed the 13 declaration slots, lint/scaffold/staleness operations, minimal boot context, and evidence-shaped answers.",
+      "receipt": "docs/research/full-architecture-awareness-context.md"
+    },
+    {
+      "year": "Private lineage",
+      "title": "ARIA",
+      "visibility": "private",
+      "summary": "Contributed context-on-demand, scoped semantic commands, bounded UI-state serialization, and live runtime diagnostics without importing its domain or provider architecture.",
+      "receipt": "docs/nlke-gca.md"
+    },
+    {
+      "year": "Public sibling",
+      "title": "Claude Toolbox Curriculum",
+      "visibility": "public",
+      "summary": "Contributed proven Cloud Run, MCP, testing, and extensibility delivery patterns.",
+      "url": "https://github.com/verbalogicproject-creator/Claude-ToolBox-Curriculum"
+    },
+    {
+      "year": "July 2026",
+      "title": "Codex Command Center",
+      "visibility": "public",
+      "summary": "Unifies durable memory, repository architecture, visual intent, trusted capabilities, immutable handoffs, semantic voice commands, and activation receipts.",
+      "url": "https://github.com/verbalogicproject-creator/codex-command-center"
+    }
+  ]
+}

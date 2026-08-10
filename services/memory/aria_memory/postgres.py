@@ -213,10 +213,86 @@ ALTER TABLE handoffs
   ADD COLUMN IF NOT EXISTS visual_brief_json TEXT NOT NULL DEFAULT '{}';
 """
 
+POSTGRES_ARIA_COMMAND_CENTER_MIGRATION_V8 = """
+ALTER TABLE turns ADD COLUMN IF NOT EXISTS modality TEXT NOT NULL DEFAULT 'text'
+  CHECK(modality IN ('text','voice'));
+ALTER TABLE turns ADD COLUMN IF NOT EXISTS metadata_json TEXT NOT NULL DEFAULT '{}';
+CREATE TABLE IF NOT EXISTS aria_command_definitions(
+  id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  tool_schema_json TEXT NOT NULL,
+  handler_key TEXT NOT NULL UNIQUE,
+  scopes_json TEXT NOT NULL DEFAULT '[]',
+  safety_class TEXT NOT NULL
+    CHECK(safety_class IN ('standard','protected','human_only','browser_permission','ineligible')),
+  confirmation_policy TEXT NOT NULL
+    CHECK(confirmation_policy IN ('none','exact_phrase','human_tap','browser_permission','forbidden')),
+  eligible INTEGER NOT NULL DEFAULT 1 CHECK(eligible IN (0,1)),
+  source_hash TEXT NOT NULL,
+  release_status TEXT NOT NULL
+    CHECK(release_status IN ('active','preview','retired')),
+  updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS aria_profiles(
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  voice TEXT NOT NULL,
+  preset TEXT NOT NULL,
+  tone INTEGER NOT NULL CHECK(tone BETWEEN 0 AND 100),
+  directness INTEGER NOT NULL CHECK(directness BETWEEN 0 AND 100),
+  verbosity INTEGER NOT NULL CHECK(verbosity BETWEEN 0 AND 100),
+  initiative INTEGER NOT NULL CHECK(initiative BETWEEN 0 AND 100),
+  enabled_command_ids_json TEXT NOT NULL DEFAULT '[]',
+  is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0,1)),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_aria_profile_name_normalized
+  ON aria_profiles(LOWER(name));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_aria_default_profile
+  ON aria_profiles(is_default) WHERE is_default=1;
+CREATE TABLE IF NOT EXISTS aria_command_aliases(
+  id TEXT PRIMARY KEY,
+  profile_id TEXT NOT NULL REFERENCES aria_profiles(id) ON DELETE CASCADE,
+  command_id TEXT NOT NULL REFERENCES aria_command_definitions(id) ON DELETE CASCADE,
+  alias TEXT NOT NULL,
+  normalized_alias TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(profile_id,normalized_alias));
+CREATE TABLE IF NOT EXISTS aria_voice_sessions(
+  id TEXT PRIMARY KEY,
+  conversation_session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+  profile_id TEXT REFERENCES aria_profiles(id) ON DELETE SET NULL,
+  profile_snapshot_json TEXT NOT NULL,
+  transport_state TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  ended_at TEXT,
+  degraded_reason TEXT);
+CREATE INDEX IF NOT EXISTS idx_aria_voice_sessions_started
+  ON aria_voice_sessions(started_at DESC);
+CREATE TABLE IF NOT EXISTS aria_command_executions(
+  id TEXT PRIMARY KEY,
+  voice_session_id TEXT REFERENCES aria_voice_sessions(id) ON DELETE CASCADE,
+  call_id TEXT NOT NULL,
+  command_id TEXT NOT NULL REFERENCES aria_command_definitions(id),
+  surface TEXT NOT NULL,
+  arguments_json TEXT NOT NULL DEFAULT '{}',
+  result_json TEXT NOT NULL DEFAULT '{}',
+  evidence_ids_json TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL CHECK(status IN ('started','succeeded','failed','refused')),
+  duration_ms INTEGER,
+  error TEXT,
+  created_at TEXT NOT NULL,
+  UNIQUE(voice_session_id,call_id));
+CREATE INDEX IF NOT EXISTS idx_aria_executions_created
+  ON aria_command_executions(created_at DESC);
+"""
+
 POSTGRES_APP_MIGRATIONS = {
     5: POSTGRES_ARCHITECTURE_MIGRATION_V5,
     6: POSTGRES_HANDOFF_PLANNING_MIGRATION_V6,
     7: POSTGRES_HANDOFF_VISUAL_COMPARISON_MIGRATION_V7,
+    8: POSTGRES_ARIA_COMMAND_CENTER_MIGRATION_V8,
 }
 
 

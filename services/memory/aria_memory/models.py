@@ -482,6 +482,8 @@ class Turn(BaseModel):
     content: str
     evidence_ids: list[str]
     created_at: str
+    modality: Literal["text", "voice"] = "text"
+    metadata: dict[str, Any] = {}
 
 
 class TurnList(BaseModel):
@@ -492,6 +494,46 @@ class ChatRequest(BaseModel):
     session_id: str
     message: str = Field(min_length=1, max_length=8_000)
     deep_synthesis: bool = False
+
+
+class AriaProfileRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    voice: str = Field(default="coral", max_length=40)
+    preset: str = Field(default="balanced", max_length=40)
+    tone: int = Field(default=50, ge=0, le=100)
+    directness: int = Field(default=65, ge=0, le=100)
+    verbosity: int = Field(default=40, ge=0, le=100)
+    initiative: int = Field(default=45, ge=0, le=100)
+    enabled_command_ids: list[str] = []
+
+
+class AriaAliasRequest(BaseModel):
+    command_id: str = Field(min_length=1, max_length=120)
+    alias: str = Field(min_length=1, max_length=120)
+
+
+class AriaVoiceSessionRequest(BaseModel):
+    profile_id: str = "profile_default"
+    conversation_session_id: str | None = None
+
+
+class AriaTranscriptEvent(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=8_000)
+    metadata: dict[str, Any] = {}
+
+
+class AriaExecutionEvent(BaseModel):
+    voice_session_id: str | None = None
+    call_id: str = Field(min_length=1, max_length=160)
+    command_id: str = Field(min_length=1, max_length=120)
+    surface: str = Field(default="aria", max_length=40)
+    arguments: dict[str, Any] = {}
+    result: dict[str, Any] = {}
+    evidence_ids: list[str] = []
+    status: Literal["started", "succeeded", "failed", "refused"] = "succeeded"
+    duration_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+    error: str | None = Field(default=None, max_length=1_000)
 
 
 WriteOperation = Literal[

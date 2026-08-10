@@ -12,11 +12,11 @@ ai_card:
   main_files: [services/memory/aria_memory, apps/web, plugins/codex-command-center]
   public_interfaces: ["/api/v1", "POST /mcp", "command-center-architecture-brief-v1"]
   provides: [system architecture orientation, data flow and approval boundaries]
-  depends_on: [command-center.architecture-awareness, command-center.declared-context, command-center.handoffs]
+  depends_on: [command-center.nlke-gca, command-center.architecture-awareness, command-center.architecture-exhibit, command-center.declared-context, command-center.handoffs]
   safe_edit_points: [documented service boundaries, additive application migrations]
   risk_areas: [cross-workspace leakage, bypassing pending proposal boundary]
   graph_rag_entities: [Aria, ArchitectureCompiler, Toolbox, Codex Command Center]
-  last_verified: 2026-07-19
+  last_verified: 2026-07-20
 ```
 
 ## Runtime
@@ -39,6 +39,8 @@ flowchart LR
   API --> A[Aria tool loop]
   A --> O[OpenAI Responses API]
   B --> VC[typed Aria UI command router]
+  API --> CR[(command registry + profiles + bounded receipts)]
+  CR --> VC
   B -->|ephemeral WebRTC secret| RT[OpenAI Realtime]
   RT -->|function calls| VC
   VC --> B
@@ -66,6 +68,11 @@ Streamable HTTP is stateless JSON-RPC; the local stdio adapter preserves the
 same schemas and results for clients that cannot conveniently attach a remote
 token header.
 
+This repository is the first public reference implementation of
+[NLKE Grounded Continuity Architecture](nlke-gca.md). **Natural Language
+Knowledge Engineering** names the broader methodology; **NLKE-GCA** names the
+grounded-continuity architecture implemented here.
+
 The `ArchitectureCompiler` is the canonical path for full architecture
 awareness. It resolves only a registered repository ID, name, or alias, selects
 an active immutable snapshot, ranks declared cards and AST-derived H2 sections,
@@ -76,6 +83,11 @@ latest declared-document projection.
 
 See [full architecture awareness](architecture-awareness.md) for the declaration,
 sync, storage, evidence, and degraded-state contracts.
+
+See [Take a step back](architecture-exhibit.md) for the progressive public
+explanation and generated Claim ↔ Source contract. The exhibit uses
+**grounding** for the complete bounded context and preserves **evidence** as the
+name of each individual source and stable internal ID.
 
 ## Capability and handoff domain
 
@@ -108,12 +120,14 @@ shows only relationships involved in the active packet. This is presentation
 state: the canvas never creates a second graph store or writes layout into
 memory. See [evidence graph canvas](graph-canvas.md).
 
-Aria voice is a transport adapter over the browser command router. The declared
-command catalog, result contract, shared Handoff Controller, guided-tour state, and interface dispatcher do
-not import a voice SDK. Realtime function calls enter the same typed router that
-tests and visible tour controls use. Results are returned only after the target
-surface has rendered or the graph movement has been requested, keeping narration
-aligned with the interface. See [Aria voice](aria-voice.md).
+Aria voice is a persistent transport adapter over the browser command router.
+Migration 8 stores repository-reconciled command metadata, profile aliases,
+bounded persona profiles, voice-session state, sanitized execution receipts,
+and text/voice turn modality. It never stores raw audio or WebRTC payloads.
+Executable handlers remain an allow-listed TypeScript map. Realtime receives a
+deterministic global + surface + workflow projection and compact state
+snapshots/deltas. The same controllers serve buttons, voice, tours, and tests.
+See [Aria voice](aria-voice.md).
 
 Text Aria recognizes frontend redesign intent and emits
 `command-center-redesign-suggestion-v1`. The guided tour has generic overview
@@ -125,7 +139,8 @@ falls back to the deterministic `command-center-tour-script-v1` script.
 Episode and fact rows keep `schema_version=1`. The independent
 `app_migrations` table versions embeddings, sessions, visible turns, proposals,
 audit, quota, capabilities, handoffs, activations, and workspace tokens.
-Migration 6 extends handoffs without changing memory row schema version 1.
+Migration 8 extends the Command Center agent domain without changing memory row
+schema version 1.
 
 The canonical embedding surface contains only entity type, project, kind,
 status, tags, title, content and reason. It excludes identifiers, secrets and

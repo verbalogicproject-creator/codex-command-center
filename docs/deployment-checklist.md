@@ -12,11 +12,11 @@ ai_card:
   main_files: [Dockerfile, cloudbuild.yaml, docs/cloud-run.md]
   public_interfaces: [Cloud Build, Cloud Run, remote MCP]
   provides: [ordered promotion and submission gates]
-  depends_on: [command-center.cloud-run, command-center.postgresql-proot, command-center.eval-report]
+  depends_on: [command-center.cloud-run, command-center.postgresql-proot, command-center.eval-report, command-center.architecture-exhibit, command-center.dogfood-guide]
   safe_edit_points: [marking only evidence-backed completed gates]
   risk_areas: [wrong GCP project, skipped staging handshake, mutable demo state]
   graph_rag_entities: [DeploymentGate, SubmissionGate]
-  last_verified: 2026-07-19
+  last_verified: 2026-07-20
 ```
 
 - [x] Create public GitHub repository `verbalogicproject-creator/codex-command-center`.
@@ -34,6 +34,12 @@ ai_card:
 - [ ] Verify an attempted conflicting merge leaves a visible MUD refusal.
 - [x] Run `PYTHONPATH=services/memory python3 scripts/eval.py` and retain the
   falsification trace in `docs/eval-report.md`.
+- [ ] Run `python scripts/build_atlas.py --check` from the final release
+  commit; verify `/atlas/index.html` loads from the judge origin and every featured claim
+  reverses from source to claim.
+- [ ] Verify the atlas names NLKE-GCA, links the public specification, defaults
+  to the immutable-handoff climax receipt, and closes on the timestamped origin
+  only after the product/source proof.
 - [x] Validate all ten Codex plugin MCP tools and four hooks; verify browser
   pairing creates a pending-only proposal.
 - [x] Validate trusted project-local MCP/hook registration, paired context
@@ -47,6 +53,9 @@ ai_card:
   Sol/Aria smoke test with explicit cost limits; verify no operator key exists.
 - [ ] On the HTTPS deployment, start Aria voice and verify navigation, scrolling,
   recall, graph focus, barge-in, transcript state, and microphone shutdown.
+- [ ] Complete the clean-browser
+  [Aria Command Center dogfood path](dogfood-guide.md) at 375, 768, 1024, and
+  1440 CSS pixels and record only a sanitized human verification receipt.
 - [ ] Draft a proposal by voice and verify there is no voice confirmation tool
   and no durable mutation before the authenticated browser tap.
 - [x] Run secret/history scan against the final Git object database; the only

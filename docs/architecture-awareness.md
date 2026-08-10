@@ -51,7 +51,7 @@ graph_rag_entities:
   - ArchitectureEdge
   - ArchitectureIssue
   - ArchitectureBrief
-last_verified: 2026-07-18
+last_verified: 2026-07-20
 ---
 
 # Full architecture awareness
@@ -60,6 +60,14 @@ Full architecture awareness means the complete declared architecture is
 versioned and queryable while each model receives only the relevant,
 repository-scoped portion. It does not mean loading the whole repository or
 documentation corpus into every prompt.
+
+For user-facing explanations, **grounding** is the complete bounded context and
+**evidence** is one source inside it. A grounding receipt explains what was
+selected, omitted, versioned, or degraded. Existing evidence IDs remain the
+stable internal contract. The generated
+[Take a step back exhibit](architecture-exhibit.md) lets a judge traverse this
+relationship in both directions without adding the generated HTML to the
+architecture corpus.
 
 Aria, published handoffs, the remote MCP, the stdio adapter, and Codex hooks all
 consume the same `command-center-architecture-brief-v1` structure. A brief
@@ -75,13 +83,19 @@ contains:
 
 ## Proven architecture lineage
 
-The implementation consolidates three working systems:
+This subsystem is one implementation seam within
+[NLKE Grounded Continuity Architecture](nlke-gca.md). The implementation
+consolidates patterns tested across the author's working systems:
 
 - Atlas / `kg-factory`: fenced `ai_card` YAML, Markdown-AST H2 chunking,
   idempotent ingestion, PostgreSQL graph records, and visible gap nodes.
 - NLKE Declarum Game Engine: the fleet-standard 13 declaration slots, root
   frontmatter, lint/scaffold/staleness operations, minimal boot context, and
   evidence-shaped answers.
+- Python NLKE: structure-aware retrieval, temporal memory, code-graph
+  provenance, and explicit memory-to-code bridges.
+- ARIA: context-on-demand, semantic command scoping, bounded state
+  serialization, and live diagnostics.
 - Command Center: repository-aware declared retrieval, persistent embeddings,
   bounded context compilation, immutable handoffs, MCP transport parity, and
   Codex lifecycle hooks.

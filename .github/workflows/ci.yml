@@ -17,6 +17,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
+      - run: python scripts/build_atlas.py --check
       - run: pytest
       - run: PYTHONPATH=services/memory python scripts/eval.py
       - uses: actions/setup-node@v7

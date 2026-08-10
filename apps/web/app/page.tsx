@@ -6,7 +6,7 @@ import {
 import {
   Activity, Archive, BrainCircuit, Boxes, Check, CircleHelp, Clock3, Command,
   Copy, GitBranch, KeyRound, Menu, Link2, MessageSquareText, Plus, Search, Send,
-  ShieldCheck, Sparkles, Upload, Workflow, X,
+  ShieldCheck, Sparkles, Square, Upload, VolumeX, Workflow, X,
 } from "lucide-react";
 import {api, apiUrl, readSSE} from "@/lib/api";
 import type {
@@ -18,6 +18,7 @@ import type {
 import {MemoryGraph} from "@/components/MemoryGraph";
 import {InfiniteDock} from "@/components/InfiniteDock";
 import {AriaVoice} from "@/components/AriaVoice";
+import type {VoiceStatus} from "@/components/AriaVoice";
 import {
   AriaCommand, executeAriaCommand, Surface,
 } from "@/lib/aria/commands";
@@ -25,8 +26,9 @@ import {
   editOpenPlan, HandoffController, HandoffControllerResult,
 } from "@/lib/handoff-controller";
 
-type ChatItem = {role: "user" | "assistant"; text: string};
+type ChatItem = {role: "user" | "assistant"; text: string; modality?: "text" | "voice"};
 type RenderBlock = {title: string; summary: string; evidence_ids?: string[]; projects?: string[]};
+type AriaTab = "conversation" | "persona" | "devhub";
 
 const surfaces: {id: Surface; label: string; shortLabel: string; icon: typeof Sparkles}[] = [
   {id: "aria", label: "Aria", shortLabel: "Aria", icon: Sparkles},
@@ -73,8 +75,10 @@ function afterPaint(): Promise<void> {
 export default function Page() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [surface, setSurface] = useState<Surface>("aria");
+  const [ariaTab, setAriaTab] = useState<AriaTab>("conversation");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSession, setActiveSession] = useState("");
+  const [activeAriaProfile, setActiveAriaProfile] = useState("profile_default");
   const [timeline, setTimeline] = useState<Memory[]>([]);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [graph, setGraph] = useState<GraphData>({nodes: [], edges: []});
@@ -131,6 +135,11 @@ export default function Page() {
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
+    setActiveAriaProfile(
+      window.localStorage.getItem("command-center.aria-profile") ?? "profile_default",
+    );
+  }, []);
+  useEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -147,7 +156,19 @@ export default function Page() {
     });
     setSessions((items) => [session, ...items]);
     setActiveSession(session.id);
+    setAriaTab("conversation");
     setSurface("aria");
+    return session.id;
+  }
+
+  async function ensureVoiceConversation() {
+    if (activeSession) return activeSession;
+    const session = await api<Session>("/api/v1/sessions", {
+      method: "POST", body: JSON.stringify({title: "Aria voice"}),
+    });
+    setSessions((items) => [session, ...items]);
+    setActiveSession(session.id);
+    return session.id;
   }
 
   async function startPairing() {
@@ -476,6 +497,11 @@ export default function Page() {
         }>
           <CircleHelp size={14} /><span>Tour</span>
         </button>
+        <a className="atlas-trigger" href="/atlas/index.html" target="_blank" rel="noreferrer"
+          data-command-id="open_architecture_atlas"
+          data-voice-ineligible-reason="Documentation opens in a separate browser page">
+          <BrainCircuit size={14} /><span>Take a step back</span>
+        </a>
         <div className="system-state"><i /><span>Memory online</span></div>
       </header>
 
@@ -498,7 +524,7 @@ export default function Page() {
           ))}
           {!sessions.length && <p className="quiet">Create a session to begin.</p>}
         </div>
-        <div className="rail-foot"><span className="aria-orb" /><div><strong>ARIA</strong><small>evidence agent</small></div></div>
+        <div className="rail-foot"><span className="aria-orb" /><div><strong>ARIA</strong><small>grounding agent</small></div></div>
       </aside>
 
       <section className="workspace">
@@ -506,6 +532,13 @@ export default function Page() {
           sessionId={activeSession} onCreateSession={createSession}
           onEvidence={(ids) => {setEvidenceIds(ids); if (ids[0]) void openEvidence(ids[0]);}}
           onRefresh={refresh}
+          activeProfileId={activeAriaProfile}
+          tab={ariaTab}
+          onTab={setAriaTab}
+          onProfile={(id) => {
+            setActiveAriaProfile(id);
+            window.localStorage.setItem("command-center.aria-profile", id);
+          }}
           onPrepareRedesign={async (suggestion) => {
             setSurface("handoff");
             await afterPaint();
@@ -546,7 +579,28 @@ export default function Page() {
       </section>
 
       <EvidenceDrawer memory={selected} onClose={() => setSelected(null)} />
-      <AriaVoice execute={voiceCommand} />
+      <AriaVoice
+        execute={voiceCommand}
+        onOpenAria={() => {
+          setAriaTab("conversation");
+          setSurface("aria");
+          void afterPaint().then(() => {
+            document.querySelector<HTMLButtonElement>(
+              '[data-aria-tab="conversation"]',
+            )?.focus();
+          });
+        }}
+        conversationSessionId={activeSession}
+        ensureConversationSession={ensureVoiceConversation}
+        profileId={activeAriaProfile}
+        context={{
+          surface,
+          activeSession,
+          visibleDraft: activeHandoffId || undefined,
+          drawerOpen: Boolean(selected),
+          tourActive: tourStep !== null,
+        }}
+      />
       <InfiniteDock items={surfaces} activeId={surface} onSelect={setSurface} />
       {tourStep !== null && <GuidedTour
         step={tourStep}
@@ -605,7 +659,7 @@ function Login({onSuccess}: {onSuccess: () => void}) {
       <div className="brand-mark hero"><BrainCircuit /></div>
       <p className="eyebrow">COMMAND CENTER V3</p>
       <h1>Memory you can inspect.</h1>
-      <p>Aria connects development decisions to durable evidence—and asks before changing a thing.</p>
+      <p>Aria connects development decisions to inspectable grounding—and asks before changing a thing.</p>
       <form onSubmit={submit}>
         <label>Demo access code<input type="password" value={code}
           onChange={(event) => setCode(event.target.value)} autoFocus /></label>
@@ -714,10 +768,13 @@ function SurfaceTitle({eyebrow, title, note}: {eyebrow: string; title: string; n
 
 function AriaSurface({
   sessionId, onCreateSession, onEvidence, onRefresh, onPrepareRedesign,
+  activeProfileId, onProfile, tab, onTab,
 }: {
-  sessionId: string; onCreateSession: () => Promise<void>;
+  sessionId: string; onCreateSession: () => Promise<unknown>;
   onEvidence: (ids: string[]) => void; onRefresh: () => Promise<void>;
   onPrepareRedesign: (suggestion: RedesignSuggestion) => Promise<void>;
+  activeProfileId: string; onProfile: (id: string) => void;
+  tab: AriaTab; onTab: (tab: AriaTab) => void;
 }) {
   const [message, setMessage] = useState("");
   const [deep, setDeep] = useState(false);
@@ -755,13 +812,16 @@ function AriaSurface({
     void Promise.all([
       api<{items: {
         role: "user" | "assistant"; content: string; evidence_ids: string[];
+        modality?: "text" | "voice";
       }[]}>(
         `/api/v1/sessions/${sessionId}/turns`,
       ),
       api<{items: Proposal[]}>(`/api/v1/sessions/${sessionId}/proposals`),
       api<{items: Proposal[]}>("/api/v1/proposals?status=pending"),
     ]).then(([turns, proposals, pending]) => {
-      setItems(turns.items.map((item) => ({role: item.role, text: item.content})));
+      setItems(turns.items.map((item) => ({
+        role: item.role, text: item.content, modality: item.modality ?? "text",
+      })));
       onEvidence([...new Set(turns.items.flatMap((item) => item.evidence_ids))]);
       setProposal(
         proposals.items[0]
@@ -774,6 +834,22 @@ function AriaSurface({
       setItems([]);
       setProposal(null);
     });
+  }, [sessionId]);
+
+  useEffect(() => {
+    const reloadTranscript = () => {
+      if (!sessionId) return;
+      void api<{items: {
+        role: "user" | "assistant"; content: string; evidence_ids: string[];
+        modality?: "text" | "voice";
+      }[]}>(`/api/v1/sessions/${sessionId}/turns`).then((turns) => {
+        setItems(turns.items.map((item) => ({
+          role: item.role, text: item.content, modality: item.modality ?? "text",
+        })));
+      });
+    };
+    window.addEventListener("aria:transcript-stored", reloadTranscript);
+    return () => window.removeEventListener("aria:transcript-stored", reloadTranscript);
   }, [sessionId]);
 
   useEffect(() => {
@@ -853,26 +929,42 @@ function AriaSurface({
   }
 
   return <section className="surface aria-surface">
-    <SurfaceTitle eyebrow="Evidence-backed development memory" title="Ask Aria"
+    <SurfaceTitle eyebrow="Persistent Command Center agent" title="Aria"
       note={deep ? "GPT-5.6 Sol · deep synthesis" : "GPT-5.6 Terra · low reasoning"} />
-    <div className="conversation" data-aria-target="content">
+    <nav className="aria-tabs" aria-label="Aria workspace">
+      {([
+        ["conversation", "Conversation"],
+        ["persona", "Voice & Persona"],
+        ["devhub", "DevHub"],
+      ] as const).map(([id, label]) => <button
+        key={id}
+        data-aria-tab={id}
+        className={tab === id ? "active" : ""}
+        aria-current={tab === id ? "page" : undefined}
+        onClick={() => onTab(id)}
+      >{label}</button>)}
+    </nav>
+    {tab === "conversation" && <>
+      <VoiceConnectionCard />
+      <div className="conversation" data-aria-target="content">
       {!items.length && <div className="empty-chat">
         <span className="aria-orb large" />
         <h2>What should we remember?</h2>
-        <p>Ask across projects, inspect the supporting evidence, then decide what becomes durable.</p>
+        <p>Ask across projects, inspect the grounding sources, then decide what becomes durable.</p>
         <button onClick={() => setMessage("Which projects can power a fast, private mobile assistant? Propose a decision.")}>
           Explore the private mobile stack <span>↗</span>
         </button>
       </div>}
       {items.map((item, index) => <article key={index} className={`chat-bubble ${item.role}`}>
-        <span>{item.role === "assistant" ? "ARIA" : "YOU"}</span>
+        <span>{item.role === "assistant" ? "ARIA" : "YOU"}
+          {item.modality === "voice" ? " · VOICE" : ""}</span>
         <Markdown text={item.text} />
       </article>)}
       {architectureBrief && <ArchitectureBriefCard
         brief={architectureBrief} onEvidence={(id) => onEvidence([id])} />}
       {redesignSuggestion && <article className="redesign-suggestion">
         <header><span><Workflow /> REDESIGN WORKFLOW</span>
-          <b>{redesignSuggestion.degraded ? "DEGRADED" : "EVIDENCE READY"}</b></header>
+          <b>{redesignSuggestion.degraded ? "DEGRADED" : "GROUNDING READY"}</b></header>
         <h3>{redesignSuggestion.primary_capability.name}</h3>
         <p>Taste is pinned at v{redesignSuggestion.primary_capability.version}
           {" · "}{redesignSuggestion.primary_capability.content_hash.slice(0, 12)}</p>
@@ -904,8 +996,8 @@ function AriaSurface({
           <button onClick={() => void resolve("confirm")}>Confirm memory write</button>
         </footer>}
       </article>}
-    </div>
-    <form className="composer" data-aria-target="composer" onSubmit={submit}>
+      </div>
+      <form className="composer" data-aria-target="composer" onSubmit={submit}>
       <textarea value={message} onChange={(event) => setMessage(event.target.value)}
         placeholder="Ask across your development memory…"
         onKeyDown={(event) => {
@@ -924,8 +1016,347 @@ function AriaSurface({
           {busy ? <span className="spinner" /> : <Send />}
         </button>
       </div>
-    </form>
+      </form>
+    </>}
+    {tab === "persona" && <AriaPersona
+      activeProfileId={activeProfileId} onProfile={onProfile} />}
+    {tab === "devhub" && <AriaDevHub />}
   </section>;
+}
+
+type AriaProfile = {
+  id: string; name: string; voice: string; preset: string;
+  tone: number; directness: number; verbosity: number; initiative: number;
+  enabled_command_ids: string[]; is_default: boolean;
+};
+
+function VoiceConnectionCard() {
+  const [status, setStatus] = useState<VoiceStatus>({
+    state: "idle", muted: false, error: "", voiceSessionId: "",
+  });
+  const [deletePhrase, setDeletePhrase] = useState("");
+  const [historyState, setHistoryState] = useState("");
+  useEffect(() => {
+    const update = (event: Event) => setStatus(
+      (event as CustomEvent<VoiceStatus>).detail,
+    );
+    window.addEventListener("aria:voice-status", update);
+    window.dispatchEvent(new CustomEvent("aria:voice-status-request"));
+    return () => window.removeEventListener("aria:voice-status", update);
+  }, []);
+  const active = !["idle", "error"].includes(status.state);
+  return <section className={`aria-connection ${status.state}`} role="status" aria-live="polite">
+    <div><i /><span><strong>{status.state.replace("_", " ")}</strong>
+      <small>OpenAI Realtime · transcript only · no audio retained</small></span></div>
+    <div className="aria-connection-actions">
+      {!active && <button onClick={() => window.dispatchEvent(new CustomEvent(
+        "aria:voice-control", {detail: {action: status.state === "error" ? "reconnect" : "start"}},
+      ))}>{status.state === "error" ? "Reconnect" : "Start voice"}</button>}
+      {active && <>
+        <button onClick={() => window.dispatchEvent(new CustomEvent(
+          "aria:voice-control", {detail: {action: "mute"}},
+        ))}><VolumeX /> {status.muted ? "Unmute" : "Mute"}</button>
+        <button className="danger" onClick={() => window.dispatchEvent(new CustomEvent(
+          "aria:voice-control", {detail: {action: "stop"}},
+        ))}><Square /> Stop</button>
+      </>}
+    </div>
+    {status.error && <p>{status.error}</p>}
+    <details className="voice-history-delete">
+      <summary>Delete stored voice-session history</summary>
+      <label>Type <code>Delete Aria voice history.</code>
+        <input value={deletePhrase} onChange={(event) => setDeletePhrase(event.target.value)} />
+      </label>
+      <button className="danger" disabled={deletePhrase !== "Delete Aria voice history."}
+        onClick={() => void api(
+          `/api/v1/aria/voice-sessions?confirmation=${encodeURIComponent(deletePhrase)}`,
+          {method: "DELETE"},
+        ).then((result) => {
+          setHistoryState(`Deleted ${String((result as {deleted_sessions?: number}).deleted_sessions ?? 0)} sessions.`);
+          setDeletePhrase("");
+          window.dispatchEvent(new CustomEvent("aria:transcript-stored"));
+        }).catch((reason) => setHistoryState(
+          reason instanceof Error ? reason.message : "History deletion was refused.",
+        ))}>Delete history</button>
+      {historyState && <small role="status">{historyState}</small>}
+    </details>
+  </section>;
+}
+
+function AriaPersona({
+  activeProfileId, onProfile,
+}: {activeProfileId: string; onProfile: (id: string) => void}) {
+  const [profiles, setProfiles] = useState<AriaProfile[]>([]);
+  const [draft, setDraft] = useState<AriaProfile | null>(null);
+  const [commands, setCommands] = useState<{id: string; description: string; eligible: boolean}[]>([]);
+  const [aliases, setAliases] = useState<{
+    id: string; command_id: string; alias: string;
+  }[]>([]);
+  const [aliasCommand, setAliasCommand] = useState("navigate_surface");
+  const [aliasText, setAliasText] = useState("");
+  const [error, setError] = useState("");
+  const load = useCallback(async () => {
+    const [result, catalog] = await Promise.all([
+      api<{items: AriaProfile[]}>("/api/v1/aria/profiles"),
+      api<{items: {id: string; description: string; eligible: boolean}[]}>(
+        "/api/v1/aria/commands?profile_id=profile_default",
+      ),
+    ]);
+    setProfiles(result.items);
+    const selected = result.items.find((item) => item.id === activeProfileId)
+      ?? result.items[0] ?? null;
+    setDraft(selected);
+    setCommands(catalog.items.filter((item) => item.eligible));
+    if (selected) {
+      const aliasResult = await api<{items: typeof aliases}>(
+        `/api/v1/aria/profiles/${selected.id}/aliases`,
+      );
+      setAliases(aliasResult.items);
+    }
+  }, [activeProfileId]);
+  useEffect(() => { void load(); }, [load]);
+  async function save() {
+    if (!draft) return;
+    setError("");
+    try {
+      const saved = await api<AriaProfile>(`/api/v1/aria/profiles/${draft.id}`, {
+        method: "PUT", body: JSON.stringify(draft),
+      });
+      setDraft(saved);
+      await load();
+      window.dispatchEvent(new CustomEvent("aria:registry-updated"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not save the profile.");
+    }
+  }
+  async function createProfile() {
+    const base = draft ?? profiles[0];
+    if (!base) return;
+    const created = await api<AriaProfile>("/api/v1/aria/profiles", {
+      method: "POST",
+      body: JSON.stringify({...base, id: undefined, name: `Workspace ${profiles.length + 1}`}),
+    });
+    onProfile(created.id);
+    setDraft(created);
+    await load();
+  }
+  async function addAlias() {
+    if (!draft || !aliasText.trim()) return;
+    setError("");
+    try {
+      await api(`/api/v1/aria/profiles/${draft.id}/aliases`, {
+        method: "POST",
+        body: JSON.stringify({command_id: aliasCommand, alias: aliasText}),
+      });
+      setAliasText("");
+      const result = await api<{items: typeof aliases}>(
+        `/api/v1/aria/profiles/${draft.id}/aliases`,
+      );
+      setAliases(result.items);
+      window.dispatchEvent(new CustomEvent("aria:registry-updated"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not add the alias.");
+    }
+  }
+  async function deleteProfile() {
+    if (!draft || draft.is_default) return;
+    setError("");
+    try {
+      await api(`/api/v1/aria/profiles/${draft.id}`, {method: "DELETE"});
+      onProfile("profile_default");
+      await load();
+      window.dispatchEvent(new CustomEvent("aria:registry-updated"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not delete the profile.");
+    }
+  }
+  if (!draft) return <div className="aria-tab-state">Loading persona profiles…</div>;
+  return <div className="aria-persona" data-aria-target="content">
+    <aside>
+      <header><span>Workspace profiles</span><button onClick={() => void createProfile()}>
+        <Plus /> New
+      </button></header>
+      {profiles.map((profile) => <button key={profile.id}
+        className={profile.id === draft.id ? "active" : ""}
+        onClick={() => {setDraft(profile); onProfile(profile.id);}}>
+        <strong>{profile.name}</strong><small>{profile.preset} · {profile.voice}</small>
+      </button>)}
+    </aside>
+    <form onSubmit={(event) => {event.preventDefault(); void save();}}>
+      <label>Profile name<input value={draft.name} disabled={draft.is_default}
+        onChange={(event) => setDraft({...draft, name: event.target.value})} /></label>
+      <div className="persona-selects">
+        <label>Voice<select value={draft.voice}
+          onChange={(event) => setDraft({...draft, voice: event.target.value})}>
+          {["coral", "alloy", "ash", "ballad", "echo", "sage", "shimmer", "verse"]
+            .map((voice) => <option key={voice}>{voice}</option>)}
+        </select></label>
+        <label>Preset<select value={draft.preset}
+          onChange={(event) => setDraft({...draft, preset: event.target.value})}>
+          {["balanced", "concise", "coach", "architect"]
+            .map((preset) => <option key={preset}>{preset}</option>)}
+        </select></label>
+      </div>
+      {(["tone", "directness", "verbosity", "initiative"] as const).map((dial) =>
+        <label className="persona-dial" key={dial}>
+          <span>{dial}<b>{draft[dial]}</b></span>
+          <input type="range" min="0" max="100" value={draft[dial]}
+            onChange={(event) => setDraft({...draft, [dial]: Number(event.target.value)})} />
+        </label>)}
+      <section className="persona-preview">
+        <span>Preview</span>
+        <p>Aria will be {draft.preset}, with {draft.directness}% directness and
+          {draft.verbosity}% verbosity. Safety and confirmation rules do not change.</p>
+        <small>{draft.enabled_command_ids.length} eligible commands enabled</small>
+      </section>
+      <details className="persona-commands">
+        <summary>Active commands <b>{draft.enabled_command_ids.length}/{commands.length}</b></summary>
+        <div>{commands.map((command) => <label key={command.id}>
+          <input type="checkbox" checked={draft.enabled_command_ids.includes(command.id)}
+            onChange={(event) => setDraft({
+              ...draft,
+              enabled_command_ids: event.target.checked
+                ? [...new Set([...draft.enabled_command_ids, command.id])]
+                : draft.enabled_command_ids.filter((id) => id !== command.id),
+            })} />
+          <span><code>{command.id}</code><small>{command.description}</small></span>
+        </label>)}</div>
+      </details>
+      <section className="persona-aliases">
+        <header><span>Spoken aliases</span><small>Reserved phrases are blocked</small></header>
+        <div><select value={aliasCommand} onChange={(event) => setAliasCommand(event.target.value)}>
+          {commands.map((command) => <option key={command.id}>{command.id}</option>)}
+        </select><input value={aliasText} onChange={(event) => setAliasText(event.target.value)}
+          placeholder="e.g. frame the graph" /><button type="button"
+          onClick={() => void addAlias()}>Add</button></div>
+        {aliases.map((alias) => <p key={alias.id}><code>{alias.alias}</code>
+          <span>{alias.command_id}</span><button type="button" aria-label={`Delete ${alias.alias}`}
+            onClick={() => void api(`/api/v1/aria/aliases/${alias.id}`, {method: "DELETE"})
+              .then(() => {
+                setAliases((items) => items.filter((item) => item.id !== alias.id));
+                window.dispatchEvent(new CustomEvent("aria:registry-updated"));
+              })}>
+            <X />
+          </button></p>)}
+      </section>
+      {error && <p className="form-error">{error}</p>}
+      <footer>
+        {!draft.is_default && <button type="button" className="secondary danger"
+          onClick={() => void deleteProfile()}>Delete profile</button>}
+        <button type="button" className="secondary" onClick={() => setDraft({
+          ...draft, voice: "coral", preset: "balanced", tone: 50,
+          directness: 65, verbosity: 40, initiative: 45,
+        })}>Reset to default</button>
+        <button type="submit">Save profile</button>
+      </footer>
+    </form>
+  </div>;
+}
+
+function AriaDevHub() {
+  const [data, setData] = useState<{
+    sessions: {
+      id: string; conversation_session_id?: string; transport_state: string;
+      started_at: string; ended_at?: string; degraded_reason?: string;
+    }[];
+    executions: {
+      id: string; voice_session_id?: string; call_id: string;
+      command_id: string; surface: string; status: string;
+      duration_ms?: number; arguments: Record<string, unknown>;
+      result: Record<string, unknown>; evidence_ids: string[];
+      error?: string; created_at: string;
+    }[];
+    transcripts: {
+      id: string; voice_session_id: string; conversation_session_id: string;
+      role: string; content: string; created_at: string;
+    }[];
+    coverage: {
+      definitions: number; voice_eligible: number; protected: number;
+      missing_handlers: string[]; scope: string; gate: string;
+    };
+  } | null>(null);
+  const [catalog, setCatalog] = useState<{
+    id: string; scopes: string[]; confirmation_policy: string; aliases: string[];
+  }[]>([]);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const load = useCallback(() => {
+    void Promise.all([
+      api<NonNullable<typeof data>>("/api/v1/aria/devhub"),
+      api<{items: typeof catalog}>("/api/v1/aria/commands"),
+    ]).then(([devhub, commands]) => {
+      setData(devhub);
+      setCatalog(commands.items);
+    });
+  }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener("aria:execution-stored", load);
+    window.addEventListener("aria:transcript-stored", load);
+    return () => {
+      window.removeEventListener("aria:execution-stored", load);
+      window.removeEventListener("aria:transcript-stored", load);
+    };
+  }, [load]);
+  if (!data) return <div className="aria-tab-state">Loading bounded diagnostics…</div>;
+  const filteredExecutions = data.executions.filter((item) => {
+    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+    const needle = query.trim().toLowerCase();
+    return matchesStatus && (!needle || JSON.stringify(item).toLowerCase().includes(needle));
+  });
+  return <div className="aria-devhub" data-aria-target="content">
+    <header>
+      <div><small>Definitions</small><strong>{data.coverage.definitions}</strong></div>
+      <div><small>Voice eligible</small><strong>{data.coverage.voice_eligible}</strong></div>
+      <div><small>Protected boundaries</small><strong>{data.coverage.protected}</strong></div>
+      <div><small>Registry projection</small><strong>
+        {data.coverage.missing_handlers.length ? "Gaps" : "Passed"}
+      </strong></div>
+    </header>
+    <div className="devhub-scope">
+      <span>Scope: registered Aria actions—not every interactive DOM control.</span>
+      <input value={query} onChange={(event) => setQuery(event.target.value)}
+        placeholder="Filter command, call, surface…" aria-label="Filter execution receipts" />
+      <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}
+        aria-label="Filter execution status">
+        {["all", "succeeded", "refused", "failed"].map((value) =>
+          <option key={value} value={value}>{value}</option>)}
+      </select>
+    </div>
+    <div className="devhub-split">
+      <section><h2>Live execution stream</h2>
+        {!filteredExecutions.length && <p className="quiet">No matching command receipts.</p>}
+        {filteredExecutions.map((item) => <details key={item.id}>
+          <summary><code>{item.command_id}</code><span>{item.surface}</span>
+            <b className={item.status}>{item.status}</b>
+            <time>{item.duration_ms ?? "—"} ms</time></summary>
+          <pre>{JSON.stringify({
+            call_id: item.call_id,
+            voice_session_id: item.voice_session_id,
+            transcript: data.transcripts
+              .filter((turn) => turn.voice_session_id === item.voice_session_id)
+              .map((turn) => ({role: turn.role, content: turn.content, at: turn.created_at})),
+            arguments: item.arguments, result: item.result,
+            evidence_ids: item.evidence_ids, error: item.error,
+          }, null, 2)}</pre>
+        </details>)}
+      </section>
+      <section><h2>Effective command catalog</h2>
+        {catalog.map((item) => <article key={item.id}>
+          <code>{item.id}</code><span>{item.scopes.join(" · ")}</span>
+          <small>{item.confirmation_policy}</small>
+        </article>)}
+        <h2>Voice sessions</h2>
+        {data.sessions.map((session) => <article key={session.id}>
+          <code>{session.id}</code><span>{session.transport_state}</span>
+          <small>{data.transcripts.filter(
+            (turn) => turn.voice_session_id === session.id,
+          ).length} transcript events{session.degraded_reason
+            ? ` · ${session.degraded_reason}` : ""}</small>
+        </article>)}
+      </section>
+    </div>
+  </div>;
 }
 
 function CapabilityLibrary({items}: {items: Capability[]}) {

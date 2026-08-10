@@ -16,12 +16,17 @@ ai_card:
   safe_edit_points: [documented browser and plugin workflows]
   risk_areas: [confusing proposals with durable memory, skipping repository verification]
   graph_rag_entities: [UserWorkflow, Aria, Codex Command Center]
-  last_verified: 2026-07-19
+  last_verified: 2026-07-20
 ```
 
 Command Center answers two practical questions: **what context did the coding
 agent use, and how can a reviewed plan continue in Codex without losing its
 toolbox?**
+
+It is the first public reference implementation of
+[NLKE Grounded Continuity Architecture](nlke-gca.md): Natural Language
+Knowledge Engineering is the methodology, while NLKE-GCA is the architecture
+that makes continuity bounded, versioned, and inspectable.
 
 You do not need to understand retrieval systems to use it. The interface uses
 four ideas:
@@ -32,7 +37,13 @@ four ideas:
    episodes.
 3. **A capability** is a versioned, provider-neutral workflow or policy.
 4. **A handoff** pins one Open Plan, exact capability versions, and a bounded
-   evidence packet for Codex.
+   grounding packet for Codex.
+
+Select **Take a step back** in the product header to open the static
+architecture exhibit. Its Claim lens starts with a plain-language promise and
+follows it through the visible interface, API, Python implementation, tables,
+tests, and failure behavior. Its Source lens starts with a backend module,
+route, table, or test and shows the claims it supports.
 
 ## The fastest tour
 

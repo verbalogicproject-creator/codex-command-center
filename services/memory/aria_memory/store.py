@@ -38,13 +38,19 @@ class AppStore:
             return conn.execute("SELECT 1 FROM sessions WHERE id=?", (session_id,)).fetchone() is not None
 
     def add_turn(
-        self, session_id: str, role: str, content: str, evidence: list[str] | None = None
+        self, session_id: str, role: str, content: str, evidence: list[str] | None = None,
+        modality: str = "text", metadata: dict[str, Any] | None = None,
     ) -> None:
         now = utc_now()
         with self.db.transaction() as conn:
             conn.execute(
-                "INSERT INTO turns VALUES(?,?,?,?,?,?)",
-                (uid("turn"), session_id, role, content, json.dumps(evidence or []), now),
+                """INSERT INTO turns
+                (id,session_id,role,content,evidence_json,created_at,modality,metadata_json)
+                VALUES(?,?,?,?,?,?,?,?)""",
+                (
+                    uid("turn"), session_id, role, content, json.dumps(evidence or []),
+                    now, modality, json.dumps(metadata or {}),
+                ),
             )
             conn.execute("UPDATE sessions SET updated_at=? WHERE id=?", (now, session_id))
 
@@ -61,13 +67,14 @@ class AppStore:
     def visible_turns(self, session_id: str, limit: int = 100) -> list[Turn]:
         with self.db.connect() as conn:
             rows = conn.execute(
-                """SELECT id,role,content,evidence_json,created_at FROM turns
+                """SELECT id,role,content,evidence_json,created_at,modality,metadata_json FROM turns
                 WHERE session_id=? ORDER BY created_at LIMIT ?""",
                 (session_id, limit),
             ).fetchall()
         return [Turn(
             id=row["id"], role=row["role"], content=row["content"],
             evidence_ids=json.loads(row["evidence_json"]), created_at=row["created_at"],
+            modality=row["modality"], metadata=json.loads(row["metadata_json"]),
         ) for row in rows]
 
     def create_proposal(

@@ -62,6 +62,21 @@ def test_postgres_v7_adds_role_labelled_visual_comparison_receipt():
     assert "visual_brief_json TEXT NOT NULL" in migration
 
 
+def test_postgres_v8_matches_aria_command_center_contract():
+    migration = POSTGRES_APP_MIGRATIONS[8]
+    tables = set(re.findall(
+        r"CREATE TABLE IF NOT EXISTS ([a-z_]+)", migration,
+        flags=re.IGNORECASE,
+    ))
+    assert tables == {
+        "aria_command_definitions", "aria_profiles", "aria_command_aliases",
+        "aria_voice_sessions", "aria_command_executions",
+    }
+    assert "ADD COLUMN IF NOT EXISTS modality" in migration
+    assert "profile_snapshot_json TEXT NOT NULL" in migration
+    assert "UNIQUE(voice_session_id,call_id)" in migration
+
+
 def test_postgres_adapter_translates_portable_placeholders():
     assert CompatConnection._sql(
         "SELECT * FROM handoffs WHERE id=? AND status=?"

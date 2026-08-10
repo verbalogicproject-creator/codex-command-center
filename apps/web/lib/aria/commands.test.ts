@@ -1,6 +1,7 @@
 import {describe, expect, it, vi} from "vitest";
 import {
-  ariaRealtimeSessionUpdate, CommandDependencies, executeAriaCommand, parseAriaCommand,
+  ariaRealtimeSessionUpdate, ariaStateDelta, ariaVoiceTools, CommandDependencies,
+  executeAriaCommand, parseAriaCommand, validateCommandCoverage,
 } from "./commands";
 
 function dependencies(): CommandDependencies {
@@ -43,6 +44,30 @@ describe("Aria command router", () => {
     const update = ariaRealtimeSessionUpdate();
     expect(update.type).toBe("session.update");
     expect(update.session.type).toBe("realtime");
+  });
+
+  it("projects registry tools and emits compact state deltas", () => {
+    const update = ariaRealtimeSessionUpdate({
+      commands: [{
+        id: "navigate_surface", handler_key: "navigate_surface",
+        description: "Navigate", tool_schema: {}, scopes: ["global"],
+        safety_class: "standard", confirmation_policy: "none", eligible: true,
+        aliases: ["take me home"],
+      }],
+      state: {surface: "aria", drawerOpen: false},
+    });
+    expect(update.session.tools.map((tool) => tool.name)).toEqual(["navigate_surface"]);
+    expect(update.session.tools[0].description).toContain("take me home");
+    const delta = ariaStateDelta(
+      {surface: "aria", drawerOpen: false},
+      {surface: "graph", drawerOpen: false},
+    );
+    expect(delta.item.content[0].text).toContain('"surface":"graph"');
+    expect(JSON.stringify(delta)).not.toContain("drawerOpen");
+  });
+
+  it("keeps the voice action inventory covered by allow-listed handlers", () => {
+    expect(validateCommandCoverage(ariaVoiceTools.map((tool) => tool.name))).toEqual([]);
   });
 
   it("routes graph focus through navigation and waits for the graph command", async () => {

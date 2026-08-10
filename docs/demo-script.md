@@ -16,18 +16,18 @@ ai_card:
   safe_edit_points: [timing and narration that preserve demonstrated facts]
   risk_areas: [showing another provider, claiming deployment before verification]
   graph_rag_entities: [Aria, GPT-5.6 Sol, GPT-5.6 Luna, Codex]
-  last_verified: 2026-07-19
+  last_verified: 2026-07-20
 ```
 
-## 0:00–0:20 — Promise
+## 0:00–0:15 — The continuity problem
 
 Show the Codex plugin list with only **Codex Command Center** installed.
 
-Narration: “Plan with Aria. Continue in Codex. Bring your toolbox everywhere.
-Today GPT-5.6, Aria, and Codex will carry one inspectable redesign plan from
-voice and screenshot into a coding interview.”
+Narration: “AI can act, but it still loses architectural continuity and hides
+what grounded the next action. I want one reviewed plan to survive the move
+from Aria into Codex.”
 
-## 0:20–0:55 — Give Aria the task
+## 0:15–0:50 — Give Aria the task
 
 Open **Handoff Builder**, select the Command Center repository, paste the current
 interface screenshot, and tell Aria what should change.
@@ -35,18 +35,17 @@ interface screenshot, and tell Aria what should change.
 Show that raw image retention is off. Let Sol produce observations, and point to
 the **Screenshot-derived inferences** label.
 
-## 0:55–1:30 — Inspect the toolbox
+## 0:50–1:10 — Inspect the grounding contract
 
 Show the primary **Taste-guided frontend redesign interview** recommendation
 and its exact version/hash. Briefly reveal the visible
 alternatives. Edit one Open Plan line.
 
-Open the exact bounded packet. Point to architecture, evidence IDs and selection
-reasons, pinned snapshot and source revision, architecture coverage, safe edit
-points, risks, omitted candidates, token estimate, planning model, and degraded
-state. Start the redesign tour and show its evidence receipts and pause reason.
+Open the exact bounded grounding packet. Point to its pinned architecture
+snapshot, grounding-source IDs, selection reasons, safe edit points, omissions,
+and degraded state. Do not read every field.
 
-## 1:30–1:50 — Approve by voice
+## 1:10–1:28 — Approve by voice
 
 Say: **“Approve this handoff.”**
 
@@ -59,7 +58,7 @@ Aria publishes it and reads the exact command:
 State that voice exposed bounded context only; it did not edit code, install a
 tool, deploy, or confirm memory.
 
-## 1:50–2:45 — Continue in Codex
+## 1:28–2:08 — Continue in Codex
 
 Open Codex in the same repository and run the generated command. Show the
 visible `load_handoff` call. Pause on:
@@ -71,19 +70,45 @@ visible `load_handoff` call. Pause on:
 - safe edit points and risks;
 - activation receipt.
 
-Codex summarizes what was injected, cites evidence IDs, and asks the first
-redesign interview question before editing.
+Codex summarizes what was injected and asks the first informed redesign
+question before editing.
 
-Briefly show the animated graph edge from the published handoff into Codex, but
-keep the informed interview question as the ending.
+## 2:08–2:40 — Take a step back
 
-## 2:45–3:00 — Close
+Open `/atlas/index.html` and say: “Now take a step back.”
 
-Stop at the question.
+Select the featured **Published handoffs cannot silently change** receipt.
+Move quickly through the visible product control, authenticated route, Python
+publication policy, SQLite/PostgreSQL tables, regression test, and conflict
+failure behavior.
 
-Narration: “One cloud Command Center carried a reviewed toolbox into Codex
-without installing arbitrary skills or hiding context. The same hosted MCP is
-provider-neutral for future compatible clients, but this workflow is built
-around GPT-5.6, Aria, and Codex.”
+Then select **The architecture exhibit proves its own source boundary** and
+show its generator, source snapshot hash, and stale-artifact test.
+
+Narration: “This is not a diagram drawn after the code. The explanation is
+compiled from the repository it explains.”
+
+## 2:40–2:55 — Name and origin reveal
+
+Return to the atlas hero:
+
+“I call it **NLKE Grounded Continuity Architecture**. Natural Language
+Knowledge Engineering is the methodology; Command Center is its first public
+reference implementation.”
+
+Scroll to the timestamped June 2025 OpenAI Community artifact:
+
+“On my first day using an LLM, before I knew the vocabulary of RAG or agent
+frameworks, I discovered the same grounding principle manually. Thirteen months
+later, it is an implemented architecture.”
+
+## 2:55–3:00 — Close
+
+End on:
+
+> Continuity without hidden memory. Grounding without surrendered control.
+
+Put the full `/atlas/index.html` and specification URLs in Devpost and the video
+description. The product and visible Codex load remain the primary proof.
 
 Do not show another provider in the main video.

@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="NLKE Grounded Continuity Architecture: a source-verifiable atlas for Codex Command Center, Aria, and immutable Codex handoffs.">
+<meta name="theme-color" content="#071014">
+<title>Take a step back — NLKE Grounded Continuity Architecture</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#071014;--panel:#0c171c;--panel2:#101e24;--line:#213139;
+  --ink:#edf7f8;--soft:#b8c7ca;--muted:#7f9499;
+  --cyan:#53d6e8;--violet:#b999ff;--rose:#ff8cb4;--amber:#ffca75;
+  --green:#7de3af;--red:#ff8a8a;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --max:1240px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{margin:0;background:
+  radial-gradient(circle at 12% 0,rgba(83,214,232,.08),transparent 25rem),
+  radial-gradient(circle at 88% 18%,rgba(185,153,255,.07),transparent 28rem),var(--bg);
+  color:var(--ink);font:15px/1.6 var(--sans);overflow-x:hidden}
+button,input{font:inherit}
+a{color:var(--cyan)}
+a:hover{text-decoration:none}
+code,.mono{font-family:var(--mono)}
+.skip{position:fixed;top:-80px;left:16px;z-index:100;background:var(--ink);color:var(--bg);padding:10px 14px}
+.skip:focus{top:10px}
+.topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid rgba(83,214,232,.16);
+  background:rgba(7,16,20,.88);backdrop-filter:blur(16px)}
+.topbar-inner{max-width:var(--max);margin:auto;min-height:64px;padding:0 22px;display:flex;align-items:center;gap:22px}
+.brand{display:flex;align-items:center;gap:11px;color:var(--ink);text-decoration:none;white-space:nowrap}
+.brand-mark{width:29px;height:29px;border:1px solid var(--cyan);border-radius:9px;display:grid;place-items:center;
+  box-shadow:inset 0 0 18px rgba(83,214,232,.18),0 0 20px rgba(83,214,232,.1)}
+.brand-mark:after{content:"";width:7px;height:7px;background:var(--cyan);border-radius:50%;box-shadow:0 0 12px var(--cyan)}
+.brand b{font-size:13px;letter-spacing:.08em;text-transform:uppercase}.brand small{display:block;color:var(--muted);font:9px var(--mono)}
+.topnav{margin-left:auto;display:flex;gap:5px;align-items:center}
+.topnav a{color:var(--soft);text-decoration:none;padding:8px 10px;border-radius:7px;font:10px var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.topnav a:hover,.topnav a:focus-visible{background:var(--panel2);color:var(--cyan)}
+.repo-link{border:1px solid var(--line)}
+main{max-width:var(--max);margin:auto;padding:0 22px 100px}
+section{scroll-margin-top:78px;padding:74px 0;border-bottom:1px solid var(--line)}
+.eyebrow{margin:0 0 10px;color:var(--cyan);font:10px var(--mono);letter-spacing:.18em;text-transform:uppercase}
+h1,h2,h3,p{margin-top:0}h1{font-size:clamp(42px,8vw,92px);line-height:.93;letter-spacing:-.065em;margin-bottom:24px;max-width:870px}
+h2{font-size:clamp(29px,5vw,50px);line-height:1.02;letter-spacing:-.045em;margin-bottom:14px}
+h3{font-size:18px;line-height:1.2}
+.lede{max-width:760px;color:var(--soft);font-size:clamp(17px,2vw,21px);line-height:1.55}
+.hero{min-height:calc(100vh - 64px);display:grid;align-content:center;position:relative;padding-top:80px}
+.hero:after{content:"";position:absolute;right:-12%;top:10%;width:420px;height:420px;border:1px solid rgba(83,214,232,.13);
+  border-radius:50%;box-shadow:0 0 0 50px rgba(83,214,232,.025),0 0 0 110px rgba(185,153,255,.018);pointer-events:none}
+.hero h1 span{color:transparent;-webkit-text-stroke:1px var(--cyan)}
+.origin{max-width:780px;color:var(--soft);font-size:18px}.origin strong{color:var(--ink)}
+.identity{display:flex;flex-wrap:wrap;gap:7px;max-width:880px;margin:22px 0 0}.identity span{border:1px solid var(--line);border-radius:999px;padding:6px 10px;color:var(--muted);font:9px var(--mono)}
+.identity b{color:var(--cyan)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:28px 0}
+.button{border:1px solid var(--line);border-radius:7px;padding:11px 15px;color:var(--ink);background:var(--panel);
+  text-decoration:none;font:11px var(--mono);letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.button.primary{background:var(--cyan);border-color:var(--cyan);color:#041013;font-weight:800}
+.button:hover,.button:focus-visible{border-color:var(--cyan);outline:none}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:42px;position:relative;z-index:1}
+.stat{border:1px solid var(--line);background:rgba(12,23,28,.76);padding:14px;border-radius:8px}
+.stat b{display:block;color:var(--cyan);font:24px var(--mono)}.stat small{color:var(--muted);font:9px var(--mono);text-transform:uppercase}
+.section-head{display:flex;justify-content:space-between;gap:30px;align-items:end;margin-bottom:34px}
+.section-head>div{max-width:760px}.section-index{font:11px var(--mono);color:var(--muted);white-space:nowrap}
+.zoom-path{display:grid;grid-template-columns:repeat(6,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.zoom-path a{min-height:86px;padding:15px;color:var(--soft);text-decoration:none;border-right:1px solid var(--line);background:var(--panel)}
+.zoom-path a:last-child{border:0}.zoom-path a:hover{background:var(--panel2)}
+.zoom-path b{display:block;color:var(--cyan);font:11px var(--mono);margin-bottom:7px}.zoom-path span{font-size:12px}
+.flow{display:grid;grid-template-columns:1fr 50px 1.2fr 50px 1fr;align-items:stretch;margin-top:28px}
+.flow-card{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:24px;min-height:180px}
+.flow-card.primary{border-color:rgba(83,214,232,.5);box-shadow:inset 0 0 40px rgba(83,214,232,.04)}
+.flow-card .tag,.layer .tag{font:9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.flow-card p{color:var(--soft);font-size:14px}.flow-arrow{display:grid;place-items:center;color:var(--cyan);font:24px var(--mono)}
+.receipt-line{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font:10px var(--mono)}
+.layers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.layer{position:relative;min-height:210px;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:24px;overflow:hidden}
+.layer:before{content:attr(data-number);position:absolute;right:16px;top:3px;color:rgba(255,255,255,.035);font:84px var(--mono);line-height:1}
+.layer[data-accent=cyan]{--local:var(--cyan)}.layer[data-accent=violet]{--local:var(--violet)}
+.layer[data-accent=rose]{--local:var(--rose)}.layer[data-accent=amber]{--local:var(--amber)}
+.layer .tag{color:var(--local)}.layer p{color:var(--soft);max-width:54ch}.layer .signal{width:34px;height:3px;background:var(--local);margin:26px 0 14px}
+.compiler{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:12px;align-items:stretch}
+.stack{display:grid;gap:8px}.stack div,.compiler-core,.handoff-core{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:16px}
+.stack b{font-size:13px}.stack small{display:block;color:var(--muted);font:10px var(--mono);margin-top:4px}
+.compiler-core{display:grid;align-content:center;text-align:center;border-color:rgba(185,153,255,.48);
+  background:linear-gradient(145deg,rgba(185,153,255,.09),var(--panel))}
+.compiler-core strong{font-size:22px}.compiler-core code{display:block;color:var(--violet);margin:12px 0;font-size:12px}
+.handoff-core{display:grid;align-content:center;border-color:rgba(83,214,232,.38)}
+.handoff-core ul{padding-left:18px;color:var(--soft);font-size:13px}
+.safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.boundary{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:20px}
+.boundary .state{font:9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--green)}
+.boundary.protected .state{color:var(--amber)}.boundary.forbidden .state{color:var(--red)}
+.boundary p{font-size:13px;color:var(--soft);margin-bottom:0}
+.explorer-shell{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden;min-height:620px}
+.explorer-toolbar{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line);background:#091419}
+.lens{border:1px solid var(--line);background:transparent;color:var(--muted);padding:8px 12px;border-radius:6px;cursor:pointer;font:10px var(--mono);text-transform:uppercase}
+.lens.active{color:var(--bg);background:var(--cyan);border-color:var(--cyan);font-weight:800}
+.search{margin-left:auto;max-width:330px;width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:8px 11px;border-radius:6px}
+.explorer{display:grid;grid-template-columns:330px minmax(0,1fr);min-height:560px}
+.explorer-list{border-right:1px solid var(--line);padding:8px;max-height:720px;overflow:auto}
+.explorer-item{display:block;width:100%;border:0;border-bottom:1px solid rgba(33,49,57,.7);background:transparent;color:var(--soft);
+  padding:13px 12px;text-align:left;cursor:pointer}
+.explorer-item:hover,.explorer-item.active{background:var(--panel2);color:var(--ink)}
+.explorer-item b{display:block;font-size:13px}.explorer-item small{display:block;color:var(--muted);font:9px var(--mono);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.explorer-detail{padding:28px;min-width:0}.detail-kind{color:var(--cyan);font:9px var(--mono);text-transform:uppercase;letter-spacing:.15em}
+.detail-title{font-size:27px;letter-spacing:-.03em;margin:8px 0}.detail-copy{color:var(--soft);max-width:75ch}
+.trace{display:grid;gap:7px;margin:25px 0}.trace button{display:grid;grid-template-columns:90px 1fr auto;gap:12px;align-items:center;
+  border:1px solid var(--line);background:var(--panel2);color:var(--ink);padding:10px 12px;border-radius:7px;text-align:left;cursor:pointer}
+.trace button:hover{border-color:var(--cyan)}.trace .kind{color:var(--cyan);font:9px var(--mono);text-transform:uppercase}
+.trace .path{font:11px var(--mono);overflow:hidden;text-overflow:ellipsis}.trace .arrow{color:var(--muted)}
+.failure{border-left:2px solid var(--amber);padding:12px 16px;background:rgba(255,202,117,.05);color:var(--soft);font-size:13px}
+.source-meta{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 20px}.pill{border:1px solid var(--line);border-radius:999px;padding:4px 9px;color:var(--muted);font:9px var(--mono)}
+.code{margin:20px 0;background:#050b0e;border:1px solid var(--line);border-radius:9px;overflow:auto;max-height:390px}
+.code-head{position:sticky;top:0;display:flex;justify-content:space-between;gap:10px;padding:8px 12px;background:#091217;border-bottom:1px solid var(--line);
+  color:var(--muted);font:9px var(--mono)}pre{margin:0;padding:16px;color:#cfe1e4;font:11px/1.7 var(--mono);white-space:pre;tab-size:2}
+.claim-links{display:flex;flex-wrap:wrap;gap:7px}.claim-chip{border:1px solid rgba(83,214,232,.25);background:rgba(83,214,232,.05);
+  color:var(--cyan);border-radius:6px;padding:7px 9px;font:10px var(--mono);cursor:pointer}
+.inventory-tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}.inventory-tab{border:1px solid var(--line);background:var(--panel);color:var(--soft);padding:9px 12px;border-radius:7px;cursor:pointer}
+.inventory-tab.active{border-color:var(--violet);color:var(--violet)}
+.inventory-table{border:1px solid var(--line);border-radius:10px;overflow:hidden}.inventory-row{display:grid;grid-template-columns:120px minmax(0,1fr) 100px;
+  gap:16px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:center;font-size:12px}
+.inventory-row:last-child{border-bottom:0}.inventory-row:hover{background:var(--panel)}
+.inventory-row .type{font:9px var(--mono);color:var(--violet);text-transform:uppercase}.inventory-row .location{font:10px var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.lineage{position:relative;margin-top:32px}.lineage:before{content:"";position:absolute;left:12px;top:8px;bottom:8px;width:1px;background:var(--line)}
+.lineage-item{position:relative;padding:0 0 34px 44px}.lineage-item:before{content:"";position:absolute;left:7px;top:6px;width:11px;height:11px;border:2px solid var(--cyan);border-radius:50%;background:var(--bg)}
+.lineage-item.private:before{border-color:var(--muted)}.lineage-item small{color:var(--cyan);font:9px var(--mono);text-transform:uppercase}.lineage-item.private small{color:var(--muted)}
+.lineage-item h3{margin:5px 0}.lineage-item p{color:var(--soft);max-width:760px}.lineage-item a{font:10px var(--mono)}
+.lineage-principles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-width:900px;margin:13px 0 16px}.lineage-principles span{border-left:2px solid var(--cyan);background:var(--panel);padding:8px 10px;color:var(--soft);font:10px/1.5 var(--mono)}
+.origin-reveal{margin:0 0 42px;padding:24px;border:1px solid rgba(83,214,232,.35);border-radius:12px;background:linear-gradient(145deg,rgba(83,214,232,.06),var(--panel))}
+.origin-reveal blockquote{margin:0;color:var(--ink);font-size:clamp(19px,3vw,29px);line-height:1.35;letter-spacing:-.025em}.origin-reveal p{margin:14px 0 0;color:var(--soft)}
+.receipt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.release-receipt{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:16px}
+.release-receipt small{display:block;color:var(--muted);font:9px var(--mono);text-transform:uppercase}.release-receipt b{display:block;color:var(--green);font:18px var(--mono);margin-top:7px;word-break:break-all}
+.provenance{margin-top:24px;color:var(--muted);font-size:12px}.provenance code{color:var(--soft)}
+footer{padding:42px 0;color:var(--muted);display:flex;justify-content:space-between;gap:20px;font-size:12px}
+.empty{color:var(--muted);padding:30px;text-align:center}
+@media(max-width:900px){
+  .topnav a:not(.repo-link){display:none}.stats{grid-template-columns:repeat(3,1fr)}
+  .zoom-path{grid-template-columns:repeat(3,1fr)}.zoom-path a:nth-child(3){border-right:0}
+  .flow{grid-template-columns:1fr}.flow-arrow{transform:rotate(90deg);min-height:40px}
+  .compiler{grid-template-columns:1fr}.safety-grid{grid-template-columns:repeat(2,1fr)}
+  .explorer{grid-template-columns:280px minmax(0,1fr)}.receipt-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:680px){
+  main{padding-inline:14px}.topbar-inner{padding-inline:14px}.brand small{display:none}
+  section{padding:55px 0}.hero{min-height:auto;padding-top:80px}.hero:after{display:none}
+  .stats{grid-template-columns:repeat(2,1fr)}.layers,.safety-grid{grid-template-columns:1fr}
+  .zoom-path{grid-template-columns:repeat(2,1fr)}.zoom-path a{border-bottom:1px solid var(--line)}
+  .zoom-path a:nth-child(2n){border-right:0}.section-head{align-items:start;flex-direction:column}
+  .explorer-shell{min-height:0}.explorer-toolbar{align-items:stretch;flex-wrap:wrap}.search{order:2;max-width:none}
+  .explorer{display:block}.explorer-list{border-right:0;border-bottom:1px solid var(--line);max-height:280px}
+  .explorer-detail{padding:20px 14px}.trace button{grid-template-columns:70px minmax(0,1fr)}.trace .arrow{display:none}
+  .inventory-row{grid-template-columns:80px minmax(0,1fr)}.inventory-row .location{grid-column:1/-1}
+  .lineage-principles{grid-template-columns:1fr}
+  footer{display:block}.receipt-grid{grid-template-columns:1fr 1fr}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to architecture</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#top"><span class="brand-mark"></span><span><b>NLKE-GCA</b><small>Command Center reference implementation</small></span></a>
+    <nav class="topnav" aria-label="Atlas sections">
+      <a href="#grounding">Grounding</a><a href="#compiler">Compiler</a><a href="#boundaries">Boundaries</a>
+      <a href="#explorer">Claim ↔ Source</a><a href="#lineage">Lineage</a>
+      <a class="repo-link" href="https://github.com/verbalogicproject-creator/codex-command-center">Source ↗</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <section class="hero" id="top">
+    <p class="eyebrow">Natural Language Knowledge Engineering · OpenAI Build Week 2026</p>
+    <h1>Grounded continuity. <span>Made inspectable.</span></h1>
+    <p class="origin"><strong>NLKE Grounded Continuity Architecture</strong> carries bounded, versioned understanding across people, models, interfaces, sessions, and implementation tools—without treating hidden model state as memory or capability as permission.</p>
+    <div class="identity"><span><b>NLKE</b> · methodology</span><span><b>NLKE-GCA</b> · architecture</span><span><b>Command Center</b> · first public reference implementation</span><span><b>Aria</b> · operating agent</span><span><b>Codex</b> · implementation client</span></div>
+    <div class="actions">
+      <a class="button primary" href="#fast-path">Follow the 90-second path</a>
+      <a class="button" href="#explorer">Open the self-grounding proof</a>
+      <a class="button" data-spec href="#">Read the architecture specification</a>
+    </div>
+    <div class="stats" id="stats" aria-label="Extracted repository totals"></div>
+  </section>
+
+  <section id="fast-path">
+    <div class="section-head"><div><p class="eyebrow">The judge fast path</p><h2>Simple first. Verifiable underneath.</h2>
+      <p class="lede">The application demonstrates the outcome. This exhibit reveals the system progressively, without asking a judge to understand the entire backend at once.</p></div><span class="section-index">00 / SIX LEVELS</span></div>
+    <nav class="zoom-path" aria-label="Progressive architecture path">
+      <a href="#product-loop"><b>01</b><span>Aria → Codex</span></a><a href="#grounding"><b>02</b><span>Four grounding layers</span></a>
+      <a href="#compiler"><b>03</b><span>Compiler + handoff</span></a><a href="#boundaries"><b>04</b><span>Human boundaries</span></a>
+      <a href="#explorer"><b>05</b><span>Claim ↔ source</span></a><a href="#lineage"><b>06</b><span>Research lineage</span></a>
+    </nav>
+  </section>
+
+  <section id="product-loop">
+    <div class="section-head"><div><p class="eyebrow">Level one · The product loop</p><h2>Plan with Aria. Continue in Codex.</h2>
+      <p class="lede">The visible workflow is deliberately simple. Complexity exists to make this handoff bounded, inspectable, portable, and safe.</p></div><span class="section-index">ARIA → GROUNDING → CODEX</span></div>
+    <div class="flow">
+      <article class="flow-card"><span class="tag">Human + Aria</span><h3>Intent becomes explicit</h3><p>Talk or type. Compare role-labelled screenshots. Resolve ambiguity. Edit the Open Plan. Keep durable memory behind a human tap.</p><div class="receipt-line">TRANSCRIPT · FINDINGS · PROPOSALS</div></article>
+      <div class="flow-arrow" aria-hidden="true">→</div>
+      <article class="flow-card primary"><span class="tag">Command Center</span><h3>Grounding becomes a contract</h3><p>Repository architecture, durable decisions, visual intent, and trusted capabilities compile into one bounded, versioned handoff.</p><div class="receipt-line">SELECTED · OMITTED · HASHED · DEGRADED</div></article>
+      <div class="flow-arrow" aria-hidden="true">→</div>
+      <article class="flow-card"><span class="tag">Codex</span><h3>Implementation starts informed</h3><p>Codex loads the exact published packet, asks the first informed question, implements, tests, and leaves an activation receipt.</p><div class="receipt-line">LOAD · INTERVIEW · EDIT · VERIFY</div></article>
+    </div>
+  </section>
+
+  <section id="grounding">
+    <div class="section-head"><div><p class="eyebrow">Level two · Grounding</p><h2>Four kinds of truth. One bounded packet.</h2>
+      <p class="lede">“Evidence” is an individual source. “Grounding” is the understandable promise: the model receives only the relevant, inspectable sources needed for this task.</p></div><span class="section-index">GROUNDING ≠ DATABASE DUMP</span></div>
+    <div class="layers" id="layers"></div>
+  </section>
+
+  <section id="compiler">
+    <div class="section-head"><div><p class="eyebrow">Level three · Shared compiler</p><h2>The architecture converges before it travels.</h2>
+      <p class="lede">Aria, the API, MCP, hooks, and Codex consume the same versioned contract. Selection and omission are part of the receipt, not hidden implementation detail.</p></div><span class="section-index">MIGRATION <span data-migration></span></span></div>
+    <div class="compiler">
+      <div class="stack"><div><b>Repository cards</b><small>DECLARED + VERSIONED</small></div><div><b>Durable decisions</b><small>HUMAN-CONFIRMED</small></div><div><b>Intent findings</b><small>ROLE-LABELLED</small></div><div><b>Active commands</b><small>SCOPED + ALLOW-LISTED</small></div></div>
+      <article class="compiler-core"><span class="eyebrow">Deterministic boundary</span><strong>Grounding Compiler</strong><code>scope → rank → fuse → bound → receipt</code><p>Repository identity · source versions · token estimate · omissions · degraded reasons</p></article>
+      <article class="handoff-core"><span class="eyebrow">Immutable output</span><h3>Published handoff</h3><ul><li>Exact capability versions</li><li>Editable plan frozen at publication</li><li>Pinned architecture snapshot</li><li>Repository and grounding-source IDs</li><li>Per-client activation receipt</li></ul></article>
+    </div>
+  </section>
+
+  <section id="boundaries">
+    <div class="section-head"><div><p class="eyebrow">Level four · Human authority</p><h2>Capability is not permission.</h2>
+      <p class="lede">Every meaningful control is classified. Voice uses semantic actions, never coordinates or synthetic clicks, and it cannot cross protected product boundaries.</p></div><span class="section-index">FAIL CLOSED · DEGRADE VISIBLY</span></div>
+    <div class="safety-grid">
+      <article class="boundary"><span class="state">Voice supported</span><h3>Navigate and inspect</h3><p>Open surfaces, run recall, focus graph nodes, inspect packets, manage tours, and edit reversible drafts.</p></article>
+      <article class="boundary protected"><span class="state">Exact phrase</span><h3>Publish a handoff</h3><p>Only the exact phrase “Approve this handoff.” can publish the visible prepared draft.</p></article>
+      <article class="boundary protected"><span class="state">Human tap only</span><h3>Confirm durable memory</h3><p>Models draft proposals. The authenticated human confirmation endpoint owns durable mutation.</p></article>
+      <article class="boundary protected"><span class="state">Browser permission</span><h3>Upload a screenshot</h3><p>Voice cannot open the file chooser. Pixels are analyzed in memory and discarded.</p></article>
+      <article class="boundary forbidden"><span class="state">Forbidden</span><h3>Edit, install, or deploy</h3><p>Aria cannot modify code, install tools, deploy services, reveal secrets, or invent capability references.</p></article>
+      <article class="boundary forbidden"><span class="state">Never retained</span><h3>Raw audio and credentials</h3><p>Only bounded transcripts and receipts persist. WebRTC payloads, audio, SDP, and provider keys do not.</p></article>
+    </div>
+  </section>
+
+  <section id="explorer">
+    <div class="section-head"><div><p class="eyebrow">Level five · The self-grounding proof</p><h2>Select any claim. Follow it into the backend.</h2>
+      <p class="lede">Start with the featured immutable-handoff claim and walk through its visible control, API route, Python policy, SQLite/PostgreSQL tables, regression test, and failure behavior. Or reverse the path from any source.</p></div><span class="section-index">GENERATED FROM SOURCE</span></div>
+    <div class="explorer-shell">
+      <div class="explorer-toolbar"><button class="lens active" data-lens="claims">Claim lens</button><button class="lens" data-lens="sources">Source lens</button><input class="search" id="explorer-search" type="search" aria-label="Filter claims or sources" placeholder="Filter claims, files, tables, routes…"></div>
+      <div class="explorer"><div class="explorer-list" id="explorer-list"></div><article class="explorer-detail" id="explorer-detail" aria-live="polite"></article></div>
+    </div>
+  </section>
+
+  <section id="backend">
+    <div class="section-head"><div><p class="eyebrow">The full technical inventory</p><h2>The deep reference is generated, not hand-counted.</h2>
+      <p class="lede">The default story stays small. This searchable inventory exposes the production Python service, routes, SQLite/PostgreSQL data plane, migrations, and regression suite.</p></div><span class="section-index">STATIC SNAPSHOT · NO RUNTIME DB</span></div>
+    <div class="inventory-tabs" id="inventory-tabs"></div><div class="inventory-table" id="inventory-table"></div>
+  </section>
+
+  <section id="lineage">
+    <div class="section-head"><div><p class="eyebrow">Level six · The closing reveal</p><h2>One consistent idea, made progressively executable.</h2>
+      <p class="lede">The product and source receipts come first. Only then does the timestamped origin reveal why the same concern—explicit, human-governed continuity—appears across the project lineage.</p></div><span class="section-index">13 MONTHS · ZERO TO IMPLEMENTATION</span></div>
+    <article class="origin-reveal"><blockquote>“On my first day using an LLM, before I knew the vocabulary of RAG or agent frameworks, I discovered that continuity requires explicit grounding.”</blockquote><p>Thirteen months later, that manual logic is an implemented, inspectable architecture. <a data-origin href="#">Read the timestamped OpenAI Community artifact ↗</a></p></article>
+    <div class="lineage" id="lineage-list"></div>
+  </section>
+
+  <section id="receipts">
+    <div class="section-head"><div><p class="eyebrow">Release receipt</p><h2>The exhibit can prove its own freshness.</h2>
+      <p class="lede">Narrative is curated. Technical inventory, locations, excerpts, counts, and claim links are extracted and validated against the repository.</p></div><span class="section-index">BUILD-TIME VERIFIED</span></div>
+    <div class="receipt-grid" id="receipt-grid"></div>
+    <p class="provenance">Snapshot SHA-256: <code id="snapshot-hash"></code>. Public source links target <code id="release-ref"></code>. The atlas stores no database rows, credentials, screenshots, audio, or private repository content.</p>
+  </section>
+</main>
+<footer><span>Codex Command Center · Eyal Nof / Verbalogic</span><span>Designed and shipped from Android/Termux · verified on clean CI, PostgreSQL, and Cloud Run</span></footer>
+<script id="atlas-data" type="application/json">__ATLAS_DATA__</script>
+<script>
+(() => {
+  "use strict";
+  const data = JSON.parse(document.getElementById("atlas-data").textContent);
+  const byId = new Map(data.sources.map(source => [source.id, source]));
+  const claimById = new Map(data.claims.map(claim => [claim.id, claim]));
+  const $ = selector => document.querySelector(selector);
+  const make = (tag, cls, text) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const append = (parent, ...children) => children.forEach(child => child && parent.append(child));
+
+  document.querySelectorAll("[data-origin]").forEach(link => link.href = data.origin_url);
+  document.querySelectorAll("[data-spec]").forEach(link => link.href = `${data.repository_url}/blob/${data.release_ref}/docs/nlke-gca.md`);
+  document.querySelectorAll("[data-migration]").forEach(node => node.textContent = data.migration);
+
+  const statOrder = [["claims","grounded claims"],["modules","Python modules"],["routes","API routes"],["tables","database tables"],["tests","regression tests"],["commands","registered commands"]];
+  statOrder.forEach(([key,label]) => {
+    const card=make("div","stat"), value=make("b","",String(data.counts[key])), name=make("small","",label);
+    append(card,value,name); $("#stats").append(card);
+  });
+
+  data.grounding_layers.forEach(layer => {
+    const card=make("article","layer"); card.dataset.number=layer.number; card.dataset.accent=layer.accent;
+    const tag=make("span","tag",`${layer.number} / ${layer.id}`), signal=make("div","signal"), title=make("h3","",layer.title), copy=make("p","",layer.summary);
+    append(card,tag,signal,title,copy); $("#layers").append(card);
+  });
+
+  let lens="claims", selectedId=data.climax_claim_id || data.claims[0]?.id || "", query="";
+  const list=$("#explorer-list"), detail=$("#explorer-detail"), search=$("#explorer-search");
+  const allSources = () => {
+    const grouped = [...data.modules,...data.symbols,...data.routes,...data.tables,...data.tests,...data.commands];
+    const unique = new Map(grouped.map(item => [item.id,item]));
+    data.sources.forEach(item => unique.set(item.id,{...unique.get(item.id),...item}));
+    return [...unique.values()];
+  };
+  const labelFor = item => item.title || item.name;
+  const subFor = item => lens === "claims" ? `${item.layer} · ${item.source_ids.length} sources` : `${item.kind} · ${item.path || item.locations?.[0]?.path || "schema"}`;
+  const filtered = () => {
+    const values=lens==="claims"?data.claims:allSources();
+    const needle=query.trim().toLowerCase();
+    if(!needle) return values;
+    return values.filter(item => JSON.stringify(item).toLowerCase().includes(needle));
+  };
+  function renderList(){
+    list.replaceChildren();
+    const values=filtered();
+    if(!values.length){list.append(make("p","empty","No matching items."));return;}
+    if(!values.some(item=>item.id===selectedId)) selectedId=values[0].id;
+    values.forEach(item=>{
+      const button=make("button",`explorer-item${item.id===selectedId?" active":""}`);
+      button.type="button"; const title=make("b","",labelFor(item)), sub=make("small","",subFor(item));
+      append(button,title,sub); button.onclick=()=>{selectedId=item.id;renderList();renderDetail();}; list.append(button);
+    });
+  }
+  function sourceTrace(source){
+    const button=make("button","");button.type="button";
+    append(button,make("span","kind",source.kind),make("span","path",`${source.path || source.name}${source.line?`:${source.line}`:""}`),make("span","arrow","→"));
+    button.onclick=()=>{lens="sources";selectedId=source.id;syncLens();renderList();renderDetail();};
+    return button;
+  }
+  function codeBlock(source){
+    if(!source.excerpt) return null;
+    const wrap=make("div","code"), head=make("div","code-head"), location=make("span","",`${source.path}:${source.excerpt.start}-${source.excerpt.end}`);
+    const link=make("a","", "Open exact source ↗");link.href=source.url;link.target="_blank";link.rel="noreferrer";
+    append(head,location,link);const pre=make("pre","",source.excerpt.text);append(wrap,head,pre);return wrap;
+  }
+  function renderClaim(claim){
+    append(detail,make("span","detail-kind",`NLKE-GCA grounding receipt · ${claim.layer}`),make("h3","detail-title",claim.title),make("p","detail-copy",claim.plain));
+    const meta=make("div","source-meta");
+    [claim.receipt.schema_version,claim.implementation_status,`snapshot ${claim.receipt.snapshot_hash.slice(0,12)}`]
+      .forEach(value=>meta.append(make("span","pill",value)));detail.append(meta);
+    const trace=make("div","trace");claim.source_ids.map(id=>byId.get(id)).filter(Boolean).forEach(source=>trace.append(sourceTrace(source)));
+    detail.append(trace);const failure=make("div","failure");append(failure,make("b","","Failure behavior: "),document.createTextNode(claim.failure));detail.append(failure);
+  }
+  function renderSource(source){
+    append(detail,make("span","detail-kind",`${source.kind} source`),make("h3","detail-title",source.name));
+    const meta=make("div","source-meta");
+    [source.path,source.line?`line ${source.line}`:null,source.method,source.route,source.lines?`${source.lines} lines`:null,source.symbols?`${source.symbols} symbols`:null]
+      .filter(Boolean).forEach(value=>meta.append(make("span","pill",String(value))));
+    detail.append(meta);
+    if(source.summary) detail.append(make("p","detail-copy",source.summary));
+    const ids=source.claim_ids || [];
+    if(ids.length){
+      detail.append(make("p","eyebrow","Claims supported by this source"));
+      const links=make("div","claim-links");
+      ids.map(id=>claimById.get(id)).filter(Boolean).forEach(claim=>{
+        const button=make("button","claim-chip",claim.title);button.type="button";
+        button.onclick=()=>{lens="claims";selectedId=claim.id;syncLens();renderList();renderDetail();};links.append(button);
+      });detail.append(links);
+    }else detail.append(make("p","detail-copy","This item is part of the complete generated inventory but is not used by a featured judge-path claim."));
+    const code=codeBlock(source);if(code)detail.append(code);
+    if(source.url){const link=make("a","button","View source");link.href=source.url;link.target="_blank";link.rel="noreferrer";detail.append(link);}
+  }
+  function renderDetail(){
+    detail.replaceChildren();
+    const source=lens==="claims"?claimById.get(selectedId):allSources().find(item=>item.id===selectedId);
+    if(!source){detail.append(make("p","empty","Select an item to inspect it."));return;}
+    if(lens==="claims")renderClaim(source);else renderSource(source);
+  }
+  function syncLens(){document.querySelectorAll(".lens").forEach(button=>button.classList.toggle("active",button.dataset.lens===lens));search.placeholder=lens==="claims"?"Filter claims…":"Filter files, tables, routes, tests…";}
+  document.querySelectorAll(".lens").forEach(button=>button.onclick=()=>{lens=button.dataset.lens;selectedId=lens==="claims"?data.claims[0]?.id:allSources()[0]?.id;syncLens();renderList();renderDetail();});
+  search.oninput=()=>{query=search.value;renderList();renderDetail();};renderList();renderDetail();
+
+  const inventoryKinds=[["modules","Python modules"],["symbols","Python symbols"],["routes","API routes"],["tables","Database tables"],["commands","Aria commands"],["tests","Regression tests"]];
+  let inventoryKind="modules";
+  function renderInventory(){
+    $("#inventory-tabs").replaceChildren();$("#inventory-table").replaceChildren();
+    inventoryKinds.forEach(([id,label])=>{const button=make("button",`inventory-tab${id===inventoryKind?" active":""}`,`${label} · ${data[id].length}`);button.type="button";button.onclick=()=>{inventoryKind=id;renderInventory();};$("#inventory-tabs").append(button);});
+    data[inventoryKind].forEach(item=>{
+      const row=make("div","inventory-row"),type=make("span","type",item.kind),name=make("span","",item.name),location=make("span","location",item.path || item.locations?.map(loc=>loc.engine).join(" + ") || "");
+      append(row,type,name,location);row.tabIndex=0;row.role="button";row.onclick=()=>{lens="sources";selectedId=item.id;syncLens();renderList();renderDetail();$("#explorer").scrollIntoView();};row.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();row.click();}};$("#inventory-table").append(row);
+    });
+  } renderInventory();
+
+  data.lineage.forEach(item=>{
+    const row=make("article",`lineage-item ${item.visibility}`),when=make("small","",item.year),title=make("h3","",item.title),copy=make("p","",item.summary);
+    append(row,when,title,copy);
+    if(item.principles?.length){const principles=make("div","lineage-principles");item.principles.forEach(value=>principles.append(make("span","",value)));row.append(principles);}
+    if(item.url){const link=make("a","", "Open public artifact ↗");link.href=item.url;link.target="_blank";link.rel="noreferrer";row.append(link);}
+    else if(item.receipt){const link=make("a","",`In-repository receipt · ${item.receipt}`);link.href=`${data.repository_url}/blob/${data.release_ref}/${item.receipt}`;link.target="_blank";link.rel="noreferrer";row.append(link);}
+    $("#lineage-list").append(row);
+  });
+
+  [["Schema",data.schema_version],["App migration",String(data.migration)],["Claims verified",String(data.counts.claims)],["Source snapshot",data.snapshot_hash.slice(0,12)]].forEach(([label,value])=>{
+    const card=make("article","release-receipt"),small=make("small","",label),strong=make("b","",value);append(card,small,strong);$("#receipt-grid").append(card);
+  });
+  $("#snapshot-hash").textContent=data.snapshot_hash;$("#release-ref").textContent=data.release_ref;
+})();
+</script>
+</body>
+</html>

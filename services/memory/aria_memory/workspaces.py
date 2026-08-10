@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .agent import Aria
+from .aria_registry import AriaRegistry
 from .architecture import ArchitectureCompiler, ArchitectureStore
 from .config import ROOT, Settings
 from .context import ContextCompiler
@@ -32,6 +33,7 @@ class Workspace:
         self.architecture = ArchitectureStore(db, provider)
         self.architecture_compiler = ArchitectureCompiler(self.architecture)
         self.store = AppStore(db)
+        self.aria_registry = AriaRegistry(db)
         self.retriever = Retriever(db, self.embeddings)
         self.context = ContextCompiler(settings, self.retriever, self.documents)
         self.toolbox = Toolbox(

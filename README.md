@@ -2,13 +2,27 @@
 
 > Plan with Aria. Continue in Codex. Bring your toolbox everywhere.
 
-Codex Command Center is one provider-neutral cloud toolbox for coding sessions.
+Codex Command Center is the first public reference implementation of
+**NLKE Grounded Continuity Architecture (NLKE-GCA)**, developed by Eyal Nof.
+Natural Language Knowledge Engineering is the broader methodology; NLKE-GCA is
+the architecture for carrying bounded, versioned understanding across people,
+models, interfaces, sessions, and implementation tools.
+
+> Continuity without hidden memory. Grounding without surrendered control.
+
+Command Center is one provider-neutral cloud toolbox for coding sessions.
 Aria accepts a repository, role-labelled current/reference screenshots, and a
 voice or text request. GPT‑5.6 Sol combines visual comparison inferences with
-declared repository evidence, recommends an
+declared repository grounding, recommends an
 exact versioned capability, and builds an editable Open Plan. After explicit
 publication, Codex loads the bounded handoff through MCP and begins an informed
 interview before editing.
+
+**[Take a step back](apps/web/public/atlas/index.html)** to explore NLKE-GCA:
+start with the simple Aria → Grounding Compiler → Codex loop, then follow any
+product claim into its visible interface, route, Python handler, database
+table, regression test, and failure behavior. Read the concise
+[architecture specification](docs/nlke-gca.md).
 
 Codex is the primary client and competition focus. The hosted MCP contract is
 portable to other compatible clients without changing the visible demo story.
@@ -49,6 +63,14 @@ portable to other compatible clients without changing the visible demo story.
 - Deterministic text-Aria redesign suggestions, a shared typed Handoff
   Controller for buttons and voice, and an evidence-aware Luna tour with a
   no-key deterministic fallback.
+- Persistent Aria Command Center with one global voice transport, unified
+  typed/spoken transcripts, bounded workspace profiles, scoped database-backed
+  command metadata, sanitized execution receipts, and Conversation, Voice &
+  Persona, and DevHub tabs.
+- A generated **Take a step back** architecture exhibit at `/atlas/index.html` with
+  source-backed product claims, a bidirectional Claim ↔ Source explorer, and a
+  complete build-time inventory of Python modules, routes, database tables,
+  migrations, commands, and tests.
 - Existing inspectable memory, declared retrieval, evidence graph, Aria chat and
   Realtime navigation, human-gated durable memory, and append-only audit.
 
@@ -96,6 +118,7 @@ workspace-bound browser-session credential.
 ## Verify
 
 ```sh
+python scripts/build_atlas.py --check
 pytest
 PYTHONPATH=services/memory python3 scripts/eval.py
 npm --prefix apps/web run typecheck
@@ -117,6 +140,8 @@ python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
 - [Codex plugin installation, migration, and pairing](docs/codex-plugin.md)
 - [REST and MCP schemas](docs/api-mcp.md)
 - [Architecture and data flow](docs/architecture.md)
+- [Take a step back architecture exhibit contract](docs/architecture-exhibit.md)
+- [Interactive architecture exhibit](apps/web/public/atlas/index.html)
 - [Full architecture awareness](docs/architecture-awareness.md)
 - [Declared retrieval and context compiler](docs/declared-context.md)
 - [Evidence graph canvas](docs/graph-canvas.md)
@@ -127,6 +152,7 @@ python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
 - [Three-service deployment topology](docs/deployment-topology.md)
 - [Current deployment state and continuation receipt](docs/deployment-state.md)
 - [Deployment and submission checklist](docs/deployment-checklist.md)
+- [Aria Command Center dogfood guide](docs/dogfood-guide.md)
 - [Devpost submission contract](docs/devpost-submission.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Reproducible evaluation](docs/eval-report.md)
