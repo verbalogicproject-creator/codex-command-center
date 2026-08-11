@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from .config import Settings
+from .config import Settings, is_loopback_authority
 from .mcp import handle_rpc
 from .models import ErrorDetail, ErrorResponse
 from .workspaces import Workspace, Workspaces
@@ -21,6 +21,7 @@ def create_mcp_app(settings: Settings | None = None) -> FastAPI:
     """Create the stateless remote-MCP boundary without general REST routes."""
 
     settings = settings or Settings()
+    settings.validate_dev_auth_bypass()
     workspaces = Workspaces(settings)
     app = FastAPI(
         title="Codex Command Center MCP",
@@ -51,12 +52,29 @@ def create_mcp_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     def current_workspace(
+        request: Request,
         command_token: Annotated[
             str | None,
             Header(alias="X-Command-Center-Token"),
         ] = None,
     ) -> Workspace:
         workspace_id = workspaces.resolve_workspace_token(command_token)
+        if settings.dev_auth_bypass:
+            host = request.headers.get("host", "")
+            origin = request.headers.get("origin")
+            if not is_loopback_authority(host) or (
+                origin is not None and not is_loopback_authority(origin)
+            ):
+                raise HTTPException(403, detail={
+                    "code": "dev_auth_bypass_non_loopback",
+                    "message": "Development auth bypass is restricted to loopback requests",
+                })
+            try:
+                workspace_id = workspaces.resolve_dev_workspace(workspace_id)
+            except RuntimeError as exc:
+                raise HTTPException(503, detail={
+                    "code": "dev_workspace_unresolved", "message": str(exc),
+                }) from None
         if not workspace_id:
             raise HTTPException(401, detail={
                 "code": "unauthorized",

@@ -32,10 +32,19 @@ scripts/dev.sh
 ```
 
 This starts FastAPI at `http://127.0.0.1:8000` and Next.js at
-`http://localhost:3000`. Open the web URL, enter `DEMO_ACCESS_CODE`
-(`command-center` by default), and choose **Handoff** in the bottom dock.
-Local mode uses one workspace-isolated SQLite database under the gitignored
-`data/` directory. Stop both processes with `Ctrl-C`.
+`http://localhost:3000`. Open the web URL and choose **Handoff** in the bottom
+dock. The development script explicitly enables a loopback-only authentication
+bypass; running the API or a release image normally still requires a valid
+browser cookie or paired token. The selected development workspace is recorded
+under the gitignored `data/` directory and reused across restarts.
+
+On an existing checkout, the first bypassed browser request adopts its valid
+workspace cookie. If several workspace databases exist and no browser cookie or
+saved selection identifies the intended one, startup requests fail closed. Set
+`COMMAND_CENTER_DEV_WORKSPACE_ID=ws_<16 lowercase hex>` for that invocation to
+select an existing workspace explicitly; the value is an identifier, not a
+credential. The script never guesses among multiple databases. Stop both
+processes with `Ctrl-C`.
 
 The bundled Codex MCP adapter also runs locally as a stdio process, but it calls
 the same API handlers at port 8000:

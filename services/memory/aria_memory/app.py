@@ -33,7 +33,7 @@ from .architecture.models import (
     ArchitectureSyncRequest,
     ArchitectureSyncResponse,
 )
-from .config import ROOT, Settings
+from .config import ROOT, Settings, is_loopback_authority
 from .credentials import (
     OPENAI_CREDENTIAL_COOKIE,
     ProviderCredential,
@@ -76,6 +76,7 @@ def verify(value: str | None, secret: str) -> str | None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
+    settings.validate_dev_auth_bypass()
     if settings.cloud and not settings.provider_credential_secret:
         raise RuntimeError(
             "Cloud API mode requires a dedicated PROVIDER_CREDENTIAL_SECRET"
@@ -118,19 +119,60 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             }, separators=(",", ":")))
         return response
 
+    def local_request_is_safe(request: Request, *, require_browser: bool = False) -> bool:
+        if not is_loopback_authority(request.headers.get("host", "")):
+            return False
+        origin = request.headers.get("origin")
+        if require_browser and not origin:
+            return False
+        if origin:
+            if not is_loopback_authority(origin):
+                return False
+        return True
+
     def current_workspace(
+        request: Request,
         token: Annotated[str | None, Cookie(alias=COOKIE_NAME)] = None,
         command_token: Annotated[
             str | None, Header(alias="X-Command-Center-Token")
         ] = None,
     ) -> Workspace:
-        workspace_id = (
+        authenticated_workspace_id = (
             workspaces.resolve_workspace_token(command_token)
             or verify(token, settings.cookie_secret)
         )
+        workspace_id = authenticated_workspace_id
+        if settings.dev_auth_bypass:
+            if not local_request_is_safe(request):
+                raise HTTPException(403, detail={
+                    "code": "dev_auth_bypass_non_loopback",
+                    "message": "Development auth bypass is restricted to loopback requests",
+                })
+            try:
+                workspace_id = workspaces.resolve_dev_workspace(authenticated_workspace_id)
+            except RuntimeError as exc:
+                raise HTTPException(503, detail={
+                    "code": "dev_workspace_unresolved", "message": str(exc),
+                }) from None
         if not workspace_id:
             raise HTTPException(401, detail={"code": "unauthorized", "message": "Sign in required"})
         return workspaces.get(workspace_id)
+
+    def confirmation_workspace(
+        request: Request,
+        token: Annotated[str | None, Cookie(alias=COOKIE_NAME)] = None,
+        command_token: Annotated[
+            str | None, Header(alias="X-Command-Center-Token")
+        ] = None,
+    ) -> Workspace:
+        if settings.dev_auth_bypass and not local_request_is_safe(
+            request, require_browser=True,
+        ):
+            raise HTTPException(403, detail={
+                "code": "browser_confirmation_required",
+                "message": "Durable memory confirmation requires the local browser",
+            })
+        return current_workspace(request, token, command_token)
 
     def openai_credential(
         workspace: Workspace = Depends(current_workspace),
@@ -1177,7 +1219,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/proposals/{proposal_id}/confirm")
     def confirm(proposal_id: str,
-                workspace: Workspace = Depends(current_workspace)):
+                workspace: Workspace = Depends(confirmation_workspace)):
         try:
             proposal = workspace.store.confirm(proposal_id)
         except KeyError:

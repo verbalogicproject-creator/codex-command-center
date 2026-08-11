@@ -11,7 +11,8 @@ cd "$ROOT"
 PYTHON=${PMEM_PYTHON:-"$ROOT/.venv/bin/python"}
 test -x "$PYTHON" || PYTHON=$(command -v python)
 
-PYTHONPATH="$ROOT/services/memory" "$PYTHON" -m uvicorn aria_memory.app:app \
+COMMAND_CENTER_BIND_HOST=127.0.0.1 COMMAND_CENTER_DEV_AUTH_BYPASS=1 \
+  PYTHONPATH="$ROOT/services/memory" "$PYTHON" -m uvicorn aria_memory.app:app \
   --host 127.0.0.1 --port 8000 --reload &
 API_PID=$!
 trap 'kill "$API_PID" 2>/dev/null || true' EXIT INT TERM

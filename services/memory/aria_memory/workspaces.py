@@ -61,6 +61,83 @@ class Workspaces:
         )
         self.directory = base / "workspaces"
         self.directory.mkdir(parents=True, exist_ok=True)
+        self.dev_workspace_marker = base / "dev-workspace-id"
+
+    @staticmethod
+    def valid_workspace_id(workspace_id: str) -> bool:
+        return bool(re.fullmatch(r"ws_[0-9a-f]{16}", workspace_id))
+
+    def _existing_workspace_ids(self) -> list[str]:
+        if self.settings.database_url:
+            return []
+        return sorted(
+            path.stem for path in self.directory.glob("ws_*.db")
+            if self.valid_workspace_id(path.stem)
+        )
+
+    def _read_dev_workspace_marker(self) -> str | None:
+        if not self.dev_workspace_marker.exists():
+            return None
+        workspace_id = self.dev_workspace_marker.read_text(encoding="utf-8").strip()
+        if not self.valid_workspace_id(workspace_id):
+            raise RuntimeError("The local development workspace marker is invalid")
+        if not self.settings.database_url and not (
+            self.directory / f"{workspace_id}.db"
+        ).exists():
+            raise RuntimeError("The local development workspace database is missing")
+        return workspace_id
+
+    def _persist_dev_workspace(self, workspace_id: str) -> str:
+        self.dev_workspace_marker.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            descriptor = os.open(
+                self.dev_workspace_marker,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o600,
+            )
+        except FileExistsError:
+            return self._read_dev_workspace_marker() or workspace_id
+        with os.fdopen(descriptor, "w", encoding="utf-8") as marker:
+            marker.write(f"{workspace_id}\n")
+        return workspace_id
+
+    def resolve_dev_workspace(self, authenticated_workspace_id: str | None = None) -> str:
+        """Resolve one persisted local workspace without guessing among databases."""
+        configured = self.settings.dev_workspace_id
+        if configured:
+            if not self.valid_workspace_id(configured):
+                raise RuntimeError(
+                    "COMMAND_CENTER_DEV_WORKSPACE_ID must match ws_<16 lowercase hex>"
+                )
+            existing = self._existing_workspace_ids()
+            if existing and configured not in existing:
+                raise RuntimeError(
+                    "COMMAND_CENTER_DEV_WORKSPACE_ID does not name an existing local workspace"
+                )
+            marked = self._read_dev_workspace_marker()
+            if marked and marked != configured:
+                raise RuntimeError(
+                    "COMMAND_CENTER_DEV_WORKSPACE_ID conflicts with the persisted local workspace"
+                )
+            return self._persist_dev_workspace(configured)
+
+        marked = self._read_dev_workspace_marker()
+        if marked:
+            return marked
+        if authenticated_workspace_id:
+            if not self.valid_workspace_id(authenticated_workspace_id):
+                raise RuntimeError("Authenticated workspace identifier is invalid")
+            return self._persist_dev_workspace(authenticated_workspace_id)
+
+        existing = self._existing_workspace_ids()
+        if len(existing) == 1:
+            return self._persist_dev_workspace(existing[0])
+        if not existing:
+            return self._persist_dev_workspace("ws_0000000000000000")
+        raise RuntimeError(
+            "Multiple local workspaces exist. Open the previously authenticated browser "
+            "once or set COMMAND_CENTER_DEV_WORKSPACE_ID to the intended workspace."
+        )
 
     def get(self, workspace_id: str) -> Workspace:
         if workspace_id not in self.items:

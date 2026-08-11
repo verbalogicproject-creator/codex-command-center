@@ -87,8 +87,10 @@ scripts/setup.sh
 scripts/dev.sh
 ```
 
-Open `http://localhost:3000`, sign in with `DEMO_ACCESS_CODE`, open **Handoff**,
-and follow the [five-minute quickstart](docs/quickstart.md).
+Open `http://localhost:3000`, open **Handoff**, and follow the
+[five-minute quickstart](docs/quickstart.md). `scripts/dev.sh` explicitly
+enables a loopback-only authentication bypass and reuses one persisted local
+workspace. Hosted and release processes keep normal authentication.
 
 Pair the plugin:
 
