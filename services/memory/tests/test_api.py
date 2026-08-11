@@ -93,6 +93,41 @@ def test_recall_contract_and_hero_evidence(client):
     assert all("provenance" in hit for hit in body["hits"])
 
 
+def test_project_inventory_and_bounded_graph_filters(client):
+    client.post("/api/v1/sessions", json={
+        "title": "Project Memory upgrade",
+        "repository": "Project Memory",
+        "goal": "Define the service contract.",
+    })
+    projects = client.get("/api/v1/projects")
+    assert projects.status_code == 200
+    inventory = {item["name"]: item for item in projects.json()["items"]}
+    assert {"Command Center", "Project Memory", "Hexagon"} <= set(inventory)
+    assert inventory["Project Memory"]["memory_count"] > 0
+    assert inventory["Project Memory"]["active_session_count"] == 1
+
+    graph = client.get("/api/v1/graph", params={
+        "project": "Project Memory", "limit": 25,
+    })
+    assert graph.status_code == 200
+    body = graph.json()
+    assert body["projects"]
+    assert body["total_nodes"] >= len(body["nodes"])
+    assert body["total_edges"] >= len(body["edges"])
+    assert all(node["project"] == "Project Memory" for node in body["nodes"])
+    assert all(
+        edge["source"] in {node["id"] for node in body["nodes"]}
+        and edge["target"] in {node["id"] for node in body["nodes"]}
+        for edge in body["edges"]
+    )
+
+    focused = client.get("/api/v1/graph", params={
+        "focus": "fact_pm_01", "depth": 1, "limit": 25,
+    }).json()
+    assert "fact_pm_01" in {node["id"] for node in focused["nodes"]}
+    assert len(focused["nodes"]) < body["total_nodes"] + inventory["Command Center"]["memory_count"]
+
+
 def test_session_and_fallback_sse_proposal(client):
     session = client.post("/api/v1/sessions", json={"title": "Hero"}).json()
     result = client.post("/api/v1/chat/stream", json={
@@ -186,6 +221,54 @@ def test_context_pack_is_bounded_and_keeps_entity_classes_distinct(client):
     assert body["omitted_candidate_count"] > 0
 
 
+def test_cross_project_context_requires_explicit_scope_and_preserves_ownership(client):
+    request = {
+        "prompt": "Use Command Center control-plane evidence for Project Memory.",
+        "repository": "Project Memory",
+        "source_repositories": ["Command Center"],
+        "selected_evidence_ids": ["fact_pm_01", "fact_cc_01"],
+        "token_budget": 2_400,
+    }
+    refused = client.post("/api/v1/context/pack", json=request)
+    assert refused.status_code == 422
+    assert "explicit allow_cross_repository" in refused.text
+
+    result = client.post("/api/v1/context/pack", json={
+        **request, "allow_cross_repository": True,
+    })
+    assert result.status_code == 200
+    packet = result.json()
+    assert packet["composition"] == {
+        "schema_version": "command-center-context-composition-v1",
+        "target_repository": "Project Memory",
+        "source_repositories": ["Command Center"],
+        "selected_evidence_ids": ["fact_pm_01", "fact_cc_01"],
+        "cross_repository": True,
+        "selection_explicit": True,
+        "policy": "explicit_local_composition",
+    }
+    selected = {
+        source["id"]: source for source in packet["sources"]
+        if source["id"] in {"fact_pm_01", "fact_cc_01"}
+    }
+    assert set(selected) == {"fact_pm_01", "fact_cc_01"}
+    assert selected["fact_pm_01"]["repository"] == "Project Memory"
+    assert selected["fact_cc_01"]["repository"] == "Command Center"
+    assert all(
+        source["selection_reasons"] == ["explicit_selection"]
+        for source in selected.values()
+    )
+    assert "apps/web/components/MemoryGraph.tsx" not in packet["safe_edit_points"]
+
+    outside_scope = client.post("/api/v1/context/pack", json={
+        **request,
+        "allow_cross_repository": True,
+        "selected_evidence_ids": ["fact_hex_01"],
+    })
+    assert outside_scope.status_code == 422
+    assert "outside the explicit project scope" in outside_scope.text
+
+
 def test_proposals_restore_and_unknown_hook_event_is_rejected(client):
     session = client.post("/api/v1/sessions", json={"title": "Restore"}).json()
     proposal = client.post("/api/v1/proposals", json={
@@ -205,6 +288,45 @@ def test_proposals_restore_and_unknown_hook_event_is_rejected(client):
     })
     assert unknown.status_code == 422
     assert unknown.json()["error"]["code"] == "validation_error"
+
+
+def test_sessions_record_project_goal_revision_sources_and_continuation(client):
+    parent = client.post("/api/v1/sessions", json={
+        "title": "Project Memory foundation",
+        "repository": "Project Memory",
+        "goal": "Define the provider-neutral service boundary.",
+        "branch": "feature/multi-project-memory",
+        "revision": "abc123",
+        "source_repositories": ["Command Center"],
+    })
+    assert parent.status_code == 201
+    parent_session = parent.json()
+    assert parent_session["repository"] == "Project Memory"
+    assert parent_session["status"] == "active"
+    assert parent_session["source_repositories"] == ["Command Center"]
+
+    child = client.post("/api/v1/sessions", json={
+        "title": "Continue Project Memory",
+        "repository": "Project Memory",
+        "parent_session_id": parent_session["id"],
+    })
+    assert child.status_code == 201
+    assert child.json()["parent_session_id"] == parent_session["id"]
+
+    updated = client.patch(f"/api/v1/sessions/{parent_session['id']}", json={
+        "status": "paused",
+        "goal": "Wait for the Command Center API contract.",
+        "revision": "def456",
+    })
+    assert updated.status_code == 200
+    assert updated.json()["status"] == "paused"
+    assert updated.json()["revision"] == "def456"
+
+    missing_parent = client.post("/api/v1/sessions", json={
+        "title": "Invalid continuation",
+        "parent_session_id": "ses_missing",
+    })
+    assert missing_parent.status_code == 422
 
 
 def test_stop_hook_drafts_pending_memory_without_durable_mutation(client):

@@ -519,7 +519,9 @@ export default function Page() {
               className={session.id === activeSession ? "active" : ""}
               onClick={() => {setActiveSession(session.id); setRailOpen(false);}}>
               <MessageSquareText />
-              <span><strong>{session.title}</strong><small>{session.turn_count} turns</small></span>
+              <span><strong>{session.title}</strong><small>
+                {session.repository ?? "Unscoped"} · {session.status} · {session.turn_count} turns
+              </small></span>
             </button>
           ))}
           {!sessions.length && <p className="quiet">Create a session to begin.</p>}
@@ -1412,6 +1414,9 @@ function HandoffBuilder({
   onStartTour: () => void;
 }) {
   const [repository, setRepository] = useState("Command Center");
+  const [sourceRepositories, setSourceRepositories] = useState("");
+  const [selectedEvidence, setSelectedEvidence] = useState("");
+  const [allowCrossRepository, setAllowCrossRepository] = useState(false);
   const [intent, setIntent] = useState(
     "Merge the current Graph Canvas with the visual direction in the interactive atlas.",
   );
@@ -1438,6 +1443,9 @@ function HandoffBuilder({
       setDraft(current);
       setPlanText(current.open_plan.join("\n"));
       setRepository(current.repository);
+      setSourceRepositories(current.source_repositories.join(", "));
+      setSelectedEvidence(current.selected_evidence_ids.join(", "));
+      setAllowCrossRepository(current.composition.cross_repository);
       setIntent(current.original_request);
       setAnalysis(current.screenshot ?? null);
       setVisualBrief(current.visual_brief ?? null);
@@ -1474,16 +1482,17 @@ function HandoffBuilder({
   async function prepare(): Promise<HandoffControllerResult> {
     const currentFile = files.current;
     const referenceFile = files.reference;
-    if (!currentFile || !referenceFile || !intent.trim() || !targetSurface.trim()) {
-      const message = !currentFile || !referenceFile
-        ? "Upload both current and reference screenshots; voice cannot upload files."
-        : "Describe the desired redesign before preparing the handoff.";
+    if (!intent.trim() || Boolean(currentFile) !== Boolean(referenceFile)) {
+      const message = !intent.trim()
+        ? "Describe the implementation or redesign before preparing the handoff."
+        : "Upload both current and reference screenshots, or remove the single upload.";
       setError(message);
       return {ok: false, message, surface: "handoff"};
     }
     setBusy(true); setError("");
     try {
-      const finding = await api<VisualComparisonReceipt>("/api/v1/screenshots/compare", {
+      const finding = currentFile && referenceFile
+        ? await api<VisualComparisonReceipt>("/api/v1/screenshots/compare", {
         method: "POST",
         body: JSON.stringify({
           repository,
@@ -1504,7 +1513,7 @@ function HandoffBuilder({
             },
           ],
         }),
-      });
+      }) : null;
       setVisualBrief(finding);
       const result = await api<{items: {
         capability: Capability; score: number; selection_reasons: string[];
@@ -1513,7 +1522,7 @@ function HandoffBuilder({
         body: JSON.stringify({
           request: intent,
           repository,
-          screenshot_findings: finding.sources.flatMap((source) => source.findings),
+          screenshot_findings: finding?.sources.flatMap((source) => source.findings) ?? [],
           limit: 3,
         }),
       });
@@ -1524,7 +1533,13 @@ function HandoffBuilder({
       const created = await api<Handoff>("/api/v1/handoffs", {
         method: "POST",
         body: JSON.stringify({
-          repository, original_request: intent, visual_brief: finding,
+          repository,
+          source_repositories: sourceRepositories.split(",")
+            .map((item) => item.trim()).filter(Boolean),
+          selected_evidence_ids: selectedEvidence.split(/[\s,]+/)
+            .map((item) => item.trim()).filter(Boolean),
+          allow_cross_repository: allowCrossRepository,
+          original_request: intent, visual_brief: finding,
           capability_refs: ref ? [ref] : [],
         }),
       });
@@ -1534,7 +1549,7 @@ function HandoffBuilder({
       await onRefresh();
       return {
         ok: true,
-        message: `Prepared draft ${created.id}. ${created.planning_receipt.degraded
+        message: `Prepared ${created.composition.cross_repository ? "cross-project " : ""}draft ${created.id}. ${created.planning_receipt.degraded
           ? `Sol degraded: ${created.planning_receipt.degraded_reasons.join(", ")}.`
           : `Sol planned with ${created.planning_receipt.model}.`} Taste and all receipts are visible.`,
         surface: "handoff",
@@ -1599,6 +1614,9 @@ function HandoffBuilder({
     nextTargetSurface?: string,
   ): Promise<HandoffControllerResult> {
     setRepository(nextRepository.trim() || "Command Center");
+    setSourceRepositories("");
+    setSelectedEvidence("");
+    setAllowCrossRepository(false);
     setIntent(nextIntent.trim());
     setTargetSurface(nextTargetSurface?.trim() || "Target surface");
     setDraft(null);
@@ -1753,6 +1771,15 @@ function HandoffBuilder({
       <section className="handoff-input">
         <label>Repository<input value={repository}
           onChange={(event) => setRepository(event.target.value)} /></label>
+        <label>Source projects<input value={sourceRepositories}
+          onChange={(event) => setSourceRepositories(event.target.value)}
+          placeholder="Command Center, Hexagon" /></label>
+        <label>Selected evidence IDs<textarea value={selectedEvidence}
+          onChange={(event) => setSelectedEvidence(event.target.value)}
+          placeholder="fact_cc_01, adoc_…" /></label>
+        <label><input type="checkbox" checked={allowCrossRepository}
+          onChange={(event) => setAllowCrossRepository(event.target.checked)} />
+          Explicitly allow selected cross-project context</label>
         <label>Target surface<input value={targetSurface}
           onChange={(event) => setTargetSurface(event.target.value)} /></label>
         <label>Desired change<textarea value={intent}
@@ -1774,7 +1801,8 @@ function HandoffBuilder({
             </label>)}
         </div>
         <button className="primary-action" disabled={busy} onClick={() => void prepare()}>
-          <Sparkles /> {busy ? "Sol is comparing…" : "Compare and prepare for Codex"}
+          <Sparkles /> {busy ? "Preparing bounded context…" : files.current || files.reference
+            ? "Compare and prepare for Codex" : "Prepare context handoff"}
         </button>
         {error && <p className="form-error">{error}</p>}
       </section>
@@ -1842,6 +1870,12 @@ function HandoffBuilder({
             <strong>{draft.id} · v{draft.version} · {draft.status}</strong></div></header>
           <dl>
             <div><dt>Capability</dt><dd>{draft.capability_refs.join(", ")}</dd></div>
+            <div><dt>Target project</dt><dd>{draft.repository}</dd></div>
+            <div><dt>Source projects</dt><dd>
+              {draft.source_repositories.join(", ") || "Target project only"}</dd></div>
+            <div><dt>Explicit selections</dt><dd>
+              {draft.selected_evidence_ids.join(", ") || "Ranked bounded recall"}</dd></div>
+            <div><dt>Composition policy</dt><dd>{draft.composition.policy}</dd></div>
             <div><dt>Architecture snapshot</dt>
               <dd>{snapshotReceipt?.snapshot_id ?? "No registered snapshot"}</dd></div>
             <div><dt>Source revision</dt>
@@ -2138,12 +2172,15 @@ function ContextPacketCard({
       <b>{packet.token_estimate} / {packet.token_budget} tokens</b></summary>
     <div className="packet-body">
       <header><div><small>REPOSITORY</small><strong>{packet.repository_identity.repository}</strong></div>
+        <div><small>SOURCES</small><strong>
+          {packet.composition.source_repositories.join(" · ") || "Target only"}
+        </strong></div>
         <div><small>ROUTING</small><strong>{String(packet.routing.intent)} · {String(packet.routing.retrieval_mode)}</strong></div>
         <div><small>STATE</small><strong>{packet.degraded ? "degraded fallback" : "all signals ready"}</strong></div></header>
-      <p className="packet-explainer">Aria and Codex received only these selected sources—not the full database.</p>
+      <p className="packet-explainer">Aria and Codex received only these selected sources—not the full database. Cross-project ownership remains attached to every receipt.</p>
       <div className="packet-sources">{packet.sources.map((source) =>
         <button key={source.id} onClick={() => onEvidence(source.id)}>
-          <span>{source.entity_type}</span><strong>{source.title}</strong>
+          <span>{source.repository} · {source.entity_type}</span><strong>{source.title}</strong>
           <small>{source.selection_reasons.join(" · ") || "bounded by relevance"}</small>
         </button>)}</div>
       <div className="packet-boundaries">

@@ -821,6 +821,9 @@ class Toolbox:
         return Handoff(
             id=handoff_id, lineage_id=row["lineage_id"], version=row["version"],
             repository=row["repository"], original_request=row["original_request"],
+            source_repositories=json.loads(row["source_repositories_json"]),
+            selected_evidence_ids=json.loads(row["selected_evidence_ids_json"]),
+            composition=json.loads(row["composition_json"]),
             screenshot=(
                 ScreenshotAnalysis(**json.loads(row["screenshot_json"]))
                 if row["screenshot_json"] else None
@@ -1019,6 +1022,14 @@ class Toolbox:
         self, request: HandoffDraftRequest, creator: str,
         api_key: str | None = None,
     ) -> Handoff:
+        architecture_selection_ids = [
+            item for item in request.selected_evidence_ids
+            if item.startswith(("adoc_", "asec_"))
+        ]
+        context_selection_ids = [
+            item for item in request.selected_evidence_ids
+            if item not in architecture_selection_ids
+        ]
         recommendations = self.recommend(CapabilityRecommendationRequest(
             request=request.original_request, repository=request.repository,
             screenshot_findings=(
@@ -1041,6 +1052,9 @@ class Toolbox:
             "aria_memory.models", fromlist=["ContextPackRequest"]
         ).ContextPackRequest(
             prompt=request.original_request, repository=request.repository,
+            source_repositories=request.source_repositories,
+            selected_evidence_ids=context_selection_ids,
+            allow_cross_repository=request.allow_cross_repository,
             token_budget=request.token_budget,
         ))
         architecture_brief = (
@@ -1074,8 +1088,52 @@ class Toolbox:
         )
         evidence.extend(
             source.model_dump(mode="json")
-            for source in pack.sources if source.entity_type == "memory"
+            for source in pack.sources
         )
+        allowed_repositories = {
+            item.casefold() for item in [
+                request.repository, *request.source_repositories,
+            ]
+        }
+        if architecture_selection_ids and not self.architecture:
+            raise ValueError("architecture evidence is unavailable")
+        for source_id in architecture_selection_ids:
+            store = self.architecture.store  # type: ignore[union-attr]
+            document = store.get_document_version(source_id)
+            section = store.get_section(source_id) if not document else None
+            if section:
+                document = store.get_document_version(section.document_version_id)
+            if not document:
+                raise ValueError(f"selected evidence not found: {source_id}")
+            snapshot = store.get_snapshot(document.snapshot_id)
+            if not snapshot:
+                raise ValueError(f"selected evidence snapshot not found: {source_id}")
+            if snapshot.repository.casefold() not in allowed_repositories:
+                raise ValueError(
+                    f"selected evidence is outside the explicit project scope: {source_id}"
+                )
+            evidence.append({
+                "id": source_id,
+                "stable_id": section.stable_id if section else document.stable_id,
+                "entity_type": (
+                    "architecture_section" if section else "architecture_document"
+                ),
+                "source_uri": document.source_uri,
+                "section_anchor": section.heading_slug if section else None,
+                "repository": snapshot.repository,
+                "evidence_class": (
+                    section.evidence_class if section else "declared"
+                ),
+                "content_hash": (
+                    section.content_hash if section else document.content_hash
+                ),
+                "score": 1.0,
+                "selection_reasons": ["explicit_selection"],
+            })
+        pack.composition["selected_evidence_ids"] = list(dict.fromkeys(
+            request.selected_evidence_ids
+        ))
+        pack.composition["selection_explicit"] = bool(request.selected_evidence_ids)
         safe_edit_points = list(
             architecture_brief.safe_edit_points
             if architecture_brief and architecture_brief.safe_edit_points
@@ -1128,8 +1186,18 @@ class Toolbox:
 
         removed = 0
         token_estimate = packet_tokens()
+        selected_set = set(request.selected_evidence_ids)
         while token_estimate > request.token_budget and evidence:
-            evidence.pop()
+            removable = next(
+                (index for index in range(len(evidence) - 1, -1, -1)
+                 if str(evidence[index].get("id")) not in selected_set),
+                None,
+            )
+            if removable is None:
+                raise ValueError(
+                    "token budget is too small for the explicit evidence selection"
+                )
+            evidence.pop(removable)
             removed += 1
             token_estimate = packet_tokens()
         while token_estimate > request.token_budget and len(safe_edit_points) > 1:
@@ -1150,8 +1218,9 @@ class Toolbox:
                 evidence_sources_json,safe_edit_points_json,risks_json,
                 tool_references_json,token_estimate,omitted_candidates,degraded,
                 status,creator,created_at,published_at,revoked_at,
-                planning_receipt_json)
-                VALUES(?,?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?,?,NULL,NULL,?)""",
+                planning_receipt_json,source_repositories_json,
+                selected_evidence_ids_json,composition_json)
+                VALUES(?,?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',?,?,NULL,NULL,?,?,?,?)""",
                 (
                     handoff_id, lineage_id, request.repository, request.original_request,
                     request.screenshot.model_dump_json() if request.screenshot else None,
@@ -1176,6 +1245,9 @@ class Toolbox:
                         or removed > 0
                     ),
                     creator, now, planning_receipt.model_dump_json(),
+                    json.dumps(request.source_repositories),
+                    json.dumps(request.selected_evidence_ids),
+                    json.dumps(pack.composition),
                 ),
             )
         return self.get_handoff(handoff_id)  # type: ignore[return-value]
@@ -1252,6 +1324,11 @@ class Toolbox:
             return self.update_handoff(handoff_id, patch)
         request = HandoffDraftRequest(
             repository=current.repository,
+            source_repositories=current.source_repositories,
+            selected_evidence_ids=current.selected_evidence_ids,
+            allow_cross_repository=bool(
+                current.composition.get("cross_repository")
+            ),
             original_request=patch.original_request or current.original_request,
             screenshot=current.screenshot,
             visual_brief=current.visual_brief,
@@ -1562,6 +1639,7 @@ class Toolbox:
         return HandoffPacket(
             handoff_id=handoff.id,
             repository_identity=handoff.architecture.get("repository_identity", {}),
+            context_manifest=handoff.composition,
             workflow_instructions=[{
                 "capability_id": item.stable_id, "version": item.version,
                 "content_hash": item.content_hash, "instructions": item.instructions,

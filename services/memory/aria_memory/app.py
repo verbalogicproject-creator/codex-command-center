@@ -52,7 +52,9 @@ from .models import (
     Proposal, ProposalCreate, ScreenshotAnalysis, ScreenshotAnalyzeRequest,
     ProviderCredentialSetRequest, ProviderCredentialStatus,
     ProposalList, RecallRequest, RecallResponse, Session,
-    SessionCreate, SessionList, StatusResponse, SyncResponse, TimelineResponse,
+    ProjectList, ProjectSummary, SessionCreate, SessionList, SessionUpdate,
+    StatusResponse, SyncResponse,
+    TimelineResponse,
     TourScript, TourScriptRequest, TurnList, VisualComparisonAnalyzeRequest,
     VisualComparisonReceipt,
 )
@@ -686,7 +688,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         workspace: Workspace = Depends(current_workspace),
     ) -> ContextPack:
         limited(workspace, "recall", settings.max_direct_recalls)
-        return workspace.context.build(body)
+        try:
+            return workspace.context.build(body)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
 
     @app.get("/api/v1/aria/commands")
     def aria_commands(
@@ -988,8 +993,60 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         items.sort(key=lambda item: item.happened_at, reverse=True)
         return TimelineResponse(items=items[:limit])
 
+    @app.get("/api/v1/projects", response_model=ProjectList)
+    def projects(workspace: Workspace = Depends(current_workspace)) -> ProjectList:
+        memories = workspace.db.list_memories()
+        documents = workspace.documents.list()
+        sessions = workspace.store.sessions()
+        handoffs = workspace.toolbox.list_handoffs()
+        repositories = workspace.architecture.list_repositories()
+        names = sorted(
+            {item.project for item in memories}
+            | {item.repository for item in documents}
+            | {item.repository for item in sessions if item.repository}
+            | {item.repository for item in handoffs}
+            | {item.name for item in repositories}
+        )
+        architecture = {item.name: item for item in repositories}
+        items = []
+        for name in names:
+            repository = architecture.get(name)
+            snapshot = (
+                workspace.architecture.active_snapshot(repository.id)
+                if repository else None
+            )
+            activity = [
+                *[item.happened_at for item in memories if item.project == name],
+                *[item.updated_at for item in sessions if item.repository == name],
+                *[item.created_at for item in handoffs if item.repository == name],
+            ]
+            items.append(ProjectSummary(
+                name=name,
+                memory_count=sum(item.project == name for item in memories),
+                document_count=sum(item.repository == name for item in documents),
+                session_count=sum(item.repository == name for item in sessions),
+                active_session_count=sum(
+                    item.repository == name and item.status == "active"
+                    for item in sessions
+                ),
+                published_handoff_count=sum(
+                    item.repository == name and item.status == "published"
+                    for item in handoffs
+                ),
+                architecture_registered=bool(repository),
+                architecture_revision=(snapshot.source_revision if snapshot else None),
+                latest_activity=max(activity) if activity else None,
+            ))
+        return ProjectList(items=items)
+
     @app.get("/api/v1/graph", response_model=GraphResponse)
-    def graph(workspace: Workspace = Depends(current_workspace)) -> GraphResponse:
+    def graph(
+        workspace: Workspace = Depends(current_workspace),
+        project: list[str] = Query(default=[]),
+        focus: list[str] = Query(default=[]),
+        depth: int = Query(default=1, ge=0, le=2),
+        limit: int = Query(default=250, ge=25, le=500),
+    ) -> GraphResponse:
         memories = workspace.db.list_memories()
         documents = workspace.documents.list()
         architecture_repositories = workspace.architecture.list_repositories()
@@ -1145,12 +1202,59 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             target="client:codex",
             type="activated_in_codex",
         ) for row in activations if row["handoff_id"] in published_ids]
+        all_projects = projects
         node_by_id = {node.id: node for node in nodes}
-        visible_edges = [
+        all_edges = [
             edge for edge in edges
             if edge.source in node_by_id and edge.target in node_by_id
         ]
-        return GraphResponse(nodes=list(node_by_id.values()), edges=visible_edges)
+        keep = set(node_by_id)
+        if project:
+            selected_projects = {item.casefold() for item in project}
+            keep = {
+                node.id for node in node_by_id.values()
+                if node.project.casefold() in selected_projects
+            }
+        focus_ids = {item for item in focus if item in node_by_id}
+        if focus_ids:
+            neighborhood = set(focus_ids)
+            frontier = set(focus_ids)
+            for _ in range(depth):
+                adjacent = {
+                    endpoint
+                    for edge in all_edges
+                    if edge.source in frontier or edge.target in frontier
+                    for endpoint in (edge.source, edge.target)
+                }
+                frontier = adjacent - neighborhood
+                neighborhood.update(adjacent)
+            keep &= neighborhood
+        visible_nodes = [node for node in node_by_id.values() if node.id in keep]
+        total_nodes = len(visible_nodes)
+        scoped_edges = [
+            edge for edge in all_edges
+            if edge.source in keep and edge.target in keep
+        ]
+        priority = sorted(
+            visible_nodes,
+            key=lambda node: (
+                node.id not in focus_ids,
+                node.stage != "repository",
+                node.project.casefold(),
+                node.id,
+            ),
+        )
+        visible_nodes = priority[:limit]
+        visible_ids = {node.id for node in visible_nodes}
+        visible_edges = [
+            edge for edge in scoped_edges
+            if edge.source in visible_ids and edge.target in visible_ids
+        ]
+        return GraphResponse(
+            nodes=visible_nodes, edges=visible_edges, projects=all_projects,
+            total_nodes=total_nodes, total_edges=len(scoped_edges),
+            truncated=total_nodes > len(visible_nodes),
+        )
 
     @app.get("/api/v1/sessions", response_model=SessionList)
     def sessions(workspace: Workspace = Depends(current_workspace)) -> SessionList:
@@ -1159,7 +1263,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/v1/sessions", response_model=Session, status_code=201)
     def create_session(body: SessionCreate,
                        workspace: Workspace = Depends(current_workspace)) -> Session:
-        return workspace.store.create_session(body.title)
+        try:
+            return workspace.store.create_session(body)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+
+    @app.patch("/api/v1/sessions/{session_id}", response_model=Session)
+    def update_session(
+        session_id: str, body: SessionUpdate,
+        workspace: Workspace = Depends(current_workspace),
+    ) -> Session:
+        try:
+            return workspace.store.update_session(session_id, body)
+        except KeyError:
+            raise HTTPException(404, "session not found") from None
 
     @app.get("/api/v1/sessions/{session_id}/turns", response_model=TurnList)
     def session_turns(session_id: str,

@@ -197,6 +197,9 @@ class RedesignSuggestion(BaseModel):
 
 class HandoffDraftRequest(BaseModel):
     repository: str = Field(min_length=1, max_length=240)
+    source_repositories: list[str] = Field(default_factory=list, max_length=16)
+    selected_evidence_ids: list[str] = Field(default_factory=list, max_length=64)
+    allow_cross_repository: bool = False
     original_request: str = Field(min_length=1, max_length=8_000)
     screenshot: ScreenshotAnalysis | None = None
     visual_brief: VisualComparisonReceipt | None = None
@@ -207,6 +210,9 @@ class HandoffDraftRequest(BaseModel):
 
 class HandoffUpdateRequest(BaseModel):
     original_request: str | None = Field(default=None, min_length=1, max_length=8_000)
+    source_repositories: list[str] | None = Field(default=None, max_length=16)
+    selected_evidence_ids: list[str] | None = Field(default=None, max_length=64)
+    allow_cross_repository: bool | None = None
     capability_refs: list[str] | None = None
     open_plan: list[str] | None = None
 
@@ -216,6 +222,9 @@ class Handoff(BaseModel):
     lineage_id: str
     version: int
     repository: str
+    source_repositories: list[str] = []
+    selected_evidence_ids: list[str] = []
+    composition: dict[str, Any] = {}
     original_request: str
     screenshot: ScreenshotAnalysis | None
     visual_brief: VisualComparisonReceipt | None
@@ -287,6 +296,7 @@ class HandoffLoadRequest(BaseModel):
 class HandoffPacket(BaseModel):
     handoff_id: str
     repository_identity: dict[str, Any]
+    context_manifest: dict[str, Any] = {}
     workflow_instructions: list[dict[str, Any]]
     approved_open_plan: list[str]
     planning_receipt: PlanningReceipt
@@ -454,6 +464,26 @@ class GraphEdge(BaseModel):
 class GraphResponse(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+    projects: list[str] = []
+    total_nodes: int = 0
+    total_edges: int = 0
+    truncated: bool = False
+
+
+class ProjectSummary(BaseModel):
+    name: str
+    memory_count: int = 0
+    document_count: int = 0
+    session_count: int = 0
+    active_session_count: int = 0
+    published_handoff_count: int = 0
+    architecture_registered: bool = False
+    architecture_revision: str | None = None
+    latest_activity: str | None = None
+
+
+class ProjectList(BaseModel):
+    items: list[ProjectSummary]
 
 
 class TimelineResponse(BaseModel):
@@ -462,11 +492,33 @@ class TimelineResponse(BaseModel):
 
 class SessionCreate(BaseModel):
     title: str = Field(default="New synthesis", min_length=1, max_length=120)
+    repository: str | None = Field(default="Command Center", min_length=1, max_length=240)
+    goal: str = Field(default="", max_length=2_000)
+    branch: str | None = Field(default=None, max_length=240)
+    revision: str | None = Field(default=None, max_length=240)
+    source_repositories: list[str] = Field(default_factory=list, max_length=16)
+    parent_session_id: str | None = Field(default=None, max_length=120)
+
+
+class SessionUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    goal: str | None = Field(default=None, max_length=2_000)
+    status: Literal["active", "paused", "completed", "blocked"] | None = None
+    branch: str | None = Field(default=None, max_length=240)
+    revision: str | None = Field(default=None, max_length=240)
+    source_repositories: list[str] | None = Field(default=None, max_length=16)
 
 
 class Session(BaseModel):
     id: str
     title: str
+    repository: str | None = None
+    goal: str = ""
+    status: Literal["active", "paused", "completed", "blocked"] = "active"
+    branch: str | None = None
+    revision: str | None = None
+    source_repositories: list[str] = []
+    parent_session_id: str | None = None
     created_at: str
     updated_at: str
     turn_count: int = 0
@@ -570,6 +622,9 @@ class ProposalList(BaseModel):
 class ContextPackRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=8_000)
     repository: str | None = None
+    source_repositories: list[str] = Field(default_factory=list, max_length=16)
+    selected_evidence_ids: list[str] = Field(default_factory=list, max_length=64)
+    allow_cross_repository: bool = False
     token_budget: int = Field(default=2_000, ge=256, le=8_000)
     memory_limit: int = Field(default=8, ge=0, le=25)
     document_limit: int = Field(default=8, ge=0, le=25)
@@ -592,6 +647,7 @@ class ContextSource(BaseModel):
 
 class ContextPack(BaseModel):
     repository_identity: dict[str, Any]
+    composition: dict[str, Any] = {}
     declared_capabilities: list[str]
     facts: list[MemoryRecord]
     episodes: list[MemoryRecord]

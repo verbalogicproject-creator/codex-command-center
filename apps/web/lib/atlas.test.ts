@@ -34,11 +34,11 @@ describe("Take a step back atlas", () => {
     expect(html).toContain('data-lens="sources"');
   });
 
-  it("embeds bidirectional, migration-8 source truth", () => {
+  it("embeds bidirectional, migration-9 source truth", () => {
     const data = atlasData();
     expect(data.schema_version).toBe("nlke-gca-grounding-receipt-v1");
     expect(data.climax_claim_id).toBe("immutable-handoff");
-    expect(data.migration).toBe(8);
+    expect(data.migration).toBe(9);
     expect(data.counts.modules).toBeGreaterThan(20);
     expect(data.counts.routes).toBeGreaterThan(60);
     expect(data.counts.tests).toBeGreaterThan(100);

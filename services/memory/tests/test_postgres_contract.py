@@ -77,6 +77,15 @@ def test_postgres_v8_matches_aria_command_center_contract():
     assert "UNIQUE(voice_session_id,call_id)" in migration
 
 
+def test_postgres_v9_adds_multi_project_handoff_and_session_contract():
+    migration = POSTGRES_APP_MIGRATIONS[9]
+    assert "source_repositories_json TEXT NOT NULL" in migration
+    assert "selected_evidence_ids_json TEXT NOT NULL" in migration
+    assert "composition_json TEXT NOT NULL" in migration
+    assert "ALTER TABLE sessions" in migration
+    assert "repository,status,updated_at DESC" in migration
+
+
 def test_postgres_adapter_translates_portable_placeholders():
     assert CompatConnection._sql(
         "SELECT * FROM handoffs WHERE id=? AND status=?"

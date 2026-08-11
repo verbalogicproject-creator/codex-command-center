@@ -488,6 +488,115 @@ def test_handoff_publication_immutability_repository_guard_and_activation(client
     assert next_version.json()["status"] == "draft"
 
 
+def test_handoff_preserves_long_request_and_bounds_only_retrieval_query(client):
+    original_request = (
+        "Upgrade Project Memory with explicit provenance and policy boundaries. "
+        + "session context evidence " * 280
+        + "Keep the final acceptance and escalation conditions."
+    )
+    assert 2_000 < len(original_request) < 8_000
+    created = client.post("/api/v1/handoffs", json={
+        "repository": "Project Memory",
+        "original_request": original_request,
+        "capability_refs": ["evidence-bound-coding-plan@1"],
+        "open_plan": ["Inspect receipts.", "Interview before editing."],
+    })
+    assert created.status_code == 201
+    handoff = created.json()
+    assert handoff["original_request"] == original_request
+    assert handoff["status"] == "draft"
+    assert handoff["planning_receipt"]["model"] == "user-authored-open-plan"
+    assert handoff["codex_command"].startswith(
+        "/plan Load Command Center handoff"
+    )
+
+
+def test_cross_project_handoff_pins_explicit_composition_manifest(client):
+    request = {
+        "repository": "Project Memory",
+        "source_repositories": ["Command Center"],
+        "selected_evidence_ids": ["fact_pm_01", "fact_cc_01"],
+        "original_request": "Prepare Project Memory using selected Command Center evidence.",
+        "capability_refs": ["evidence-bound-coding-plan@1"],
+        "open_plan": ["Inspect selected receipts.", "Interview before editing."],
+    }
+    refused = client.post("/api/v1/handoffs", json=request)
+    assert refused.status_code == 422
+
+    created = client.post("/api/v1/handoffs", json={
+        **request, "allow_cross_repository": True,
+    })
+    assert created.status_code == 201
+    handoff = created.json()
+    assert handoff["source_repositories"] == ["Command Center"]
+    assert handoff["selected_evidence_ids"] == ["fact_pm_01", "fact_cc_01"]
+    assert handoff["composition"]["target_repository"] == "Project Memory"
+    assert handoff["composition"]["cross_repository"] is True
+    selected = {
+        item["id"]: item["repository"] for item in handoff["evidence_sources"]
+        if item["id"] in {"fact_pm_01", "fact_cc_01"}
+    }
+    assert selected == {
+        "fact_pm_01": "Project Memory",
+        "fact_cc_01": "Command Center",
+    }
+    assert "apps/web/components/MemoryGraph.tsx" not in handoff["safe_edit_points"]
+
+    assert client.post(
+        f"/api/v1/handoffs/{handoff['id']}/publish"
+    ).status_code == 200
+    loaded = client.post("/api/v1/handoffs/load", json={
+        "handoff_id": handoff["id"],
+        "repository": "Project Memory",
+        "client_name": "Codex",
+    })
+    assert loaded.status_code == 200
+    assert loaded.json()["context_manifest"] == handoff["composition"]
+
+
+def test_cross_project_handoff_pins_selected_architecture_version(client):
+    synced = client.post("/api/v1/architecture/sync", json={
+        "repository": {
+            "id": "synthetic-architecture",
+            "name": "Synthetic Architecture",
+            "aliases": ["synthetic-checkout"],
+        },
+        "source_revision": "architecture-source-one",
+        "manifest_hash": "b" * 64,
+        "documents": [{
+            "source_uri": "docs/architecture.md",
+            "content": ARCHITECTURE_FIXTURE.read_text(encoding="utf-8"),
+        }],
+    })
+    assert synced.status_code == 200
+    brief = client.post("/api/v1/architecture/brief", json={
+        "repository": "Synthetic Architecture",
+        "mode": "task",
+        "prompt": "frontmatter component contract",
+        "token_budget": 1_200,
+    }).json()
+    source_id = brief["documents"][0]["id"]
+
+    created = client.post("/api/v1/handoffs", json={
+        "repository": "Project Memory",
+        "source_repositories": ["Synthetic Architecture"],
+        "selected_evidence_ids": [source_id],
+        "allow_cross_repository": True,
+        "original_request": "Use the selected architecture contract in Project Memory.",
+        "capability_refs": ["evidence-bound-coding-plan@1"],
+        "open_plan": ["Inspect the exact architecture version."],
+    })
+    assert created.status_code == 201
+    handoff = created.json()
+    selected = next(
+        item for item in handoff["evidence_sources"] if item["id"] == source_id
+    )
+    assert selected["entity_type"] == "architecture_document"
+    assert selected["repository"] == "Synthetic Architecture"
+    assert selected["selection_reasons"] == ["explicit_selection"]
+    assert handoff["composition"]["selected_evidence_ids"] == [source_id]
+
+
 def test_published_handoff_keeps_pinned_architecture_and_accepts_registered_alias(client):
     content = ARCHITECTURE_FIXTURE.read_text(encoding="utf-8")
 

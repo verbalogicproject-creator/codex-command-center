@@ -26,7 +26,7 @@ def test_atlas_snapshot_is_deterministic_and_source_backed():
     assert first == second
     assert first["schema_version"] == "nlke-gca-grounding-receipt-v1"
     assert first["climax_claim_id"] == "immutable-handoff"
-    assert first["migration"] == 8
+    assert first["migration"] == 9
     assert first["counts"]["claims"] == len(first["claims"])
     assert first["counts"]["routes"] >= 60
     assert first["counts"]["tests"] >= 100
@@ -66,7 +66,7 @@ def test_generated_atlas_is_current_and_contains_no_runtime_payloads():
     assert "<title>Take a step back" in output
     assert "NLKE Grounded Continuity Architecture" in output
     assert '"schema_version":"nlke-gca-grounding-receipt-v1"' in output
-    assert '"migration":8' in output
+    assert '"migration":9' in output
     lowered = output.lower()
     for forbidden in (
         '"api_key":',

@@ -37,7 +37,7 @@ def test_empty_and_v4_databases_apply_ordered_app_migrations(tmp_path: Path):
                 "SELECT version FROM app_migrations ORDER BY version"
             )
         ]
-    assert versions == [4, 5, 6, 7, APP_MIGRATION_VERSION]
+    assert versions == [4, 5, 6, 7, 8, APP_MIGRATION_VERSION]
 
     previous_path = tmp_path / "previous.db"
     with sqlite3.connect(previous_path) as conn:
@@ -57,7 +57,7 @@ def test_empty_and_v4_databases_apply_ordered_app_migrations(tmp_path: Path):
                 "SELECT name FROM sqlite_master WHERE type='table'"
             )
         }
-    assert versions == [4, 5, 6, 7, APP_MIGRATION_VERSION]
+    assert versions == [4, 5, 6, 7, 8, APP_MIGRATION_VERSION]
     assert {
         "architecture_snapshots",
         "architecture_document_versions",
@@ -71,7 +71,11 @@ def test_empty_and_v4_databases_apply_ordered_app_migrations(tmp_path: Path):
                 "PRAGMA table_info(handoffs)"
             ).fetchall()
         }
-    assert columns >= {"planning_receipt_json", "visual_brief_json"}
+    assert columns >= {
+        "planning_receipt_json", "visual_brief_json",
+        "source_repositories_json", "selected_evidence_ids_json",
+        "composition_json",
+    }
 
 
 def test_snapshot_activation_persists_versions_sections_edges_and_issues(

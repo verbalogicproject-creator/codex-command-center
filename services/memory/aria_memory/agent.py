@@ -86,9 +86,17 @@ class Aria:
 
     def execute_tool(self, name: str, args: dict[str, Any],
                      session_id: str) -> dict[str, Any]:
+        session = self.store.get_session(session_id)
+        allowed_projects = {
+            item.casefold() for item in [
+                session.repository if session else None,
+                *(session.source_repositories if session else []),
+            ] if item
+        }
         if name == "recall_memories":
             result = self.retriever.recall(RecallRequest(
-                query=args["query"], limit=min(args["limit"], 12)
+                query=args["query"], limit=min(args["limit"], 12),
+                project=session.repository if session else "Command Center",
             ))
             return result.model_dump()
         if name == "get_memory":
@@ -101,6 +109,11 @@ class Aria:
             neighbors = [x.model_dump() for x in records if x.project in projects][:30]
             return {"neighbors": neighbors}
         if name == "get_timeline":
+            if (
+                args["project"] and allowed_projects
+                and args["project"].casefold() not in allowed_projects
+            ):
+                return {"items": [], "refused": "project is outside session scope"}
             records = self.db.list_memories(args["project"])
             records.sort(key=lambda x: x.happened_at, reverse=True)
             return {"items": [x.model_dump() for x in records[:args["limit"]]]}
@@ -129,8 +142,17 @@ class Aria:
         self, request: ChatRequest, api_key: str | None = None,
     ) -> list[dict[str, Any]]:
         self.store.add_turn(request.session_id, "user", request.message)
+        session = self.store.get_session(request.session_id)
+        target_repository = (
+            session.repository if session and session.repository else "Command Center"
+        )
+        source_repositories = session.source_repositories if session else []
         packet = self.context.build(ContextPackRequest(
-            prompt=request.message, token_budget=2_000, memory_limit=8, document_limit=6,
+            prompt=request.message,
+            repository=target_repository,
+            source_repositories=source_repositories,
+            allow_cross_repository=bool(source_repositories),
+            token_budget=2_000, memory_limit=8, document_limit=6,
         ))
         repository = str(
             packet.repository_identity.get("repository") or "Command Center"
@@ -157,7 +179,7 @@ class Aria:
                 "data": architecture_brief.model_dump(mode="json"),
             })
         if not api_key:
-            events.extend(self._fallback(request))
+            events.extend(self._fallback(request, packet))
         else:
             try:
                 events.extend(await asyncio.to_thread(
@@ -166,7 +188,7 @@ class Aria:
             except Exception as exc:
                 events.append({"type": "status", "data": {
                     "phase": "degraded", "reason": type(exc).__name__}})
-                events.extend(self._fallback(request))
+                events.extend(self._fallback(request, packet))
         if self._explicit_proposal_request(request.message) and not any(
             event["type"] == "proposal" for event in events
         ):
@@ -224,15 +246,25 @@ class Aria:
             "decision", "recommendation", "architecture", "memory",
         ))
 
-    def _fallback(self, request: ChatRequest) -> list[dict[str, Any]]:
-        recall = self.retriever.recall(RecallRequest(query=request.message, limit=8))
-        hits = recall.hits
+    def _fallback(
+        self, request: ChatRequest, packet: ContextPack,
+    ) -> list[dict[str, Any]]:
+        memories = [*packet.facts, *packet.episodes]
+        scores = {source.id: source.score for source in packet.sources}
         evidence = [{
-            "id": hit.memory.id, "title": hit.memory.title,
-            "project": hit.memory.project, "score": hit.score,
-        } for hit in hits]
-        projects = list(dict.fromkeys(hit.memory.project for hit in hits))
-        ids = [hit.memory.id for hit in hits]
+            "id": memory.id, "title": memory.title,
+            "project": memory.project, "score": scores.get(memory.id, 0),
+        } for memory in memories]
+        projects = list(dict.fromkeys(memory.project for memory in memories))
+        ids = [memory.id for memory in memories]
+        trace = {
+            "query_ms": 0,
+            "candidates": len(packet.sources) + packet.omitted_candidate_count,
+            "embedding_provider": self.settings.embedding_provider,
+            "query_embedding_calls": 0,
+            "degraded": packet.degraded,
+            "signals": ["bounded-context-packet", "session-project-scope"],
+        }
         if "merge" in request.message.lower():
             guard = self.execute_tool("check_synthesis", {
                 "project": "Command Center", "claim": request.message,
@@ -243,7 +275,7 @@ class Aria:
                     {"type": "tool_call", "data": {
                         "name": "check_synthesis", "status": "completed"}},
                     {"type": "evidence", "data": {"items": evidence,
-                        "trace": recall.trace.model_dump()}},
+                        "trace": trace}},
                     {"type": "answer", "data": {
                         "text": "**Refusal:** This synthesis conflicts with recorded scope "
                         f"decisions {', '.join(f'[{key}]' for key in conflict_ids)}. "
@@ -260,14 +292,16 @@ class Aria:
         citations = " ".join(f"[{item}]" for item in ids[:5])
         events = [
             {"type": "tool_call", "data": {"name": "recall_memories", "status": "completed"}},
-            {"type": "evidence", "data": {"items": evidence, "trace": recall.trace.model_dump()}},
+            {"type": "evidence", "data": {"items": evidence, "trace": trace}},
             {"type": "render", "data": {"kind": "architecture", "title": "Private mobile stack",
                 "summary": summary, "projects": projects, "evidence_ids": ids}},
         ]
         if any(word in request.message.lower() for word in ("propose", "decision", "recommend")):
             proposal = self.store.create_proposal(
                 request.session_id, "record_fact",
-                {"project": "Command Center", "kind": "decision",
+                {"project": str(
+                    packet.composition.get("target_repository") or "Command Center"
+                ), "kind": "decision",
                  "title": "Private mobile assistant architecture", "content": summary,
                  "reason": "Evidence-backed cross-project synthesis",
                  "tags": ["mobile", "private", "architecture"]},

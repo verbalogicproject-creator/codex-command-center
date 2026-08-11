@@ -51,6 +51,13 @@ export type Trace = {
 export type Session = {
   id: string;
   title: string;
+  repository?: string | null;
+  goal: string;
+  status: "active" | "paused" | "completed" | "blocked";
+  branch?: string | null;
+  revision?: string | null;
+  source_repositories: string[];
+  parent_session_id?: string | null;
   created_at: string;
   updated_at: string;
   turn_count: number;
@@ -91,6 +98,22 @@ export type GraphData = {
     evidence_id?: string; stage: "declared" | "dense" | "durable" | "repository";
   }[];
   edges: {id: string; source: string; target: string; type: string}[];
+  projects?: string[];
+  total_nodes?: number;
+  total_edges?: number;
+  truncated?: boolean;
+};
+
+export type ProjectSummary = {
+  name: string;
+  memory_count: number;
+  document_count: number;
+  session_count: number;
+  active_session_count: number;
+  published_handoff_count: number;
+  architecture_registered: boolean;
+  architecture_revision?: string | null;
+  latest_activity?: string | null;
 };
 
 export type ContextSource = {
@@ -114,6 +137,15 @@ export type ContextPack = {
     kind?: string;
     status?: string;
     last_verified?: string;
+  };
+  composition: {
+    schema_version: "command-center-context-composition-v1";
+    target_repository?: string | null;
+    source_repositories: string[];
+    selected_evidence_ids: string[];
+    cross_repository: boolean;
+    selection_explicit: boolean;
+    policy: string;
   };
   declared_capabilities: string[];
   facts: Memory[];
@@ -290,6 +322,9 @@ export type Handoff = {
   lineage_id: string;
   version: number;
   repository: string;
+  source_repositories: string[];
+  selected_evidence_ids: string[];
+  composition: ContextPack["composition"];
   original_request: string;
   screenshot?: ScreenshotAnalysis | null;
   visual_brief?: VisualComparisonReceipt | null;

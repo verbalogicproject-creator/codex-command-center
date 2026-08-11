@@ -31,10 +31,11 @@ browser cookie or `X-Command-Center-Token`.
 | Provider credentials | `POST/DELETE /api/v1/provider-credentials/openai`, `GET /provider-credentials/openai/status` |
 | Capabilities | `GET/POST /api/v1/capabilities`, `GET /capabilities/{id}`, `POST /capabilities/recommend` |
 | Screenshots | `POST /api/v1/screenshots/analyze`, `/screenshots/compare` |
+| Projects and sessions | `GET /api/v1/projects`, `GET/POST /api/v1/sessions`, `PATCH /api/v1/sessions/{id}` |
 | Handoffs | `GET/POST /api/v1/handoffs`, `GET/PATCH /handoffs/{id}`, `POST /handoffs/{id}/publish`, `/revoke`, `/versions`, `POST /handoffs/load` |
 | Tours | `POST /api/v1/tours/script` |
 | Architecture | `POST /api/v1/architecture/lint`, `/sync`, `/check`, `/brief`; `GET /architecture/health` |
-| Context | `POST /api/v1/recall`, `/documents/recall`, `/context/pack` |
+| Context | `POST /api/v1/recall`, `/documents/recall`, `/context/pack` with target, explicit source repositories, and optional pinned evidence IDs |
 | Evidence | `GET /documents/{id}`, `/memories/{table}/{id}`, `/graph`, `/timeline` |
 | Aria | `POST /realtime/token`, `/chat/stream` |
 | Memory | `GET/POST /proposals`, `POST /proposals/{id}/confirm`, `/reject`, `GET /audit` |

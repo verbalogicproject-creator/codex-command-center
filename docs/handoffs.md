@@ -48,6 +48,13 @@ The declared architecture member is the complete bounded
 snapshot ID, revision, document/section version IDs, hashes, selection reasons,
 health, omissions, and degraded reasons are part of the handoff.
 
+Handoffs may also pin an explicit multi-project context manifest. `repository`
+is the target, `source_repositories` are evidence sources, and
+`selected_evidence_ids` are immutable selections. Cross-project creation must
+set `allow_cross_repository=true`; every receipt retains source ownership.
+Missing, inactive, or out-of-scope evidence fails closed. The full request is
+stored even when retrieval uses a bounded query projection.
+
 Raw screenshots are validated and resized in memory. The stored record contains
 only SHA-256 hash, original and analyzed dimensions, MIME type, and derived
 findings. The current implementation always reports `retained=false`, even if a
@@ -99,6 +106,7 @@ client name, optional session ID, repository, evidence IDs, and timestamp.
 The returned packet includes:
 
 - exact workflow instructions, versions, hashes, and provenance;
+- the pinned target/source context manifest and explicit selections;
 - approved Open Plan;
 - planning model, exact capability receipt, architecture snapshot, evidence
   IDs, generation time, and degradation reasons;

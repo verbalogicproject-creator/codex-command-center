@@ -60,6 +60,12 @@ browser:
 
 No graph position or decorative state is written to durable memory.
 
+Callers can bound the projection with repeated `project` and `focus` query
+parameters, `depth=0..2`, and `limit=25..500`. Responses distinguish total from
+visible nodes and report truncation. The browser provides a project selector
+and defaults narrow viewports to one project, preventing a full portfolio
+Dagre pass from blocking the mobile canvas.
+
 Published handoffs add cyan session-context nodes. Their incoming `injects`
 edges originate at exact violet capability-version nodes.
 `selected_for_handoff` edges connect exact evidence versions, and an audited

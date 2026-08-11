@@ -90,6 +90,18 @@ function activeSubgraph(data: GraphData, activeIds: string[], compact: boolean):
   };
 }
 
+function projectSubgraph(data: GraphData, project: string): GraphData {
+  if (!project) return data;
+  const keep = new Set(
+    data.nodes.filter((node) => node.project === project).map((node) => node.id),
+  );
+  return {
+    ...data,
+    nodes: data.nodes.filter((node) => keep.has(node.id)),
+    edges: data.edges.filter((edge) => keep.has(edge.source) && keep.has(edge.target)),
+  };
+}
+
 function layout(data: GraphData, activeIds: string[], compact: boolean) {
   const visible = activeSubgraph(data, activeIds, compact);
   const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
@@ -138,6 +150,7 @@ export function MemoryGraph({
   onEvidence: (id: string) => void;
 }) {
   const [compact, setCompact] = useState(false);
+  const [project, setProject] = useState("");
   const flowRef = useRef<ReactFlowInstance<MemoryNode, Edge> | null>(null);
   useEffect(() => {
     const media = window.matchMedia("(max-width: 860px)");
@@ -146,7 +159,18 @@ export function MemoryGraph({
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  const elements = useMemo(() => layout(data, activeIds, compact), [data, activeIds, compact]);
+  const projects = useMemo(() => data.projects ?? Array.from(new Set(
+    data.nodes.map((node) => node.project).filter((value) => value !== "*"),
+  )).sort(), [data]);
+  useEffect(() => {
+    if (!compact || project) return;
+    setProject(projects.includes("Command Center") ? "Command Center" : projects[0] ?? "");
+  }, [compact, project, projects]);
+  const visibleData = useMemo(() => projectSubgraph(data, project), [data, project]);
+  const elements = useMemo(
+    () => layout(visibleData, activeIds, compact),
+    [visibleData, activeIds, compact],
+  );
   useEffect(() => {
     const graphCommand = (event: Event) => {
       const detail = (event as CustomEvent<{
@@ -180,6 +204,12 @@ export function MemoryGraph({
         <span className="declared">Declared structure</span>
         <span className="dense">Active context</span>
         <span className="durable">Durable memory</span>
+        <label>Project<select value={project}
+          onChange={(event) => setProject(event.target.value)}>
+          <option value="">All projects</option>
+          {projects.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select></label>
+        {data.truncated && <span>Showing a bounded graph projection</span>}
       </div>
       <ReactFlow
         onInit={(instance) => { flowRef.current = instance; }}

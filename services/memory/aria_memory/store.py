@@ -6,7 +6,8 @@ from typing import Any
 
 from .db import Database
 from .models import (
-    AuditEvent, HookEventRequest, HookEventResponse, Proposal, Session, Turn, utc_now,
+    AuditEvent, HookEventRequest, HookEventResponse, Proposal, Session, SessionCreate,
+    SessionUpdate, Turn, utc_now,
 )
 
 
@@ -18,11 +19,44 @@ class AppStore:
     def __init__(self, db: Database):
         self.db = db
 
-    def create_session(self, title: str) -> Session:
+    def create_session(self, request: SessionCreate | str) -> Session:
+        if isinstance(request, str):
+            request = SessionCreate(title=request)
         session_id, now = uid("ses"), utc_now()
+        if request.parent_session_id and not self.session_exists(request.parent_session_id):
+            raise ValueError("parent session not found")
         with self.db.transaction() as conn:
-            conn.execute("INSERT INTO sessions VALUES(?,?,?,?)", (session_id, title, now, now))
-        return Session(id=session_id, title=title, created_at=now, updated_at=now)
+            conn.execute(
+                """INSERT INTO sessions(
+                id,title,created_at,updated_at,repository,goal,status,branch,revision,
+                source_repositories_json,parent_session_id)
+                VALUES(?,?,?,?,?,?,'active',?,?,?,?)""",
+                (
+                    session_id, request.title, now, now, request.repository,
+                    request.goal, request.branch, request.revision,
+                    json.dumps(request.source_repositories), request.parent_session_id,
+                ),
+            )
+        return Session(
+            id=session_id, title=request.title, repository=request.repository,
+            goal=request.goal, status="active", branch=request.branch,
+            revision=request.revision,
+            source_repositories=request.source_repositories,
+            parent_session_id=request.parent_session_id,
+            created_at=now, updated_at=now,
+        )
+
+    @staticmethod
+    def _session(row: Any) -> Session:
+        return Session(
+            id=row["id"], title=row["title"], repository=row["repository"],
+            goal=row["goal"], status=row["status"], branch=row["branch"],
+            revision=row["revision"],
+            source_repositories=json.loads(row["source_repositories_json"]),
+            parent_session_id=row["parent_session_id"],
+            created_at=row["created_at"], updated_at=row["updated_at"],
+            turn_count=int(row["turn_count"] if "turn_count" in row.keys() else 0),
+        )
 
     def sessions(self) -> list[Session]:
         with self.db.connect() as conn:
@@ -31,7 +65,44 @@ class AppStore:
                 LEFT JOIN turns t ON t.session_id=s.id GROUP BY s.id
                 ORDER BY s.updated_at DESC"""
             ).fetchall()
-        return [Session(**dict(row)) for row in rows]
+        return [self._session(row) for row in rows]
+
+    def get_session(self, session_id: str) -> Session | None:
+        with self.db.connect() as conn:
+            row = conn.execute(
+                """SELECT s.*,COUNT(t.id) turn_count FROM sessions s
+                LEFT JOIN turns t ON t.session_id=s.id
+                WHERE s.id=? GROUP BY s.id""",
+                (session_id,),
+            ).fetchone()
+        return self._session(row) if row else None
+
+    def update_session(self, session_id: str, patch: SessionUpdate) -> Session:
+        fields: list[str] = []
+        values: list[Any] = []
+        for name in ("title", "goal", "status", "branch", "revision"):
+            value = getattr(patch, name)
+            if value is not None:
+                fields.append(f"{name}=?")
+                values.append(value)
+        if patch.source_repositories is not None:
+            fields.append("source_repositories_json=?")
+            values.append(json.dumps(patch.source_repositories))
+        if not fields:
+            sessions = [item for item in self.sessions() if item.id == session_id]
+            if not sessions:
+                raise KeyError("session not found")
+            return sessions[0]
+        fields.append("updated_at=?")
+        values.append(utc_now())
+        values.append(session_id)
+        with self.db.transaction() as conn:
+            result = conn.execute(
+                f"UPDATE sessions SET {','.join(fields)} WHERE id=?", values
+            )
+            if result.rowcount == 0:
+                raise KeyError("session not found")
+        return next(item for item in self.sessions() if item.id == session_id)
 
     def session_exists(self, session_id: str) -> bool:
         with self.db.connect() as conn:

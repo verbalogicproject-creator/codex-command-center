@@ -11,7 +11,7 @@ from .models import MemoryRecord, utc_now
 
 SCHEMA_VERSION = 1
 BASE_APP_MIGRATION_VERSION = 4
-APP_MIGRATION_VERSION = 8
+APP_MIGRATION_VERSION = 9
 
 SQLITE_ARCHITECTURE_MIGRATION_V5 = """
 CREATE TABLE IF NOT EXISTS architecture_repositories(
@@ -192,11 +192,32 @@ CREATE INDEX IF NOT EXISTS idx_aria_executions_created
   ON aria_command_executions(created_at DESC);
 """
 
+SQLITE_MULTI_PROJECT_CONTROL_PLANE_MIGRATION_V9 = """
+ALTER TABLE handoffs
+  ADD COLUMN source_repositories_json TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE handoffs
+  ADD COLUMN selected_evidence_ids_json TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE handoffs
+  ADD COLUMN composition_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE sessions ADD COLUMN repository TEXT;
+ALTER TABLE sessions ADD COLUMN goal TEXT NOT NULL DEFAULT '';
+ALTER TABLE sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'active'
+  CHECK(status IN ('active','paused','completed','blocked'));
+ALTER TABLE sessions ADD COLUMN branch TEXT;
+ALTER TABLE sessions ADD COLUMN revision TEXT;
+ALTER TABLE sessions
+  ADD COLUMN source_repositories_json TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE sessions ADD COLUMN parent_session_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_sessions_repository_status
+  ON sessions(repository,status,updated_at DESC);
+"""
+
 SQLITE_APP_MIGRATIONS = {
     5: SQLITE_ARCHITECTURE_MIGRATION_V5,
     6: SQLITE_HANDOFF_PLANNING_MIGRATION_V6,
     7: SQLITE_HANDOFF_VISUAL_COMPARISON_MIGRATION_V7,
     8: SQLITE_ARIA_COMMAND_CENTER_MIGRATION_V8,
+    9: SQLITE_MULTI_PROJECT_CONTROL_PLANE_MIGRATION_V9,
 }
 
 
